@@ -1,0 +1,37 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar for sidebar */
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: #1f2937; /* gray-800 - matches sidebar background */
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: #374151; /* gray-700 - slightly lighter than background */
+  border-radius: 4px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #4b5563; /* gray-600 - lighter on hover */
+}
+
+/* For Firefox */
+.sidebar-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #374151 #1f2937; /* thumb track */
+}
+
+/* Basic body styling */
+body {
+  font-family: 'Cairo', 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f4f7f6; /* A light, neutral background */
+  color: #333;
+}
