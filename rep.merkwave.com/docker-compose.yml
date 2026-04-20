@@ -26,12 +26,12 @@ services:
 
   react:
     build:
-      context: ./website
+      context: ./RepWave
       dockerfile: Dockerfile
     container_name: repwave_share_react
     restart: always
     volumes:
-      - ./website:/app
+      - ./RepWave:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
@@ -41,6 +41,23 @@ services:
     ports:
       - "5173:5173"
 
+  repwave:
+    build:
+      context: ./RepWave
+      dockerfile: Dockerfile
+    container_name: repwave_new_react
+    restart: always
+    volumes:
+      - ./RepWave:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+    networks:
+      - rep_network
+    ports:
+      - "5174:5173"
+
   php:
     image: php:8.1-fpm
     container_name: repwave_share_php
@@ -49,9 +66,42 @@ services:
       - ./api:/var/www/html/api
     environment:
       - TZ=Africa/Cairo
+    depends_on:
+      mysql:
+        condition: service_healthy
     networks:
       - rep_network
     command: sh -c "docker-php-ext-install mysqli pdo pdo_mysql && php-fpm"
+
+  mysql:
+    image: mysql:8.0
+    container_name: repwave_share_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: template_company_db
+      MYSQL_USER: template_company_user
+      MYSQL_PASSWORD: template_company_pass
+      TZ: Africa/Cairo
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # Init scripts run alphabetically on a FRESH volume only:
+      - ./api/clients/template_company/setup_test_database.sql:/docker-entrypoint-initdb.d/01_template_schema.sql:ro
+      - ./api/clients/demo_company/migrations/setup_demo_database.sql:/docker-entrypoint-initdb.d/02_demo_setup.sql:ro
+      - ./api/clients/demo_company/migrations/001_trial_schema.sql:/docker-entrypoint-initdb.d/03_trial_schema.sql:ro
+      - ./api/clients/demo_company/migrations/demo_seed.sql:/docker-entrypoint-initdb.d/04_demo_seed.sql:ro
+      # Migrations folder mounted so reset_demo.sh can run inside the mysql container
+      # (mysql container has mysql client; php container does not)
+      - ./api/clients/demo_company/migrations:/demo_migrations:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rep_network
+    ports:
+      - "3306:3306"
 
 networks:
   rep_network:
@@ -60,3 +110,5 @@ networks:
   proxy:
     external: true
     name: webproxy
+volumes:
+  mysql_data:

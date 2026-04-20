@@ -100,6 +100,17 @@ function LoginPage() {
           {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
         </Button>
       </form>
+
+      <div className="mt-8 pt-6 border-t border-gray-200">
+        <p className="text-gray-500 text-sm mb-3">ليس لديك حساب بعد؟</p>
+        <button
+          type="button"
+          onClick={() => navigate('/try-now')}
+          className="w-full py-3 px-4 rounded-lg font-semibold text-white bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg"
+        >
+          🚀 جرّب RepWave مجاناً — 6 أيام تجريبية
+        </button>
+      </div>
     </div>
   );
 }

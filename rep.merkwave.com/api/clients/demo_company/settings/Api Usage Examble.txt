@@ -1,0 +1,32 @@
+# Get all settings
+GET /settings/get_all.php
+
+# Get settings by category
+GET /settings/get_all.php?category=company
+GET /settings/get_all.php?category=mobile
+
+# Get organized format (key-value pairs)
+GET /settings/get_all.php?format=organized
+
+# Get settings by type
+GET /settings/get_all.php?type=boolean
+
+# Get categorized settings
+GET /settings/get_by_category.php
+
+# Update single setting
+POST /settings/update.php
+Content-Type: application/x-www-form-urlencoded
+settings_key=company_name&settings_value=New Company Name
+
+# Bulk update (JSON)
+POST /settings/bulk_update.php
+Content-Type: application/json
+{
+  "company_name": "New Company Name",
+  "currency_symbol": "EGP",
+  "max_login_attempts": "3"
+}
+
+# Initialize default settings
+POST /settings/initialize_defaults.php

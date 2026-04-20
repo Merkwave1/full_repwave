@@ -1,20 +1,26 @@
 // src/components/dashboard/tabs/inventory-management/Warehouses/WarehouseRecordsTab.jsx
-import React, { useState, useEffect, useCallback } from 'react';
-import { useOutletContext } from 'react-router-dom';
-import { InboxArrowDownIcon, EyeIcon, CalendarIcon, PrinterIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import Loader from '../../../../common/Loader/Loader';
-import Alert from '../../../../common/Alert/Alert';
+import React, { useState, useEffect, useCallback } from "react";
+import { useOutletContext } from "react-router-dom";
+import {
+  InboxArrowDownIcon,
+  EyeIcon,
+  CalendarIcon,
+  PrinterIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import Loader from "../../../../common/Loader/Loader";
+import Alert from "../../../../common/Alert/Alert";
 
-export default function WarehouseRecordsTab({ 
-  warehouses = [], 
-  purchaseOrders = [], 
-  products = [], 
-  suppliers = [], 
+export default function WarehouseRecordsTab({
+  warehouses = [],
+  purchaseOrders = [],
+  products = [],
+  suppliers = [],
   goodsReceipts = [],
-  loading: propLoading = false, 
-  error: propError = null, 
-  setGlobalMessage, 
-  onRefresh 
+  loading: propLoading = false,
+  error: propError = null,
+  setGlobalMessage,
+  onRefresh,
 }) {
   const { setChildRefreshHandler } = useOutletContext();
   const [receipts, setReceipts] = useState([]);
@@ -25,27 +31,33 @@ export default function WarehouseRecordsTab({
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  const loadData = useCallback(async (forceRefresh = false) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Use the goodsReceipts data passed from the wrapper instead of making API call
-      // Sort by date (new to old)
-      const sortedReceipts = Array.isArray(goodsReceipts) 
-        ? goodsReceipts.sort((a, b) => new Date(b.receipt_date || b.created_at) - new Date(a.receipt_date || a.created_at))
-        : [];
+  const loadData = useCallback(
+    async (forceRefresh = false) => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      setReceipts(sortedReceipts);
+        // Use the goodsReceipts data passed from the wrapper instead of making API call
+        // Sort by date (new to old)
+        const sortedReceipts = Array.isArray(goodsReceipts)
+          ? goodsReceipts.sort(
+              (a, b) =>
+                new Date(b.receipt_date || b.created_at) -
+                new Date(a.receipt_date || a.created_at),
+            )
+          : [];
 
-    } catch (err) {
-      console.error('Error processing receipts data:', err);
-      setError(err.message || 'فشل في تحميل البيانات.');
-      setGlobalMessage({ type: 'error', message: 'فشل في تحميل البيانات.' });
-    } finally {
-      setLoading(false);
-    }
-  }, [goodsReceipts, setGlobalMessage]);
+        setReceipts(sortedReceipts);
+      } catch (err) {
+        console.error("Error processing receipts data:", err);
+        setError(err.message || "فشل في تحميل البيانات.");
+        setGlobalMessage({ type: "error", message: "فشل في تحميل البيانات." });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [goodsReceipts, setGlobalMessage],
+  );
 
   useEffect(() => {
     loadData();
@@ -53,7 +65,7 @@ export default function WarehouseRecordsTab({
 
   useEffect(() => {
     if (setChildRefreshHandler) {
-      setChildRefreshHandler(() => loadData);
+      setChildRefreshHandler(() => loadData());
     }
     return () => setChildRefreshHandler(null);
   }, [setChildRefreshHandler, loadData]);
@@ -68,8 +80,8 @@ export default function WarehouseRecordsTab({
   }, [propError]);
 
   const handlePrint = async () => {
-    const printContent = document.getElementById('receiving-history-table');
-    
+    const printContent = document.getElementById("receiving-history-table");
+
     const html = `
       <html dir="rtl">
         <head>
@@ -84,7 +96,7 @@ export default function WarehouseRecordsTab({
           </style>
         </head>
         <body>
-          <div class="print-date">تاريخ الطباعة: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString('en-GB')}</div>
+          <div class="print-date">تاريخ الطباعة: ${new Date().toLocaleDateString("en-GB")} ${new Date().toLocaleTimeString("en-GB")}</div>
           <div class="header">
             <h1>سجلات الاستلام</h1>
             <p>إجمالي العمليات: ${receipts.length}</p>
@@ -94,11 +106,11 @@ export default function WarehouseRecordsTab({
       </html>
     `;
     try {
-  const { printHtml } = await import('../../../../../utils/printUtils.js');
-      await printHtml(html, { title: 'سجلات الاستلام', closeAfter: 700 });
+      const { printHtml } = await import("../../../../../utils/printUtils.js");
+      await printHtml(html, { title: "سجلات الاستلام", closeAfter: 700 });
     } catch (e) {
-      console.error('Print error:', e);
-      setGlobalMessage?.({ type: 'error', message: 'فشل في الطباعة.' });
+      console.error("Print error:", e);
+      setGlobalMessage?.({ type: "error", message: "فشل في الطباعة." });
     }
   };
 
@@ -107,13 +119,16 @@ export default function WarehouseRecordsTab({
       setLoadingDetails(true);
       setSelectedReceipt(receipt);
       setShowDetailModal(true);
-      
+
       // For now, just show the receipt data as details
       // In the future, you can add a separate API call for detailed receipt info
       setReceiptDetails(receipt);
     } catch (err) {
-      console.error('Error loading receipt details:', err);
-      setGlobalMessage({ type: 'error', message: 'فشل في تحميل تفاصيل الاستلام.' });
+      console.error("Error loading receipt details:", err);
+      setGlobalMessage({
+        type: "error",
+        message: "فشل في تحميل تفاصيل الاستلام.",
+      });
     } finally {
       setLoadingDetails(false);
     }
@@ -148,26 +163,29 @@ export default function WarehouseRecordsTab({
             <div class="receipt-info">
               <div class="info-row">
                 <span><span class="info-label">رقم الإيصال:</span> ${receipt.receipt_id}</span>
-                <span><span class="info-label">التاريخ:</span> ${new Date(receipt.receipt_date || receipt.created_at).toLocaleDateString('ar-EG')}</span>
+                <span><span class="info-label">التاريخ:</span> ${new Date(receipt.receipt_date || receipt.created_at).toLocaleDateString("ar-EG")}</span>
               </div>
               <div class="info-row">
-                <span><span class="info-label">المخزن:</span> ${receipt.warehouse_name || 'غير محدد'}</span>
-                <span><span class="info-label">المستلم:</span> ${receipt.received_by_user_name || 'غير محدد'}</span>
+                <span><span class="info-label">المخزن:</span> ${receipt.warehouse_name || "غير محدد"}</span>
+                <span><span class="info-label">المستلم:</span> ${receipt.received_by_user_name || "غير محدد"}</span>
               </div>
-              ${receipt.notes ? `<div class="info-row"><span class="info-label">ملاحظات:</span> ${receipt.notes}</div>` : ''}
+              ${receipt.notes ? `<div class="info-row"><span class="info-label">ملاحظات:</span> ${receipt.notes}</div>` : ""}
             </div>
 
             <div class="footer">
-              <p>تم الطباعة في: ${new Date().toLocaleDateString('ar-EG')} ${new Date().toLocaleTimeString('ar-EG')}</p>
+              <p>تم الطباعة في: ${new Date().toLocaleDateString("ar-EG")} ${new Date().toLocaleTimeString("ar-EG")}</p>
             </div>
           </body>
         </html>
       `;
-  const { printHtml } = await import('../../../../../utils/printUtils.js');
-      await printHtml(html, { title: `إيصال استلام رقم ${receipt.receipt_id}`, closeAfter: 700 });
+      const { printHtml } = await import("../../../../../utils/printUtils.js");
+      await printHtml(html, {
+        title: `إيصال استلام رقم ${receipt.receipt_id}`,
+        closeAfter: 700,
+      });
     } catch (err) {
-      console.error('Error printing receipt:', err);
-      setGlobalMessage({ type: 'error', message: 'فشل في طباعة الإيصال.' });
+      console.error("Error printing receipt:", err);
+      setGlobalMessage({ type: "error", message: "فشل في طباعة الإيصال." });
     }
   };
 
@@ -214,7 +232,10 @@ export default function WarehouseRecordsTab({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table id="receiving-history-table" className="min-w-full divide-y divide-gray-200">
+            <table
+              id="receiving-history-table"
+              className="min-w-full divide-y divide-gray-200"
+            >
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -244,16 +265,18 @@ export default function WarehouseRecordsTab({
                       {receipt.receipt_id}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(receipt.receipt_date || receipt.created_at).toLocaleDateString('ar-EG')}
+                      {new Date(
+                        receipt.receipt_date || receipt.created_at,
+                      ).toLocaleDateString("ar-EG")}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {receipt.warehouse_name || 'غير محدد'}
+                      {receipt.warehouse_name || "غير محدد"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {receipt.received_by_user_name || 'غير محدد'}
+                      {receipt.received_by_user_name || "غير محدد"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {receipt.notes || '-'}
+                      {receipt.notes || "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2 rtl:space-x-reverse">
@@ -296,7 +319,7 @@ export default function WarehouseRecordsTab({
                 <XMarkIcon className="h-6 w-6" />
               </button>
             </div>
-            
+
             {loadingDetails ? (
               <div className="text-center py-4">
                 <Loader message="جاري تحميل التفاصيل..." />
@@ -305,29 +328,50 @@ export default function WarehouseRecordsTab({
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">رقم الإيصال</label>
-                    <p className="mt-1 text-sm text-gray-900">{selectedReceipt.receipt_id}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">التاريخ</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      رقم الإيصال
+                    </label>
                     <p className="mt-1 text-sm text-gray-900">
-                      {new Date(selectedReceipt.receipt_date || selectedReceipt.created_at).toLocaleDateString('ar-EG')}
+                      {selectedReceipt.receipt_id}
                     </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">المخزن</label>
-                    <p className="mt-1 text-sm text-gray-900">{selectedReceipt.warehouse_name || 'غير محدد'}</p>
+                    <label className="block text-sm font-medium text-gray-700">
+                      التاريخ
+                    </label>
+                    <p className="mt-1 text-sm text-gray-900">
+                      {new Date(
+                        selectedReceipt.receipt_date ||
+                          selectedReceipt.created_at,
+                      ).toLocaleDateString("ar-EG")}
+                    </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">المستلم</label>
-                    <p className="mt-1 text-sm text-gray-900">{selectedReceipt.received_by_user_name || 'غير محدد'}</p>
+                    <label className="block text-sm font-medium text-gray-700">
+                      المخزن
+                    </label>
+                    <p className="mt-1 text-sm text-gray-900">
+                      {selectedReceipt.warehouse_name || "غير محدد"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      المستلم
+                    </label>
+                    <p className="mt-1 text-sm text-gray-900">
+                      {selectedReceipt.received_by_user_name || "غير محدد"}
+                    </p>
                   </div>
                 </div>
-                
+
                 {selectedReceipt.notes && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">ملاحظات</label>
-                    <p className="mt-1 text-sm text-gray-900">{selectedReceipt.notes}</p>
+                    <label className="block text-sm font-medium text-gray-700">
+                      ملاحظات
+                    </label>
+                    <p className="mt-1 text-sm text-gray-900">
+                      {selectedReceipt.notes}
+                    </p>
                   </div>
                 )}
               </div>

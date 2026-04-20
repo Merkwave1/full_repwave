@@ -1,0 +1,37 @@
+# docker-compose.local.yml — LOCAL DEV OVERRIDE
+#
+# Usage (Windows):
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+#
+# Or use the start.ps1 helper script:
+#   .\start.ps1
+#
+# This override:
+#   1. Replaces external networks with auto-created local ones
+#   2. Removes Traefik labels (not needed locally)
+#   3. Removes the proxy network from nginx (not needed locally)
+#   4. Sets a PHP command with all required extensions pre-installed
+
+services:
+  nginx:
+    networks:
+      - rep_network
+    labels: {}                    # remove traefik labels locally
+
+  php:
+    command: >
+      sh -c "
+        apt-get update -qq &&
+        docker-php-ext-install mysqli pdo pdo_mysql &&
+        php-fpm
+      "
+
+  mysql:
+    # On local, you may want to expose MySQL for DB tools like DBeaver / TablePlus
+    ports:
+      - "3306:3306"
+
+networks:
+  rep_network:
+    driver: bridge
+    name: repwave_share_network

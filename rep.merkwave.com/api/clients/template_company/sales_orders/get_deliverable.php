@@ -184,7 +184,7 @@ try {
              ) AS remaining_quantity
          FROM sales_order_items soi
          JOIN product_variants pv ON soi.sales_order_items_variant_id = pv.variant_id
-         JOIN packaging_types pt ON soi.sales_order_items_packaging_type_id = pt.packaging_types_id
+         LEFT JOIN packaging_types pt ON soi.sales_order_items_packaging_type_id = pt.packaging_types_id
          LEFT JOIN (
              SELECT return_items_sales_order_item_id, SUM(return_items_quantity) AS total_returned
              FROM sales_return_items

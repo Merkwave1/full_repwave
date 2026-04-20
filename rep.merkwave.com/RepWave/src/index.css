@@ -1,0 +1,60 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar for sidebar */
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: #1f2937; /* gray-800 - matches sidebar background */
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: #374151; /* gray-700 - slightly lighter than background */
+  border-radius: 4px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #4b5563; /* gray-600 - lighter on hover */
+}
+
+/* For Firefox */
+.sidebar-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #374151 #1f2937; /* thumb track */
+}
+
+/* Fix select dropdown arrows in RTL — place chevron on left (end side) with proper padding */
+[dir="rtl"] select,
+select:dir(rtl) {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: left 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-left: 2.5rem;
+}
+
+/* Basic body styling */
+body {
+  font-family: 'Cairo', 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f4f7f6; /* A light, neutral background */
+  color: #333;
+}
+
+/* ── Mobile: tighten horizontal padding on page containers ── */
+/* Tailwind's p-4 (16 px) on each side is too wide on small phones (e.g. iPhone X, 375 px).
+   Override only the horizontal padding; keep vertical padding as-is. */
+@media (max-width: 639px) {
+  /* Page-level containers that are direct children of the main content area */
+  main > div {
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+  }
+}

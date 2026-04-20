@@ -11,6 +11,7 @@ import LoginPage from './pages/Login.jsx';
 import HomePage from './pages/Home.jsx';
 import DashboardPage from './pages/DashboardNew.jsx'; // NEW: Use the comprehensive dashboard
 import NotFoundPage from './pages/NotFound.jsx';
+import TryNowPage from './pages/TryNow.jsx';
 
 // Common Components
 import ProtectedRoute from './components/ProtectedRoute.jsx';
@@ -275,6 +276,7 @@ function AppContent() {
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<AuthLayout><LoginPage /></AuthLayout>} />
+        <Route path="/try-now" element={<TryNowPage />} />
         <Route path="/" element={<HomePage />} />
 
         {/* Protected Dashboard Routes */}

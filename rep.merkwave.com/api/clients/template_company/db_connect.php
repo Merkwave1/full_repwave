@@ -8,10 +8,10 @@ header("Content-Type: application/json; charset=UTF-8");
 
 date_default_timezone_set('Africa/Cairo');
 
-// Replace these placeholder values in the target environment.
-$servername = "your_mysql_host";
+// Database credentials — must match the MySQL container in docker-compose.yml
+$servername = "mysql";               // Docker service name
 $username = "template_company_user";
-$password = "CHANGE_ME";
+$password = "template_company_pass";
 $dbname = "template_company_db";
 
 $conn = new mysqli($servername, $username, $password, $dbname);
