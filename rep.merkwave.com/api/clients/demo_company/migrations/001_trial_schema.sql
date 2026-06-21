@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS trial_signups (
     full_name       VARCHAR(100)  NOT NULL DEFAULT '',
     phone           VARCHAR(30)   NOT NULL DEFAULT '',
     company_name    VARCHAR(200)  NOT NULL DEFAULT '',
+    trial_reason    VARCHAR(500)  NOT NULL DEFAULT '',
     user_id         INT UNSIGNED  NULL,
     created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_ip_date  (ip_address, created_at),

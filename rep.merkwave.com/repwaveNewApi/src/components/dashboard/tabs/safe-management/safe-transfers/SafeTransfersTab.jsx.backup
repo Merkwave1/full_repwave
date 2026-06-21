@@ -1,0 +1,559 @@
+// src/components/dashboard/tabs/safe-management/safe-transfers/SafeTransfersTab.jsx
+import React, { useState, useEffect, useCallback } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import { 
+  ArrowsRightLeftIcon,
+  PlusIcon,
+  MagnifyingGlassIcon,
+  XMarkIcon,
+  EyeIcon,
+  CalendarIcon,
+  BanknotesIcon,
+  FunnelIcon
+} from '@heroicons/react/24/outline';
+
+import Loader from '../../../../common/Loader/Loader';
+import Alert from '../../../../common/Alert/Alert';
+import { getSafeTransfers } from '../../../../../apis/safe_transfers';
+import { getSafes } from '../../../../../apis/safes';
+import AddSafeTransferForm from './AddSafeTransferForm';
+import SafeTransferDetailsModal from './SafeTransferDetailsModal';
+
+export default function SafeTransfersTab() {
+  const { setGlobalMessage, setChildRefreshHandler } = useOutletContext();
+  const [transfers, setTransfers] = useState([]);
+  const [safes, setSafes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterSafeId, setFilterSafeId] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedTransferId, setSelectedTransferId] = useState(null);
+
+  const loadTransfers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const filters = {};
+      if (filterSafeId) {
+        filters.safe_id = filterSafeId;
+      }
+      
+      const [transfersResponse, safesResponse] = await Promise.all([
+        getSafeTransfers(filters),
+        getSafes()
+      ]);
+      
+      setTransfers(transfersResponse.transfers || []);
+      setSafes(safesResponse.safes || []);
+    } catch (e) {
+      setError(e.message || 'Error loading transfers');
+      setGlobalMessage({ type: 'error', message: 'فشل في تحميل بيانات التحويلات.' });
+    } finally {
+      setLoading(false);
+    }
+  }, [filterSafeId, setGlobalMessage]);
+
+  useEffect(() => {
+    loadTransfers();
+  }, [loadTransfers]);
+
+  useEffect(() => {
+    setChildRefreshHandler(() => loadTransfers);
+    return () => setChildRefreshHandler(null);
+  }, [setChildRefreshHandler, loadTransfers]);
+
+  const handleAddTransfer = () => {
+    setShowAddForm(true);
+  };
+
+  const handleTransferAdded = () => {
+    loadTransfers();
+    setGlobalMessage({ type: 'success', message: 'تم إضافة التحويل بنجاح!' });
+  };
+
+  const handleViewDetails = (transferId) => {
+    setSelectedTransferId(transferId);
+    setShowDetailsModal(true);
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('ar-EG', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatAmount = (amount) => {
+    return parseFloat(amount || 0).toFixed(2);
+  };
+
+  const getTransferDirection = (transfer) => {
+    // Determine if this transfer is outgoing or incoming based on transaction type
+    if (transfer.safe_transactions_type === 'transfer_out') {
+      return {
+        type: 'outgoing',
+        label: 'صادر',
+        color: 'text-red-600',
+        bgColor: 'bg-red-50',
+        borderColor: 'border-red-200'
+      };
+    } else if (transfer.safe_transactions_type === 'transfer_in') {
+      return {
+        type: 'incoming',
+        label: 'وارد',
+        color: 'text-green-600',
+        bgColor: 'bg-green-50',
+        borderColor: 'border-green-200'
+      };
+    }
+    return {
+      type: 'unknown',
+      label: 'غير محدد',
+      color: 'text-gray-600',
+      bgColor: 'bg-gray-50',
+      borderColor: 'border-gray-200'
+    };
+  };
+
+  // Filter transfers based on search term
+  const filteredTransfers = transfers.filter(transfer => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      transfer.affected_safe_name?.toLowerCase().includes(searchLower) ||
+      transfer.counterpart_safe_name?.toLowerCase().includes(searchLower) ||
+      transfer.user_name?.toLowerCase().includes(searchLower) ||
+      transfer.safe_transactions_notes?.toLowerCase().includes(searchLower) ||
+      transfer.safe_transactions_id?.toString().includes(searchLower)
+    );
+  });
+
+  if (loading) return <Loader className="mt-8" />;
+  if (error) return <Alert message={error} type="error" className="mb-4" />;
+
+  return (
+    <div className="p-6" dir="rtl">
+      {/* Header Section */}
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <ArrowsRightLeftIcon className="h-7 w-7 text-blue-600" />
+              التحويلات بين الخزائن
+            </h2>
+            <p className="text-gray-600 mt-1">إدارة ومتابعة التحويلات المالية بين الخزائن</p>
+          </div>
+          
+          <button
+            onClick={handleAddTransfer}
+            className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 transition-all"
+          >
+            <PlusIcon className="h-5 w-5" />
+            تحويل جديد
+          </button>
+        </div>
+      </div>
+
+      {/* Filters Section */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+        <div className="p-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1">
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="البحث في التحويلات..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2"
+                  >
+                    <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Safe Filter */}
+            <div className="sm:w-64">
+              <div className="relative">
+                <FunnelIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <select
+                  value={filterSafeId}
+                  onChange={(e) => setFilterSafeId(e.target.value)}
+                  className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                >
+                  <option value="">كل الخزائن</option>
+                  {safes.map((safe) => (
+                    <option key={safe.safes_id} value={safe.safes_id}>
+                      {safe.safes_name} - {safe.safes_type === 'company' ? 'شركة' : 'مندوب'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Transfers List */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        {filteredTransfers.length === 0 ? (
+          <div className="p-8 text-center">
+            <ArrowsRightLeftIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد تحويلات</h3>
+            <p className="text-gray-500 mb-4">
+              {searchTerm || filterSafeId ? 'لا توجد تحويلات تطابق معايير البحث' : 'لم يتم إجراء أي تحويلات بعد'}
+            </p>
+            {!searchTerm && !filterSafeId && (
+              <button
+                onClick={handleAddTransfer}
+                className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 mx-auto"
+              >
+                <PlusIcon className="h-5 w-5" />
+                إضافة أول تحويل
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200">
+            {filteredTransfers.map((transfer) => {
+              const direction = getTransferDirection(transfer);
+              return (
+                <div key={transfer.safe_transactions_id} className={`p-4 hover:bg-gray-50 transition-colors ${direction.bgColor}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${direction.bgColor} ${direction.color} border ${direction.borderColor}`}>
+                          {direction.label}
+                        </span>
+                        <span className="text-sm text-gray-500">#{transfer.safe_transactions_id}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 mb-2">
+                        <div className="text-sm">
+                          <span className="text-gray-600">من:</span>
+                          <span className="font-medium text-gray-900 mr-1">
+                            {direction.type === 'outgoing' ? transfer.affected_safe_name : transfer.counterpart_safe_name}
+                          </span>
+                        </div>
+                        <ArrowsRightLeftIcon className="h-4 w-4 text-gray-400" />
+                        <div className="text-sm">
+                          <span className="text-gray-600">إلى:</span>
+                          <span className="font-medium text-gray-900 mr-1">
+                            {direction.type === 'outgoing' ? transfer.counterpart_safe_name : transfer.affected_safe_name}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <BanknotesIcon className="h-4 w-4" />
+                          <span className="font-medium text-lg text-gray-900">
+                            {formatAmount(transfer.safe_transactions_amount)} ج.م
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <CalendarIcon className="h-4 w-4" />
+                          <span>{formatDate(transfer.safe_transactions_date)}</span>
+                        </div>
+                        {transfer.user_name && (
+                          <div className="flex items-center gap-1">
+                            <span>بواسطة: {transfer.user_name}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {transfer.safe_transactions_notes && (
+                        <div className="mt-2 text-sm text-gray-600">
+                          <span className="font-medium">ملاحظة:</span> {transfer.safe_transactions_notes}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleViewDetails(transfer.safe_transactions_id)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                        title="عرض التفاصيل"
+                      >
+                        <EyeIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Summary Stats */}
+      {filteredTransfers.length > 0 && (
+        <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-2xl font-bold text-blue-600">{filteredTransfers.length}</div>
+              <div className="text-sm text-gray-600">إجمالي التحويلات</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-green-600">
+                {filteredTransfers.filter(t => getTransferDirection(t).type === 'incoming').length}
+              </div>
+              <div className="text-sm text-gray-600">تحويلات واردة</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-red-600">
+                {filteredTransfers.filter(t => getTransferDirection(t).type === 'outgoing').length}
+              </div>
+              <div className="text-sm text-gray-600">تحويلات صادرة</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modals */}
+      {showAddForm && (
+        <AddSafeTransferForm
+          onClose={() => setShowAddForm(false)}
+          onSubmit={handleTransferAdded}
+        />
+      )}
+
+      {showDetailsModal && selectedTransferId && (
+        <SafeTransferDetailsModal
+          transferId={selectedTransferId}
+          onClose={() => {
+            setShowDetailsModal(false);
+            setSelectedTransferId(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0">
+        <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+          <ArrowsRightLeftIcon className="h-8 w-8 text-purple-600" />
+          تحويلات بين الخزائن
+        </h3>
+        <div className="relative flex-grow mx-4">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder="ابحث في التحويلات..."
+            className="w-full pl-4 pr-10 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            dir="rtl"
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm('')} className="absolute left-3 top-1/2 transform -translate-y-1/2">
+              <XMarkIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+            </button>
+          )}
+          <MagnifyingGlassIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+        </div>
+        <div className="flex-none">
+          <button 
+            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md shadow-md flex items-center gap-2"
+          >
+            <PlusIcon className="h-5 w-5" />
+            تحويل جديد
+          </button>
+        </div>
+      </div>
+
+      {/* Filters Section */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+        <div className="p-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1">
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="البحث في التحويلات..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2"
+                  >
+                    <XMarkIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Safe Filter */}
+            <div className="sm:w-64">
+              <div className="relative">
+                <FunnelIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <select
+                  value={filterSafeId}
+                  onChange={(e) => setFilterSafeId(e.target.value)}
+                  className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                >
+                  <option value="">كل الخزائن</option>
+                  {safes.map((safe) => (
+                    <option key={safe.safes_id} value={safe.safes_id}>
+                      {safe.safes_name} - {safe.safes_type === 'company' ? 'شركة' : 'مندوب'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Transfers List */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        {filteredTransfers.length === 0 ? (
+          <div className="p-8 text-center">
+            <ArrowsRightLeftIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد تحويلات</h3>
+            <p className="text-gray-500 mb-4">
+              {searchTerm || filterSafeId ? 'لا توجد تحويلات تطابق معايير البحث' : 'لم يتم إجراء أي تحويلات بعد'}
+            </p>
+            {!searchTerm && !filterSafeId && (
+              <button
+                onClick={handleAddTransfer}
+                className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 mx-auto"
+              >
+                <PlusIcon className="h-5 w-5" />
+                إضافة أول تحويل
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200">
+            {filteredTransfers.map((transfer) => {
+              const direction = getTransferDirection(transfer);
+              return (
+                <div key={transfer.safe_transactions_id} className={`p-4 hover:bg-gray-50 transition-colors ${direction.bgColor}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${direction.bgColor} ${direction.color} border ${direction.borderColor}`}>
+                          {direction.label}
+                        </span>
+                        <span className="text-sm text-gray-500">#{transfer.safe_transactions_id}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 mb-2">
+                        <div className="text-sm">
+                          <span className="text-gray-600">من:</span>
+                          <span className="font-medium text-gray-900 mr-1">
+                            {direction.type === 'outgoing' ? transfer.affected_safe_name : transfer.counterpart_safe_name}
+                          </span>
+                        </div>
+                        <ArrowsRightLeftIcon className="h-4 w-4 text-gray-400" />
+                        <div className="text-sm">
+                          <span className="text-gray-600">إلى:</span>
+                          <span className="font-medium text-gray-900 mr-1">
+                            {direction.type === 'outgoing' ? transfer.counterpart_safe_name : transfer.affected_safe_name}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <BanknotesIcon className="h-4 w-4" />
+                          <span className="font-medium text-lg text-gray-900">
+                            {formatAmount(transfer.safe_transactions_amount)} ج.م
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <CalendarIcon className="h-4 w-4" />
+                          <span>{formatDate(transfer.safe_transactions_date)}</span>
+                        </div>
+                        {transfer.user_name && (
+                          <div className="flex items-center gap-1">
+                            <span>بواسطة: {transfer.user_name}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {transfer.safe_transactions_notes && (
+                        <div className="mt-2 text-sm text-gray-600">
+                          <span className="font-medium">ملاحظة:</span> {transfer.safe_transactions_notes}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleViewDetails(transfer.safe_transactions_id)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                        title="عرض التفاصيل"
+                      >
+                        <EyeIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Summary Stats */}
+      {filteredTransfers.length > 0 && (
+        <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-2xl font-bold text-blue-600">{filteredTransfers.length}</div>
+              <div className="text-sm text-gray-600">إجمالي التحويلات</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-green-600">
+                {filteredTransfers.filter(t => getTransferDirection(t).type === 'incoming').length}
+              </div>
+              <div className="text-sm text-gray-600">تحويلات واردة</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-red-600">
+                {filteredTransfers.filter(t => getTransferDirection(t).type === 'outgoing').length}
+              </div>
+              <div className="text-sm text-gray-600">تحويلات صادرة</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modals */}
+      {showAddForm && (
+        <AddSafeTransferForm
+          onClose={() => setShowAddForm(false)}
+          onSubmit={handleTransferAdded}
+        />
+      )}
+
+      {showDetailsModal && selectedTransferId && (
+        <SafeTransferDetailsModal
+          transferId={selectedTransferId}
+          onClose={() => {
+            setShowDetailsModal(false);
+            setSelectedTransferId(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}

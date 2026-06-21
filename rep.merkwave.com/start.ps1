@@ -89,6 +89,23 @@ else {
     Write-Host "  MySQL is healthy." -ForegroundColor Green
 }
 
+# ── 4b. Wait for PostgreSQL healthy ──────────────────────────────
+Write-Host ""
+Write-Host "Waiting for PostgreSQL to become healthy..." -ForegroundColor Yellow
+$pgReady = $false
+for ($i = 0; $i -lt 30; $i++) {
+    $health = docker inspect --format "{{.State.Health.Status}}" repwave_postgres 2>&1
+    if ($health -eq "healthy") { $pgReady = $true; break }
+    Write-Host "  PostgreSQL status: $health ($($i+1)/30)"
+    Start-Sleep -Seconds 3
+}
+if (-not $pgReady) {
+    Write-Host "  WARNING: PostgreSQL did not report healthy in 90s." -ForegroundColor DarkYellow
+}
+else {
+    Write-Host "  PostgreSQL is healthy." -ForegroundColor Green
+}
+
 # ── 5. Show status & URLs ─────────────────────────────────────────
 Write-Host ""
 Write-Host "Container status:" -ForegroundColor Yellow
@@ -98,13 +115,18 @@ Write-Host ""
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host "  RepWave Demo is RUNNING" -ForegroundColor Green
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "  Nginx gateway:  http://localhost:8082"
-Write-Host "  Website:        http://localhost:5173"
-Write-Host "  RepWave app:    http://localhost:5174"
+Write-Host "  Nginx gateway:     http://localhost:8082"
+Write-Host "  Old frontend:      http://localhost:5173"
+Write-Host "  New frontend:      http://localhost:5174  (repwaveNewApi → .NET API)"
+Write-Host "  .NET API Swagger:  http://localhost:5050/swagger"
 Write-Host ""
-Write-Host "  Demo admin credentials:"
+Write-Host "  PHP/MySQL demo admin credentials:"
 Write-Host "    Email:    admin@demo.repwave.local"
 Write-Host "    Password: DemoPass123"
+Write-Host ""
+Write-Host "  .NET API tenant registration:"
+Write-Host "    POST http://localhost:5050/api/tenants"
+Write-Host "    Header: X-Api-Key: docker_dev_admin_api_key_123"
 Write-Host ""
 Write-Host "  Run tests:      .\api\clients\demo_company\migrations\test_demo.ps1"
 Write-Host "============================================" -ForegroundColor Cyan
@@ -112,3 +134,4 @@ Write-Host ""
 
 # Open in browser
 Start-Process "http://localhost:5174"
+Start-Process "http://localhost:5050/swagger"

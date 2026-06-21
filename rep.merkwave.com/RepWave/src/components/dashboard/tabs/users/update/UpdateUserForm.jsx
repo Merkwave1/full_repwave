@@ -1,10 +1,11 @@
 // src/components/dashboard/tabs/users/update/UpdateUserForm.jsx
-import React, { useState, useEffect, useCallback } from "react"; // Added useCallback
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { getUserById, updateUser } from "../../../../../apis/users.js";
 import Loader from "../../../../common/Loader/Loader.jsx";
 import Alert from "../../../../common/Alert/Alert.jsx";
 import Button from "../../../../common/Button/Button.jsx";
+import Modal from "../../../../common/Modal/Modal.jsx";
 
 function UpdateUserForm() {
   const { userId } = useParams();
@@ -133,19 +134,38 @@ function UpdateUserForm() {
     }
   };
 
+  const handleClose = () => navigate("/dashboard/users");
+
   if (loading) {
     return (
-      <div className="p-4 text-center" dir="rtl">
-        <Loader className="mt-8" />
-        <p className="text-gray-600 mt-4">جاري تحميل بيانات المستخدم...</p>
-      </div>
+      <Modal
+        isOpen={true}
+        onClose={handleClose}
+        title="تعديل المستخدم"
+        size="large"
+      >
+        <div
+          className="flex flex-col items-center justify-center py-16 gap-4"
+          dir="rtl"
+        >
+          <Loader />
+          <p className="text-gray-500 text-sm">جاري تحميل بيانات المستخدم...</p>
+        </div>
+      </Modal>
     );
   }
   if (error) {
     return (
-      <div className="p-4 text-center" dir="rtl">
-        <Alert message={error} type="error" />
-      </div>
+      <Modal
+        isOpen={true}
+        onClose={handleClose}
+        title="تعديل المستخدم"
+        size="large"
+      >
+        <div className="p-4" dir="rtl">
+          <Alert message={error} type="error" />
+        </div>
+      </Modal>
     );
   }
 
@@ -168,71 +188,13 @@ transition-all duration-200
 `;
 
   return (
-    <div
-      className="
-      bg-white
-      rounded-2xl
-      border border-gray-200/60
-      shadow-sm
-      max-w-5xl
-      mx-auto
-      overflow-hidden
-    "
-      dir="rtl"
+    <Modal
+      isOpen={true}
+      onClose={handleClose}
+      title="تعديل المستخدم"
+      size="large"
     >
-      <div
-        className="
-  px-4 py-5 sm:px-6 sm:py-6 md:px-8 md:py-7
-  border-b border-gray-200
-  bg-gradient-to-r from-[#5BC7F2]/10 via-white to-white
-  flex items-center justify-between
-"
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="
-      w-10 h-10 sm:w-12 sm:h-12
-      rounded-xl
-      bg-[#5BC7F2]/20
-      flex items-center justify-center
-      text-[#5BC7F2]
-    "
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 11c1.657 0 3-1.343 3-3S13.657 5 12 5 9 6.343 9 8s1.343 3 3 3z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M19 21v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2"
-              />
-            </svg>
-          </div>
-
-          <div>
-            <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
-              تعديل المستخدم
-            </h3>
-            <p className="text-xs sm:text-sm text-gray-500">
-              تحديث بيانات الحساب والمعلومات الأساسية
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <form
-        onSubmit={handleFormSubmit}
-        className="p-4 sm:p-6 md:p-8 space-y-5 sm:space-y-6"
-      >
+      <form onSubmit={handleFormSubmit} className="space-y-5" dir="rtl">
         {/* INPUT STYLE WRAPPER */}
         {/** reusable input style */}
         {/*
@@ -491,7 +453,7 @@ transition-all duration-200
           </Button>
         </div>
       </form>
-    </div>
+    </Modal>
   );
 }
 

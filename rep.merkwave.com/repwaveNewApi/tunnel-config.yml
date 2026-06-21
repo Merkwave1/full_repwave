@@ -1,0 +1,7 @@
+tunnel: frontdev-tunnel
+credentials-file: /root/.cloudflared/cert.pem
+
+ingress:
+  - hostname: frontdev.tunnel.com
+    service: http://localhost:5173
+  - service: http_status:404

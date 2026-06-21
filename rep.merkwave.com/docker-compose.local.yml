@@ -31,6 +31,18 @@ services:
     ports:
       - "3306:3306"
 
+  postgres:
+    ports:
+      - "5432:5432"
+
+  dotnet:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+
+  repwave:
+    depends_on:
+      - dotnet
+
 networks:
   rep_network:
     driver: bridge

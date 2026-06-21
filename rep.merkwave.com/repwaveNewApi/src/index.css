@@ -1,0 +1,93 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── RepWave Brand CSS Variables ───────────────────────────────── */
+:root {
+  --rw-purple:       #8B5FD6;
+  --rw-purple-light: #C4A8F0;
+  --rw-purple-dark:  #2D1B69;
+  --rw-purple-xdark: #1A0F35;
+  --rw-coral:        #F97366;
+  --rw-coral-light:  #FAB5AD;
+  --rw-gradient:     linear-gradient(135deg, #8B5FD6 0%, #F97366 100%);
+}
+
+/* Gradient text helper */
+.rw-text-gradient {
+  background: var(--rw-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Gradient background button helper */
+.rw-btn-gradient {
+  background: var(--rw-gradient);
+  transition: opacity 0.2s ease, box-shadow 0.2s ease;
+}
+.rw-btn-gradient:hover {
+  opacity: 0.88;
+  box-shadow: 0 4px 20px rgba(139, 95, 214, 0.45);
+}
+
+/* Custom scrollbar for sidebar */
+.sidebar-scrollbar::-webkit-scrollbar { width: 4px; }
+.sidebar-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--rw-purple-dark);
+  border-radius: 4px;
+}
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--rw-purple); }
+.sidebar-scrollbar { scrollbar-width: thin; scrollbar-color: var(--rw-purple-dark) transparent; }
+
+/* Slide-in panel animation (RTL: from the right edge) */
+@keyframes slideInFromRight {
+  from { transform: translateX(100%); opacity: 0.6; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+.animate-slide-in-right {
+  animation: slideInFromRight 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+/* Centered modal entrance animation */
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.93) translateY(12px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+.animate-modal-in {
+  animation: modal-in 0.22s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+/* Fix select dropdown arrows in RTL */
+[dir="rtl"] select,
+select:dir(rtl) {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%238B5FD6' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: left 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-left: 2.5rem;
+}
+
+/* Basic body styling */
+body {
+  font-family: 'Cairo', 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f5f3ff;
+  color: #1F2937;
+}
+
+/* ── Mobile: tighten horizontal padding on page containers ── */
+/* Tailwind's p-4 (16 px) on each side is too wide on small phones (e.g. iPhone X, 375 px).
+   Override only the horizontal padding; keep vertical padding as-is. */
+@media (max-width: 639px) {
+  /* Page-level containers that are direct children of the main content area */
+  main > div {
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+  }
+}

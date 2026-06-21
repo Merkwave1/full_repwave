@@ -43,20 +43,69 @@ services:
 
   repwave:
     build:
-      context: ./RepWave
+      context: ./repwaveNewApi
       dockerfile: Dockerfile
     container_name: repwave_new_react
     restart: always
     volumes:
-      - ./RepWave:/app
+      - ./repwaveNewApi:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
+      - DOTNET_API_TARGET=http://dotnet:8080
     networks:
       - rep_network
     ports:
-      - "5174:5173"
+      - "5174:5174"
+    depends_on:
+      - dotnet
+
+  dotnet:
+    build:
+      context: ./api/dotnet
+      dockerfile: src/RepWave.Api/Dockerfile
+    container_name: repwave_dotnet_api
+    restart: always
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__MasterConnection=Host=postgres;Port=5432;Database=repwave_master;Username=repwave_user;Password=repwave_pass
+      - JwtSettings__Key=docker_dev_jwt_secret_key_min_32_chars_long
+      - JwtSettings__Issuer=RepWaveApi
+      - JwtSettings__Audience=RepWaveClient
+      - JwtSettings__ExpiryDays=30
+      - TenantRegistration__ApiKey=docker_dev_admin_api_key_123
+      - AllowedOrigins__0=http://localhost:5174
+      - AllowedOrigins__1=http://localhost:8082
+      - AllowedOrigins__2=http://repwave:5174
+    ports:
+      - "5050:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rep_network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: repwave_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: repwave_master
+      POSTGRES_USER: repwave_user
+      POSTGRES_PASSWORD: repwave_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U repwave_user -d repwave_master"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rep_network
+    ports:
+      - "5432:5432"
 
   php:
     image: php:8.1-fpm
@@ -112,3 +161,4 @@ networks:
     name: webproxy
 volumes:
   mysql_data:
+  postgres_data:

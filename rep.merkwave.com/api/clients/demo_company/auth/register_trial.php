@@ -2,15 +2,17 @@
 /**
  * register_trial.php — Public endpoint for "Try It Now" demo signup
  * 
- * Creates a 6-day time-limited trial account in the demo_company tenant.
+ * Creates a 7-day time-limited trial account in the demo_company tenant.
  * No authentication required. Rate-limited by IP address.
  * Sends email notification to admin on successful signup.
+ * After registration, returns a ready session — no separate login needed.
  *
  * POST params:
  *   trial_name       (required) — Full name of the visitor
  *   trial_email      (required) — Email address
  *   trial_phone      (optional) — Phone number
  *   trial_company    (optional) — Company name
+ *   trial_reason     (optional) — Why they want to try the app (analytics)
  */
 // Suppress display_errors so PHP notices/warnings don't corrupt JSON output
 ini_set('display_errors', '0');
@@ -46,6 +48,7 @@ try {
     $trial_email   = trim($_POST['trial_email']   ?? '');
     $trial_phone   = trim($_POST['trial_phone']   ?? '');
     $trial_company = trim($_POST['trial_company'] ?? '');
+    $trial_reason  = mb_substr(trim($_POST['trial_reason'] ?? ''), 0, 500);
     $client_ip     = $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN';
 
     // ── 2. Validate required fields ─────────────────────────────
@@ -90,10 +93,10 @@ try {
     $stmt_dup->close();
 
     // ── 5. Generate secure credentials ───────────────────────────
-    // Fixed-format password: 8 hex chars (uppercase), not changeable by user
-    $raw_password    = strtoupper(bin2hex(random_bytes(4))); // e.g. "A3F7C291"
+    // Password is stored in DB but NOT returned to user — auto-login via session UUID
+    $raw_password    = bin2hex(random_bytes(16)); // internal only, never shown
     $hashed_password = password_hash($raw_password, PASSWORD_BCRYPT, ['cost' => 12]);
-    $users_uuid      = bin2hex(random_bytes(16)); // 32-char hex UUID
+    $users_uuid      = bin2hex(random_bytes(16)); // 32-char hex UUID (initial, replaced after insert)
 
     $expires_at = (new DateTime())->modify("+" . TRIAL_DAYS . " days")->format('Y-m-d H:i:s');
 
@@ -113,35 +116,50 @@ try {
     $new_user_id = $conn->insert_id;
     $stmt_ins->close();
 
-    // ── 7. Log signup for rate limiting + analytics ──────────────
+    // ── 7. Generate a fresh session UUID for auto-login ─────────
+    $session_uuid = bin2hex(random_bytes(16));
+    $stmt_sess = $conn->prepare("UPDATE users SET users_uuid = ? WHERE users_id = ?");
+    $stmt_sess->bind_param("si", $session_uuid, $new_user_id);
+    $stmt_sess->execute();
+    $stmt_sess->close();
+
+    // ── 8. Log signup for rate limiting + analytics ──────────────
+    // Ensure trial_reason column exists (idempotent — safe to run every time)
+    $conn->query("ALTER TABLE trial_signups ADD COLUMN IF NOT EXISTS trial_reason VARCHAR(500) NOT NULL DEFAULT ''");
+
     $stmt_log = $conn->prepare("
         INSERT INTO trial_signups 
-            (ip_address, email, full_name, phone, company_name, user_id, created_at) 
-        VALUES (?, ?, ?, ?, ?, ?, NOW())
+            (ip_address, email, full_name, phone, company_name, trial_reason, user_id, created_at) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
     ");
-    $stmt_log->bind_param("sssssi",
-        $client_ip, $trial_email, $trial_name, $trial_phone, $trial_company, $new_user_id
+    $stmt_log->bind_param("ssssssi",
+        $client_ip, $trial_email, $trial_name, $trial_phone, $trial_company, $trial_reason, $new_user_id
     );
     $stmt_log->execute();
     $stmt_log->close();
 
-    // ── 8. Send email notification to admin ──────────────────────
+    // ── 9. Send email notification to admin ──────────────────────
     $email_sent = send_trial_notification(
         $trial_name, $trial_email, $trial_phone, $trial_company,
-        $expires_at, $client_ip, $new_user_id
+        $trial_reason, $expires_at, $client_ip, $new_user_id
     );
 
-    // ── 9. Return credentials to the user ────────────────────────
-    print_success("Trial account created successfully!", [
-        'user_id'        => $new_user_id,
-        'email'          => $trial_email,
-        'password'       => $raw_password,       // Shown ONCE — not recoverable
-        'company_name'   => DEMO_COMPANY_NAME,
-        'expires_at'     => $expires_at,
-        'days'           => TRIAL_DAYS, // = 7 days — see TRIAL_DAYS constant above
-        'dashboard_url'  => DEMO_DASHBOARD_URL,
-        'api_url'        => DEMO_API_URL,
-        'email_notified' => $email_sent,
+    // ── 10. Return session data for immediate auto-login ─────────
+    // No password is returned — user is logged in directly via session UUID
+    print_success("Trial account created. You are now logged in!", [
+        'users_id'         => $new_user_id,
+        'users_name'       => $trial_name,
+        'users_email'      => $trial_email,
+        'users_role'       => 'admin',
+        'users_uuid'       => $session_uuid,
+        'users_status'     => 1,
+        'users_is_demo'    => 1,
+        'users_expires_at' => $expires_at,
+        'trial_expires_at' => $expires_at,
+        'days_remaining'   => TRIAL_DAYS,
+        'is_trial'         => true,
+        'company_name'     => DEMO_COMPANY_NAME,
+        'email_notified'   => $email_sent,
     ]);
 
 } catch (mysqli_sql_exception $e) {
@@ -164,7 +182,7 @@ try {
  *
  * @return bool Whether the email was sent successfully
  */
-function send_trial_notification($name, $email, $phone, $company, $expires_at, $ip, $user_id) {
+function send_trial_notification($name, $email, $phone, $company, $reason, $expires_at, $ip, $user_id) {
     try {
         $to      = ADMIN_NOTIFY_EMAIL;
         $subject = "[RepWave Demo] New Trial Signup: {$name}";
@@ -195,6 +213,9 @@ function send_trial_notification($name, $email, $phone, $company, $expires_at, $
 
                     <div class='label'>Company</div>
                     <div class='value'>" . htmlspecialchars($company ?: 'Not provided', ENT_QUOTES, 'UTF-8') . "</div>
+
+                    <div class='label'>Why they want to try RepWave</div>
+                    <div class='value'>" . htmlspecialchars($reason ?: 'Not provided', ENT_QUOTES, 'UTF-8') . "</div>
 
                     <div class='label'>Trial Expires</div>
                     <div class='value'>{$expires_at}</div>

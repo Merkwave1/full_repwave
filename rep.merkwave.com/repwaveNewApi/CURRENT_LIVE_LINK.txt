@@ -1,0 +1,49 @@
+🌐 FRONT-DEV LIVE LINK - ACTIVE NOW!
+========================================
+
+✅ YOUR APP IS LIVE AT:
+
+https://developer-bidding-carries-feeds.trycloudflare.com
+
+========================================
+
+📱 WHAT TO DO:
+
+1. Copy the link above
+2. Open it on any device:
+   - Your phone
+   - Tablet
+   - Another computer
+   - Share with anyone!
+
+3. The app is now accessible from anywhere in the world
+
+========================================
+
+🔧 TUNNEL STATUS:
+
+✅ Dev Server: Running on localhost:5173
+✅ Tunnel: Active and connected
+✅ HTTPS: Enabled with valid SSL certificate
+
+========================================
+
+⚠️  IMPORTANT:
+
+- Keep your terminal open to maintain the tunnel
+- If you close the terminal, the link will stop working
+- The URL might change if you restart the tunnel
+
+========================================
+
+🛑 TO STOP:
+
+Press Ctrl+C in the terminal running the tunnel
+
+To restart later, run:
+cd /home/nassar/projects/front-dev
+python3 start-tunnel.py
+
+========================================
+
+Generated: 2026-02-23
