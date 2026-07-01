@@ -2,6 +2,7 @@
 
 const accentMap = {
   blue: "text-[#8B5FD6] bg-[#EDE7FF]",
+  purple: "text-[#8B5FD6] bg-[#EDE7FF]",
   emerald: "text-[#8B5FD6] bg-emerald-100",
   amber: "text-amber-600 bg-amber-100",
   rose: "text-rose-600 bg-rose-100",
@@ -26,10 +27,17 @@ export default function CustomPageHeader({
       ? [actionButton]
       : [];
 
-  const accent = accentMap[color] || accentMap.amber;
+  const accent = accentMap[color] || accentMap.blue;
+  const isPurple = color === "purple" || color === "blue";
 
   return (
-    <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-3 sm:p-5 md:p-6 mb-4 md:mb-6">
+    <div
+      className={`bg-white rounded-2xl shadow-md p-3 sm:p-5 md:p-6 mb-4 md:mb-6 ${
+        isPurple
+          ? "border border-[#EDE7FF] shadow-[#8B5FD6]/5"
+          : "border border-gray-100"
+      }`}
+    >
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-5">
         {/* Left side: icon + title */}
         <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
@@ -59,7 +67,13 @@ export default function CustomPageHeader({
           ))}
 
           {statSecondaryValue !== undefined && (
-            <div className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-gray-50 border border-gray-200 text-center">
+            <div
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-center ${
+                isPurple
+                  ? "bg-[#FAFAFE] border border-[#EDE7FF]"
+                  : "bg-gray-50 border border-gray-200"
+              }`}
+            >
               <div className="text-base sm:text-lg font-semibold text-gray-900">
                 {statSecondaryValue}
               </div>
@@ -70,7 +84,13 @@ export default function CustomPageHeader({
           )}
 
           {statValue !== undefined && (
-            <div className="px-3 py-1.5 sm:px-5 sm:py-2 rounded-xl bg-gray-900 text-white shadow-sm text-center">
+            <div
+              className={`px-3 py-1.5 sm:px-5 sm:py-2 rounded-xl text-white text-center ${
+                isPurple
+                  ? "bg-gradient-to-l from-[#8B5FD6] to-[#6B45B0] shadow-md shadow-[#8B5FD6]/20"
+                  : "bg-gray-900 shadow-sm"
+              }`}
+            >
               <div className="text-lg sm:text-2xl font-bold leading-tight">
                 {statValue}
               </div>

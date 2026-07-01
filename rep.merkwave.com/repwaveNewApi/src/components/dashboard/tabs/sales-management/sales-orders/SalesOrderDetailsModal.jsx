@@ -1,6 +1,7 @@
 ﻿// src/components/dashboard/tabs/sales-management/sales-orders/SalesOrderDetailsModal.jsx
 import React, { useState, useEffect } from "react";
-import { XMarkIcon, PrinterIcon } from "@heroicons/react/24/outline";
+import { PrinterIcon, ShoppingCartIcon } from "@heroicons/react/24/outline";
+import AppModalShell, { modalSecondaryBtnClass } from "../../../../common/AppModalShell.jsx";
 import { getSalesOrderDetails } from "../../../../../apis/sales_orders";
 import { formatCurrency } from "../../../../../utils/currency";
 
@@ -24,7 +25,7 @@ export default function SalesOrderDetailsModal({ order, onClose }) {
       Draft: "bg-gray-100 text-gray-800",
       Pending: "bg-yellow-100 text-yellow-800",
       Approved: "bg-[#EDE7FF] text-[#2D1B69]",
-      Invoiced: "bg-indigo-100 text-indigo-800",
+      Invoiced: "bg-[#EDE7FF] text-[#2D1B69]",
       Cancelled: "bg-red-100 text-red-800",
     };
     return colors[status] || "bg-gray-100 text-gray-800";
@@ -253,54 +254,34 @@ export default function SalesOrderDetailsModal({ order, onClose }) {
   // Debug hook removed
 
   return (
-    <div
-      className="fixed inset-0 backdrop-blur-sm bg-black/40 overflow-y-auto h-full w-full z-50"
-      dir="rtl"
+    <AppModalShell
+      open={!!order}
+      onClose={onClose}
+      title={`تفاصيل أمر البيع #${orderIdDisplay}`}
+      icon={ShoppingCartIcon}
+      size="2xl"
+      gradient="brand"
+      printClassName="order-details-print"
+      headerActions={
+        <button
+          onClick={handlePrint}
+          type="button"
+          className="no-print px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-white/20 hover:bg-white/30 text-white flex items-center gap-1.5"
+          aria-label="طباعة أمر البيع"
+        >
+          <PrinterIcon className="w-4 h-4" />
+          طباعة
+        </button>
+      }
+      footer={
+        <div className="flex justify-end no-print">
+          <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+            إغلاق
+          </button>
+        </div>
+      }
     >
       <style>{`@media print {  body { background: #fff !important; }  body * { visibility: hidden; }  .order-details-print, .order-details-print * { visibility: visible; }  .order-details-print { position: absolute; inset: 0; width: 100% !important; max-height: none !important; overflow: visible !important; box-shadow: none !important; border: none !important; background: #fff !important; }  .no-print { display: none !important; } }`}</style>
-      <div className="order-details-print relative top-2 sm:top-10 mx-auto p-3 sm:p-5 border w-11/12 md:w-4/5 lg:w-3/4 shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto flex flex-col">
-        {/* Sticky Header */}
-        <div className="flex flex-col md:flex-row -mx-5 px-5 pt-4 pb-3 mb-4 bg-white border-b border-gray-200 z-20 shadow-sm flex items-center justify-between">
-          <h3 className="text-lg md:text-xl font-bold text-gray-900 truncate">
-            تفاصيل أمر البيع رقم #{orderIdDisplay}
-          </h3>
-          <div className="flex items-center gap-2 no-print">
-            <button
-              onClick={handlePrint}
-              type="button"
-              className="p-1.5 rounded-full flex items-center gap-2
-                      text-purple-700 bg-purple-100
-                      hover:bg-purple-500 hover:text-white
-                      hover:shadow-[0_0_12px_rgba(168,85,247,0.45)]
-                      transition-all duration-200 hover:scale-110"
-              aria-label="طباعة أمر البيع"
-            >
-              <PrinterIcon className="w-4 h-4" />
-              <span>طباعة</span>
-            </button>
-            <button
-              onClick={onClose}
-              type="button"
-              className="
-                inline-flex items-center gap-1.5 px-3 py-1.5 text-sm
-                rounded-lg
-                bg-white/80 backdrop-blur-sm
-                border border-gray-200
-                text-gray-700
-                shadow-sm
-                transition-all duration-200
-                hover:bg-red-500 hover:text-white hover:border-red-500
-                hover:shadow-[0_0_12px_rgba(239,68,68,0.35)]
-                hover:scale-105
-                focus:outline-none focus:ring-2 focus:ring-red-400/40
-              "
-              aria-label="إغلاق"
-            >
-              <XMarkIcon className="w-4 h-4" />
-              <span>إغلاق</span>
-            </button>
-          </div>
-        </div>
 
         <div className="flex-1">
           {loading ? (
@@ -504,7 +485,7 @@ export default function SalesOrderDetailsModal({ order, onClose }) {
                               returnedQuantity,
                           );
                           return (
-                            <tr key={index} className="hover:bg-indigo-50/40">
+                            <tr key={index} className="hover:bg-[#f5f3ff]/40">
                               <td className="px-3 py-2 text-gray-500 font-medium">
                                 {index + 1}
                               </td>
@@ -697,30 +678,7 @@ export default function SalesOrderDetailsModal({ order, onClose }) {
             </div>
           )}
         </div>
-
-        {/* Footer */}
-        <div className="flex justify-end pt-4 mt-2 border-t border-gray-200 no-print">
-          <button
-            onClick={onClose}
-            className="
-              inline-flex items-center gap-1.5 px-3 py-1.5 text-sm
-              rounded-lg
-              bg-white/80 backdrop-blur-sm
-              border border-gray-200
-              text-gray-700
-              shadow-sm
-              transition-all duration-200
-              hover:bg-red-500 hover:text-white hover:border-red-500
-              hover:shadow-[0_0_12px_rgba(239,68,68,0.35)]
-              hover:scale-105
-              focus:outline-none focus:ring-2 focus:ring-red-400/40
-            "
-          >
-            إغلاق
-          </button>
-        </div>
-      </div>
-    </div>
+    </AppModalShell>
   );
 }
 

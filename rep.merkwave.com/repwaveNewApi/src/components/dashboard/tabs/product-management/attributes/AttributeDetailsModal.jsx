@@ -1,97 +1,63 @@
 ﻿// src/components/dashboard/tabs/product-management/attributes/AttributeDetailsModal.jsx
 import React from "react";
-import Modal from "../../../../common/Modal/Modal"; // Assuming you have a reusable Modal component
+import { AdjustmentsHorizontalIcon } from "@heroicons/react/24/outline";
+import AppModalShell, { modalPrimaryBtnClass, modalSectionClass } from "../../../../common/AppModalShell.jsx";
 
 function AttributeDetailsModal({ isOpen, onClose, attribute }) {
   if (!isOpen || !attribute) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="تفاصيل الخاصية" dir="rtl">
-      <div className="relative p-4 sm:p-6 md:p-10 text-right bg-gradient-to-br from-white to-gray-50 rounded-3xl overflow-hidden">
-        {/* Decorative Accent Glow */}
-        <div className="absolute -top-20 -left-20 w-72 h-72 bg-[#C4A8F0]/20 blur-3xl rounded-full pointer-events-none"></div>
+    <AppModalShell
+      open={isOpen}
+      onClose={onClose}
+      title="تفاصيل الخاصية"
+      subtitle={attribute.attribute_name}
+      icon={AdjustmentsHorizontalIcon}
+      size="lg"
+      footer={
+        <div className="flex justify-center">
+          <button type="button" onClick={onClose} className={modalPrimaryBtnClass}>
+            إغلاق
+          </button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        <div className={`${modalSectionClass} p-4`}>
+          <p className="text-xl font-semibold text-[#2D1B69]">{attribute.attribute_name}</p>
+          <div className="mt-2 h-1 w-14 bg-[#C4A8F0] rounded-full" />
+        </div>
 
-        <div className="relative z-10 space-y-8">
-          {/* Premium Header Card */}
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-            <p className="text-2xl font-semibold text-[#1A0F35] tracking-wide">
-              {attribute.attribute_name}
-            </p>
-            <div className="mt-3 h-1 w-16 bg-[#C4A8F0] rounded-full"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className={`${modalSectionClass} p-4`}>
+            <p className="text-gray-500 text-xs mb-1">معرف الخاصية</p>
+            <p className="text-lg font-semibold text-[#2D1B69]">{attribute.attribute_id}</p>
           </div>
-
-          {/* Info Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-            <div className="bg-white rounded-2xl p-5 shadow-md border border-gray-100 hover:shadow-lg transition">
-              <p className="text-gray-500 text-xs mb-1">معرف الخاصية</p>
-              <p className="text-lg font-semibold text-[#1A0F35]">
-                {attribute.attribute_id}
-              </p>
-            </div>
-
-            <div className="bg-white rounded-2xl p-5 shadow-md border border-gray-100 hover:shadow-lg transition">
-              <p className="text-gray-500 text-xs mb-1">اسم الخاصية</p>
-              <p className="text-lg font-semibold text-[#1A0F35]">
-                {attribute.attribute_name}
-              </p>
-            </div>
+          <div className={`${modalSectionClass} p-4`}>
+            <p className="text-gray-500 text-xs mb-1">اسم الخاصية</p>
+            <p className="text-lg font-semibold text-[#2D1B69]">{attribute.attribute_name}</p>
           </div>
+        </div>
 
-          {/* Values Section */}
-          <div className="bg-white rounded-2xl p-6 shadow-md border border-gray-100">
-            <p className="text-sm font-medium text-gray-600 mb-4">القيم</p>
-
-            <div className="flex flex-wrap gap-3">
-              {Array.isArray(attribute.attribute_values) &&
-              attribute.attribute_values.length > 0 ? (
-                attribute.attribute_values.map((value, index) => (
-                  <span
-                    key={index}
-                    className="
-                  px-4 py-2
-                  rounded-xl
-                  text-sm font-medium
-                  text-[#1A0F35]
-                  bg-gradient-to-r from-[#C4A8F0]/40 to-[#C4A8F0]/20
-                  border border-[#C4A8F0]/40
-                  shadow-sm
-                  hover:scale-105
-                  hover:shadow-md
-                  transition-all duration-200
-                "
-                  >
-                    {value}
-                  </span>
-                ))
-              ) : (
-                <span className="text-gray-400">لا توجد قيم لهذه الخاصية.</span>
-              )}
-            </div>
-          </div>
-
-          {/* Premium Button */}
-          <div className="flex justify-center pt-4">
-            <button
-              onClick={onClose}
-              className="
-            px-10 py-3
-            rounded-xl
-            font-semibold
-            text-[#1A0F35]
-            bg-[#C4A8F0]
-            shadow-lg shadow-[#C4A8F0]/40
-            hover:shadow-xl
-            hover:-translate-y-0.5
-            hover:brightness-105
-            transition-all duration-200
-          "
-            >
-              إغلاق
-            </button>
+        <div className={`${modalSectionClass} p-4`}>
+          <p className="text-sm font-medium text-gray-600 mb-3">القيم</p>
+          <div className="flex flex-wrap gap-2">
+            {Array.isArray(attribute.attribute_values) && attribute.attribute_values.length > 0 ? (
+              attribute.attribute_values.map((value, index) => (
+                <span
+                  key={index}
+                  className="px-3 py-1.5 rounded-xl text-sm font-medium text-[#2D1B69] bg-[#EDE7FF] border border-[#C4A8F0]/40"
+                >
+                  {value}
+                </span>
+              ))
+            ) : (
+              <span className="text-gray-400">لا توجد قيم لهذه الخاصية.</span>
+            )}
           </div>
         </div>
       </div>
-    </Modal>
+    </AppModalShell>
   );
 }
 

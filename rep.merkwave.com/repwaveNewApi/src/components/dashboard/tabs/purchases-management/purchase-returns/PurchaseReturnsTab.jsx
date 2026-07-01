@@ -202,13 +202,19 @@ export default function PurchaseReturnsTab() {
   const handleAdd = async (newData) => {
     setLoading(true);
     try {
-      // Ensure we send the desired status and a date if not present
       const payload = {
-        ...newData,
-        status: newData.status || "Processed",
-        purchase_return_date:
-          newData.purchase_return_date ||
-          new Date().toISOString().slice(0, 19).replace("T", " "),
+        supplier_id: newData.supplier_id,
+        purchase_order_id: newData.purchase_order_id,
+        warehouse_id: newData.warehouse_id,
+        date: newData.date || new Date().toISOString(),
+        reason: newData.reason || null,
+        notes: newData.notes || null,
+        items: (newData.items || []).map((item) => ({
+          purchase_order_item_id: item.purchase_order_item_id,
+          quantity: item.quantity,
+          unit_cost: item.unit_cost,
+          notes: item.notes || null,
+        })),
       };
       await addPurchaseReturnSimple(payload);
       setGlobalMessage({
@@ -233,9 +239,24 @@ export default function PurchaseReturnsTab() {
   const handleUpdate = async (updatedData) => {
     setLoading(true);
     try {
+      const payload = {
+        supplier_id: updatedData.supplier_id,
+        purchase_order_id: updatedData.purchase_order_id,
+        date: updatedData.date
+          ? new Date(updatedData.date).toISOString()
+          : new Date().toISOString(),
+        reason: updatedData.reason || null,
+        notes: updatedData.notes || null,
+        items: (updatedData.items || []).map((item) => ({
+          purchase_order_item_id: item.purchase_order_item_id,
+          quantity: item.quantity,
+          unit_cost: item.unit_cost,
+          notes: item.notes || null,
+        })),
+      };
       await updatePurchaseReturn(
         selectedReturn.purchase_returns_id,
-        updatedData,
+        payload,
       );
       setGlobalMessage({
         type: "success",
@@ -549,7 +570,7 @@ export default function PurchaseReturnsTab() {
       align: "center",
       headerClassName: "w-16",
       render: (r, i) => (
-        <span className="bg-indigo-100 text-[#1A0F35] text-xs px-2 py-1 rounded-full font-semibold">
+        <span className="bg-[#EDE7FF] text-[#1A0F35] text-xs px-2 py-1 rounded-full font-semibold">
           {i + 1}
         </span>
       ),
@@ -560,7 +581,7 @@ export default function PurchaseReturnsTab() {
       sortable: true,
       headerAlign: "center",
       render: (r) => (
-        <span className="bg-indigo-100 text-[#1A0F35] text-xs px-2 py-1 rounded-full font-semibold">
+        <span className="bg-[#EDE7FF] text-[#1A0F35] text-xs px-2 py-1 rounded-full font-semibold">
           #{r.purchase_returns_id}
         </span>
       ),

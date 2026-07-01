@@ -140,7 +140,7 @@ const PerformanceTab = ({ data }) => {
       </div>
 
       {/* Performance Overview */}
-      <div className="bg-gradient-to-r from-blue-50 to-green-50 border border-[#C4A8F0] rounded-lg p-6">
+      <div className="bg-gradient-to-r from-[#f5f3ff] to-green-50 border border-[#C4A8F0] rounded-lg p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
           <TrophyIcon className="h-6 w-6 text-yellow-500 ml-2" />
           نظرة عامة على الأداء
@@ -226,7 +226,7 @@ const PerformanceTab = ({ data }) => {
           <div className="bg-[#f5f3ff] border border-[#C4A8F0] rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
               <DocumentTextIcon className="h-6 w-6 text-[#8B5FD6]" />
-              <span className="text-2xl font-bold text-blue-900">{orderConversionRate}%</span>
+              <span className="text-2xl font-bold text-[#1A0F35]">{orderConversionRate}%</span>
             </div>
             <h4 className="font-medium text-[#2D1B69]">معدل تحويل الطلبات</h4>
             <p className="text-sm text-[#8B5FD6] mt-1">

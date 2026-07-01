@@ -15,6 +15,14 @@ public class PurchaseReturnsController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> GetAll([FromQuery] int? supplierId, [FromQuery] string? status)
         => Ok(await mediator.Send(new GetAllPurchaseReturnsQuery(supplierId, status)));
 
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetById(int id)
+        => Ok(await mediator.Send(new GetPurchaseReturnByIdQuery(id)));
+
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdatePurchaseReturnRequest req)
+        => Ok(await mediator.Send(new UpdatePurchaseReturnCommand(id, req)));
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreatePurchaseReturnRequest req) => Ok(await mediator.Send(new CreatePurchaseReturnCommand(req)));
 

@@ -26,120 +26,117 @@ const OverviewTab = ({ data, loading }) => {
   const typeEntries = normalizeTypeAnalysis(overview?.type_analysis);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {/* Total Clients */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center space-x-3 space-x-reverse mb-4">
-          <div className="p-2 rounded-lg bg-[#EDE7FF] text-[#8B5FD6]">
-            <UserGroupIcon className="w-5 h-5" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900">إجمالي العملاء</h3>
-        </div>
-        <p className="text-3xl font-bold text-[#8B5FD6] mb-2">{overview.total_clients?.toLocaleString() || 0}</p>
-        <div className="flex items-center">
-          {overview.growth_rate > 0 ? (
-            <ArrowUpIcon className="w-4 h-4 text-green-500 ml-1" />
-          ) : overview.growth_rate < 0 ? (
-            <ArrowDownIcon className="w-4 h-4 text-red-500 ml-1" />
-          ) : null}
-          <p className="text-gray-600 text-sm">
-            {overview.growth_rate > 0 ? '+' : ''}{overview.growth_rate}% من الشهر الماضي
-          </p>
-        </div>
-      </div>
-
-      {/* Active Clients */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center space-x-3 space-x-reverse mb-4">
-          <div className="p-2 rounded-lg bg-green-100 text-green-600">
-            <UserGroupIcon className="w-5 h-5" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900">العملاء النشطون</h3>
-        </div>
-        <p className="text-3xl font-bold text-green-600 mb-2">{overview.active_clients?.toLocaleString() || 0}</p>
-        <p className="text-gray-600 text-sm">{overview.active_percentage || 0}% من إجمالي العملاء</p>
-      </div>
-
-      {/* New Clients This Month */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center space-x-3 space-x-reverse mb-4">
-          <div className="p-2 rounded-lg bg-purple-100 text-purple-600">
-            <CalendarDaysIcon className="w-5 h-5" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900">عملاء جدد هذا الشهر</h3>
-        </div>
-        <p className="text-3xl font-bold text-purple-600 mb-2">{overview.new_this_month?.toLocaleString() || 0}</p>
-        <p className="text-gray-600 text-sm">
-          مقارنة بـ {overview.new_clients_last_month || 0} الشهر الماضي
-        </p>
-      </div>
-
-      {/* Client Types Distribution */}
-      <div className="bg-white rounded-lg shadow-sm border p-6 md:col-span-2">
-        <div className="flex items-center space-x-3 space-x-reverse mb-4">
-          <div className="p-2 rounded-lg bg-indigo-100 text-[#8B5FD6]">
-            <ChartBarIcon className="w-5 h-5" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900">توزيع أنواع العملاء</h3>
-        </div>
-        <div className="space-y-3">
-          {typeEntries.length > 0 ? (
-            typeEntries.map((type, index) => {
-              const palette = TYPE_COLOR_CLASSES[index % TYPE_COLOR_CLASSES.length];
-              return (
-                <div key={type.slug || `${type.id || 'type'}-${index}`} 
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-
-                  <span className="text-gray-600 text-sm sm:text-base">
-                    {type.name}
-                  </span>
-
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <div className={`flex-1 sm:w-32 ${palette.track} rounded-full h-2`}>
-                      <div
-                        className={`${palette.bar} h-2 rounded-full transition-all duration-300`}
-                        style={{ width: `${clampPercentage(type.percentage)}%` }}
-                      ></div>
-                    </div>
-
-                    <span className="text-sm font-medium min-w-[40px] text-right">
-                      {formatNumber(clampPercentage(type.percentage), { maximumFractionDigits: 1 })}%
-                    </span>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <p className="text-sm text-gray-500">لا توجد بيانات متاحة لأنواع العملاء.</p>
-          )}
-        </div>
-      </div>
-
-      {/* Client Statistics Summary */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center space-x-3 space-x-reverse mb-4">
-          <div className="p-2 rounded-lg bg-orange-100 text-orange-600">
-            <ChartBarIcon className="w-5 h-5" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900">إحصائيات سريعة</h3>
-        </div>
-        <div className="space-y-2">
-          {typeEntries.length > 0 ? (
-            typeEntries.map((type, index) => (
-              <div key={`${type.slug || type.id || 'type'}-summary-${index}`} className="flex justify-between">
-                <span className="text-gray-600">{type.name}</span>
-                <span className="text-sm font-medium">{formatNumber(type.count)}</span>
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-gray-500">لا توجد أنواع عملاء مسجلة حالياً.</p>
-          )}
-          {overview.status_analysis && (
-            <div className="flex justify-between">
-              <span className="text-gray-600">غير نشط</span>
-              <span className="text-sm font-medium">{formatNumber(overview.status_analysis.inactive)}</span>
+    <div className="space-y-5">
+      {/* Top stat row */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Total */}
+        <div className="rounded-2xl p-5 text-white" style={{ background: 'linear-gradient(135deg, #8B5FD6 0%, #6B45B0 100%)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="p-2 rounded-xl bg-white/20">
+              <UserGroupIcon className="w-5 h-5 text-white" />
             </div>
-          )}
+            <div className="flex items-center gap-1 text-xs bg-white/20 rounded-full px-2.5 py-1">
+              {overview.growth_rate > 0 ? <ArrowUpIcon className="w-3 h-3" /> : overview.growth_rate < 0 ? <ArrowDownIcon className="w-3 h-3" /> : null}
+              {overview.growth_rate > 0 ? '+' : ''}{overview.growth_rate}%
+            </div>
+          </div>
+          <p className="text-3xl font-bold">{(overview.total_clients || 0).toLocaleString()}</p>
+          <p className="text-sm opacity-80 mt-1">إجمالي العملاء</p>
+        </div>
+
+        {/* Active */}
+        <div className="rounded-2xl p-5 text-white" style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="p-2 rounded-xl bg-white/20">
+              <UserGroupIcon className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xs bg-white/20 rounded-full px-2.5 py-1">{overview.active_percentage || 0}%</span>
+          </div>
+          <p className="text-3xl font-bold">{(overview.active_clients || 0).toLocaleString()}</p>
+          <p className="text-sm opacity-80 mt-1">العملاء النشطون</p>
+        </div>
+
+        {/* New this month */}
+        <div className="rounded-2xl p-5 text-white" style={{ background: 'linear-gradient(135deg, #F97366 0%, #d45a4e 100%)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="p-2 rounded-xl bg-white/20">
+              <CalendarDaysIcon className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xs bg-white/20 rounded-full px-2.5 py-1">vs {overview.new_clients_last_month || 0}</span>
+          </div>
+          <p className="text-3xl font-bold">{(overview.new_this_month || 0).toLocaleString()}</p>
+          <p className="text-sm opacity-80 mt-1">جدد هذا الشهر</p>
+        </div>
+      </div>
+
+      {/* Types breakdown + quick stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Type distribution — takes 2 cols */}
+        <div className="md:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2.5 mb-5">
+            <div className="p-2 rounded-xl bg-[#EDE7FF]">
+              <ChartBarIcon className="w-4 h-4 text-[#8B5FD6]" />
+            </div>
+            <h3 className="text-sm font-bold text-gray-800">توزيع أنواع العملاء</h3>
+          </div>
+          <div className="space-y-4">
+            {typeEntries.length > 0 ? (
+              typeEntries.map((type, index) => {
+                const palette = TYPE_COLOR_CLASSES[index % TYPE_COLOR_CLASSES.length];
+                const pctVal = clampPercentage(type.percentage);
+                return (
+                  <div key={type.slug || `${type.id || 'type'}-${index}`}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-sm font-medium text-gray-700">{type.name}</span>
+                      <span className="text-xs font-bold text-gray-500">{formatNumber(type.count)} ({formatNumber(pctVal, { maximumFractionDigits: 1 })}%)</span>
+                    </div>
+                    <div className={`${palette.track} rounded-full h-2.5`}>
+                      <div
+                        className={`${palette.bar} h-2.5 rounded-full transition-all duration-500`}
+                        style={{ width: `${pctVal}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-sm text-gray-400 text-center py-4">لا توجد بيانات لأنواع العملاء</p>
+            )}
+          </div>
+        </div>
+
+        {/* Quick status summary */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="flex items-center gap-2.5 mb-5">
+            <div className="p-2 rounded-xl bg-[#EDE7FF]">
+              <ChartBarIcon className="w-4 h-4 text-[#8B5FD6]" />
+            </div>
+            <h3 className="text-sm font-bold text-gray-800">الحالة</h3>
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50">
+              <span className="text-sm text-emerald-700 font-medium">نشط</span>
+              <span className="text-sm font-bold text-emerald-700">{(overview.active_clients || 0).toLocaleString()}</span>
+            </div>
+            {overview.status_analysis?.prospect > 0 && (
+              <div className="flex items-center justify-between p-3 rounded-xl bg-amber-50">
+                <span className="text-sm text-amber-700 font-medium">محتمل</span>
+                <span className="text-sm font-bold text-amber-700">{(overview.status_analysis.prospect || 0).toLocaleString()}</span>
+              </div>
+            )}
+            {overview.status_analysis?.inactive > 0 && (
+              <div className="flex items-center justify-between p-3 rounded-xl bg-red-50">
+                <span className="text-sm text-red-700 font-medium">غير نشط</span>
+                <span className="text-sm font-bold text-red-700">{(overview.status_analysis.inactive || 0).toLocaleString()}</span>
+              </div>
+            )}
+            {typeEntries.slice(0, 3).map((type, i) => (
+              <div key={`qs-${i}`} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+                <span className="text-sm text-gray-600">{type.name}</span>
+                <span className="text-sm font-bold text-gray-700">{formatNumber(type.count)}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

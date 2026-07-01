@@ -286,7 +286,7 @@ const LocationTrackingTab = () => {
       sortable: true,
       render: (row) => (
         <div className="flex items-center">
-          <UserIcon className="h-5 w-5 text-blue-500 ml-2" />
+          <UserIcon className="h-5 w-5 text-[#8B5FD6] ml-2" />
           <div>
             <div className="font-medium text-gray-900">{row.users_name}</div>
             <div className="text-sm text-gray-500">{row.users_email}</div>
@@ -459,7 +459,7 @@ const LocationTrackingTab = () => {
         >
           <div className="space-y-4">
             {/* Rep Info - Enhanced */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-3 sm:p-6 border border-blue-100 shadow-sm">
+            <div className="bg-gradient-to-br from-[#f5f3ff] to-[#f5f3ff] rounded-xl p-3 sm:p-6 border border-[#EDE7FF] shadow-sm">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-[#EDE7FF] rounded-lg">

@@ -1,6 +1,7 @@
 ﻿// src/components/dashboard/tabs/sales-management/sales-returns/SalesReturnDetailsModal.jsx
 import React from "react";
-import { XMarkIcon, PrinterIcon } from "@heroicons/react/24/outline";
+import { ArrowUturnLeftIcon, PrinterIcon } from "@heroicons/react/24/outline";
+import AppModalShell, { modalPrimaryBtnClass, modalSecondaryBtnClass } from "../../../../common/AppModalShell.jsx";
 import { formatCurrency } from "../../../../../utils/currency.js";
 
 export default function SalesReturnDetailsModal({
@@ -29,7 +30,7 @@ export default function SalesReturnDetailsModal({
     const colors = {
       pending: "bg-yellow-100 text-yellow-800",
       approved: "bg-[#EDE7FF] text-[#2D1B69]",
-      processed: "bg-indigo-100 text-indigo-800",
+      processed: "bg-[#EDE7FF] text-[#2D1B69]",
       completed: "bg-green-100 text-green-800",
       rejected: "bg-red-100 text-red-800",
     };
@@ -245,35 +246,34 @@ export default function SalesReturnDetailsModal({
   const items = Array.isArray(data.items) ? data.items : [];
 
   return (
-    <div
-      className="fixed inset-0 backdrop-blur-sm bg-black/40 overflow-y-auto h-full w-full z-50"
-      dir="rtl"
-    >
-      <div className="relative top-4 sm:top-10 mx-auto p-4 sm:p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white mb-4">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">
-            تفاصيل مرتجع البيع - {returnNumber}
-          </h3>
-          <div className="flex items-center gap-2">
-            {!loading && (
-              <button
-                onClick={() => onPrint && onPrint(returnItem)}
-                className="flex items-center gap-1 px-3 py-1.5 bg-[#8B5FD6] text-white rounded-md text-sm hover:bg-[#7A52C2] disabled:opacity-50"
-                disabled={loading}
-              >
-                <PrinterIcon className="h-4 w-4" /> طباعة
-              </button>
-            )}
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <XMarkIcon className="h-6 w-6" />
-            </button>
-          </div>
+    <AppModalShell
+      open={!!returnItem}
+      onClose={onClose}
+      title="تفاصيل مرتجع البيع"
+      subtitle={returnNumber ? `#${returnNumber}` : undefined}
+      icon={ArrowUturnLeftIcon}
+      size="xl"
+      gradient="amber"
+      headerActions={
+        !loading ? (
+          <button
+            type="button"
+            onClick={() => onPrint && onPrint(returnItem)}
+            className="no-print px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-white/20 hover:bg-white/30 text-white flex items-center gap-1.5 disabled:opacity-50"
+            disabled={loading}
+          >
+            <PrinterIcon className="h-4 w-4" /> طباعة
+          </button>
+        ) : null
+      }
+      footer={
+        <div className="flex justify-end">
+          <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+            إغلاق
+          </button>
         </div>
-
+      }
+    >
         {loading && (
           <div className="py-10 text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-[#8B5FD6] border-t-transparent mb-3" />
@@ -591,18 +591,8 @@ export default function SalesReturnDetailsModal({
                 )}
               </div>
             </div>
-            {/* Footer */}
-            <div className="flex justify-end pt-4 mt-4 border-t border-gray-200">
-              <button
-                onClick={onClose}
-                className="w-full sm:w-auto px-4 py-3 sm:px-6 sm:py-2.5 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 text-base sm:text-sm"
-              >
-                إغلاق
-              </button>
-            </div>
           </>
         )}
-      </div>
-    </div>
+    </AppModalShell>
   );
 }

@@ -37,6 +37,7 @@ import {
   getAllSalesOrders,
 } from "../../../../../apis/sales_orders";
 import { getAppClients, getAppWarehouses } from "../../../../../apis/auth";
+import { normalizeClientList, cacheClientsDropdown } from "../../../../../apis/clients.js";
 // Don't fetch users repeatedly; read representatives from localStorage
 
 // Sub-components for Sales Orders
@@ -485,39 +486,42 @@ export default function SalesOrdersTab({
         }
       };
 
-      const clientsData = readCache("appClients");
       const productsDataRaw = readCache("appProducts");
       const unitsData = readCache("appBaseUnits");
       const packagingTypesData = readCache("appPackagingTypes");
-      const warehousesData = readCache("appWarehouses");
       const usersData = readCache("appUsers");
 
       setSalesOrders(extractedOrders);
       setPagination(incomingPagination);
 
-      // Handle clients - fetch from API if cache is empty
-      if (
-        clientsData != null &&
-        (Array.isArray(clientsData)
-          ? clientsData.length > 0
-          : clientsData?.data?.length > 0)
-      ) {
-        setClients(
-          Array.isArray(clientsData) ? clientsData : clientsData?.data || [],
-        );
-      } else {
-        // Fetch from API if cache is empty
+      // Always refresh clients + warehouses from API so dropdown IDs match tenant DB
+      try {
+        const [freshClients, freshWarehouses] = await Promise.all([
+          getAppClients(),
+          getAppWarehouses(),
+        ]);
+        const clientList = normalizeClientList(freshClients);
+        const warehouseList = Array.isArray(freshWarehouses)
+          ? freshWarehouses
+          : [];
+        setClients(clientList);
+        setWarehouses(warehouseList);
+        cacheClientsDropdown(clientList);
         try {
-          const freshClients = await getAppClients(true);
-          setClients(
-            Array.isArray(freshClients)
-              ? freshClients
-              : freshClients?.data || [],
-          );
-        } catch (e) {
-          console.warn("Failed to fetch clients:", e);
+          if (warehouseList.length > 0) {
+            localStorage.setItem("appWarehouses", JSON.stringify(warehouseList));
+          } else {
+            localStorage.removeItem("appWarehouses");
+          }
+        } catch {
+          /* storage full — warehouses still loaded in state */
         }
+      } catch (e) {
+        console.warn("Failed to fetch clients/warehouses:", e);
+        setClients([]);
+        setWarehouses([]);
       }
+
       if (productsDataRaw != null) {
         setProducts(
           Array.isArray(productsDataRaw)
@@ -536,32 +540,6 @@ export default function SalesOrdersTab({
             ? packagingTypesData
             : packagingTypesData?.data || [],
         );
-      }
-
-      // Handle warehouses - fetch from API if cache is empty
-      if (
-        warehousesData != null &&
-        (Array.isArray(warehousesData)
-          ? warehousesData.length > 0
-          : warehousesData?.data?.length > 0)
-      ) {
-        setWarehouses(
-          Array.isArray(warehousesData)
-            ? warehousesData
-            : warehousesData?.data || [],
-        );
-      } else {
-        // Fetch from API if cache is empty
-        try {
-          const freshWarehouses = await getAppWarehouses(true);
-          setWarehouses(
-            Array.isArray(freshWarehouses)
-              ? freshWarehouses
-              : freshWarehouses?.data || [],
-          );
-        } catch (e) {
-          console.warn("Failed to fetch warehouses:", e);
-        }
       }
 
       const normalizedUsers = Array.isArray(usersData)
@@ -882,37 +860,6 @@ export default function SalesOrdersTab({
   }, [lockedStatusFilter]);
 
   // Handle adding a new order
-  // Remap form-field names (sales_orders_*) to backend API field names (client_id, etc.)
-  const remapOrderForApi = (orderData) => {
-    const remapItems = (items) =>
-      (items || []).map((item) => ({
-        variant_id: item.variant_id ?? item.sales_order_items_variant_id,
-        packaging_type_id:
-          item.packaging_type_id ?? item.sales_order_items_packaging_type_id,
-        quantity:
-          item.quantity ??
-          item.sales_order_items_quantity ??
-          item.quantity_ordered,
-        unit_price:
-          item.unit_price ??
-          item.sales_order_items_unit_price ??
-          item.unit_cost,
-        discount_amount:
-          item.discount_amount ?? item.sales_order_items_discount_amount ?? 0,
-        tax_rate: item.tax_rate ?? item.sales_order_items_tax_rate ?? 0,
-        has_tax: item.has_tax ?? item.sales_order_items_has_tax ?? false,
-      }));
-    return {
-      client_id: orderData.client_id ?? orderData.sales_orders_client_id,
-      warehouse_id:
-        orderData.warehouse_id ?? orderData.sales_orders_warehouse_id,
-      order_date: orderData.order_date ?? orderData.sales_orders_order_date,
-      notes: orderData.notes ?? orderData.sales_orders_notes,
-      visit_id: orderData.visit_id ?? null,
-      items: remapItems(orderData.items),
-    };
-  };
-
   const handleAddOrder = async (orderData) => {
     const clientId = orderData?.sales_orders_client_id;
     const orderTotal = getOrderTotalAmount(orderData);
@@ -924,17 +871,16 @@ export default function SalesOrdersTab({
     );
 
     try {
-      await addSalesOrder(remapOrderForApi(orderData));
-      // If user confirmed order (Invoiced), patch status after creation
+      const created = await addSalesOrder(orderData);
+      const newId = created?.sales_orders_id;
       const desiredStatus = orderData?.sales_orders_status;
-      if (desiredStatus && desiredStatus !== "Draft") {
-        try {
-          const allOrders = await import("../../../../../apis/sales_orders.js");
-          // We don't know the new ID yet, so reload and find the latest
-          // The status patch will be handled by loadAllSalesOrderData after
-        } catch (_e) {
-          void _e;
-        }
+      if (
+        newId &&
+        desiredStatus &&
+        desiredStatus !== "Draft" &&
+        desiredStatus !== "Pending"
+      ) {
+        await updateSalesOrderStatus(newId, desiredStatus);
       }
       await loadAllSalesOrderData();
 
@@ -984,7 +930,7 @@ export default function SalesOrdersTab({
         selectedOrder?.sales_orders_id;
       // Use PUT update endpoint if available, otherwise fall back to PATCH status
       try {
-        await updateSalesOrder(orderId, remapOrderForApi(orderData));
+        await updateSalesOrder(orderId, orderData);
       } catch (_putErr) {
         // Fall back to just patching the status
         if (nextStatus && orderId) {
@@ -1716,39 +1662,23 @@ export default function SalesOrdersTab({
       />
 
       {/* ── Add modal ── */}
-      {currentView === "add" && (
-        <>
-          <div
-            className="fixed inset-0 backdrop-blur-sm bg-black/40 z-40"
-            onClick={() => setCurrentView("list")}
-          />
-          <div className="fixed inset-0 z-50 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-2 sm:p-4">
-              <div
-                className="relative w-full max-w-6xl"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {isSupportingDataLoaded ? (
-                  <AddSalesOrderForm
-                    onSubmit={(orderData) => handleAddOrder(orderData)}
-                    onCancel={() => setCurrentView("list")}
-                    clients={clients}
-                    products={products}
-                    baseUnits={baseUnits}
-                    packagingTypes={packagingTypes}
-                    warehouses={warehouses}
-                  />
-                ) : (
-                  <div className="bg-white p-6 rounded-lg shadow-md">
-                    <p className="text-center text-gray-600">
-                      جاري تحميل البيانات الأساسية...
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
+      {currentView === "add" && isSupportingDataLoaded && (
+        <AddSalesOrderForm
+          onSubmit={(orderData) => handleAddOrder(orderData)}
+          onCancel={() => setCurrentView("list")}
+          clients={clients}
+          products={products}
+          baseUnits={baseUnits}
+          packagingTypes={packagingTypes}
+          warehouses={warehouses}
+        />
+      )}
+      {currentView === "add" && !isSupportingDataLoaded && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="rounded-xl bg-white p-8 text-center text-gray-600 shadow-xl">
+            جاري تحميل البيانات الأساسية...
           </div>
-        </>
+        </div>
       )}
 
       {/* ── Edit modal ── */}

@@ -154,7 +154,7 @@ export default function SafeReportsTab() {
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-blue-100 to-blue-50 p-6 rounded-xl border border-[#C4A8F0]">
+        <div className="bg-gradient-to-r from-[#EDE7FF] to-[#f5f3ff] p-6 rounded-xl border border-[#C4A8F0]">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[#8B5FD6] text-sm font-medium">

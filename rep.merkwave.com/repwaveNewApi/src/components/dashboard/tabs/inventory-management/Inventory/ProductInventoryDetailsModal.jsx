@@ -1,5 +1,6 @@
 ﻿import React, { useMemo, useState } from "react";
-import Modal from "../../../../common/Modal/Modal";
+import { CubeIcon } from "@heroicons/react/24/outline";
+import AppModalShell, { modalPrimaryBtnClass } from "../../../../common/AppModalShell.jsx";
 import RepackModal from "./RepackModal";
 import DeleteConfirmationModal from "../../../../common/DeleteConfirmationModal";
 
@@ -162,12 +163,20 @@ export default function ProductInventoryDetailsModal({
     )?.base_units_name || "الوحدة";
 
   return (
-    <Modal
-      isOpen={isOpen}
+    <>
+    <AppModalShell
+      open={isOpen}
       onClose={onClose}
       title={`تفاصيل مخزون المنتج: ${product.products_name}`}
-      dir="rtl"
-      modalWidthClass="max-w-6xl"
+      icon={CubeIcon}
+      size="3xl"
+      footer={
+        <div className="flex justify-center">
+          <button type="button" onClick={onClose} className={modalPrimaryBtnClass}>
+            إغلاق
+          </button>
+        </div>
+      }
     >
       <div className="p-3 sm:p-6 space-y-6 bg-gray-50">
         {data.variants.map((variant) => (
@@ -175,7 +184,7 @@ export default function ProductInventoryDetailsModal({
             key={`variant-${variant.variantId}`}
             className="bg-white rounded-2xl shadow-sm border"
           >
-            <div className="px-3 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b rounded-t-2xl flex flex-wrap justify-between items-center gap-2">
+            <div className="px-3 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-[#f5f3ff] to-[#f5f3ff] border-b rounded-t-2xl flex flex-wrap justify-between items-center gap-2">
               <h4 className="font-bold text-gray-800 text-sm">
                 الخيار: {variant.variantName}
               </h4>
@@ -412,7 +421,7 @@ export default function ProductInventoryDetailsModal({
           </div>
         ))}
 
-        <div className="p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border rounded-2xl text-sm font-bold text-[#7A52C2] text-center">
+        <div className="p-5 bg-gradient-to-r from-[#f5f3ff] to-[#f5f3ff] border rounded-2xl text-sm font-bold text-[#7A52C2] text-center">
           إجمالي المنتج ({product.products_name}):{" "}
           {data.totals.base.toLocaleString("en-US", {
             minimumFractionDigits: 2,
@@ -421,15 +430,7 @@ export default function ProductInventoryDetailsModal({
           {baseUnit}
         </div>
       </div>
-
-      <div className="p-4 border-t bg-white flex justify-end">
-        <button
-          onClick={onClose}
-          className="px-6 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-semibold transition"
-        >
-          إغلاق
-        </button>
-      </div>
+    </AppModalShell>
 
       {repackContext.open && (
         <RepackModal
@@ -461,6 +462,6 @@ export default function ProductInventoryDetailsModal({
           message={`هل أنت متأكد من حذف هذا السطر؟\n${deleteConfirm.label}`}
         />
       )}
-    </Modal>
+    </>
   );
 }

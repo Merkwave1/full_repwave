@@ -23,7 +23,7 @@ export default function PackagingTypeListView({
   };
 
   const columns = [
-    { key: 'index', title: '#', headerAlign: 'center', align: 'center', render: (item, idx) => (<span className="bg-indigo-100 text-[#7A52C2] text-xs px-2 py-1 rounded-full font-semibold">{idx+1}</span>), className: 'w-16' },
+    { key: 'index', title: '#', headerAlign: 'center', align: 'center', render: (item, idx) => (<span className="bg-[#EDE7FF] text-[#7A52C2] text-xs px-2 py-1 rounded-full font-semibold">{idx+1}</span>), className: 'w-16' },
     { key: 'name', title: 'الاسم', headerAlign: 'right', align: 'right', render: (item) => (<div className="line-clamp-2" style={{ display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden', textOverflow: 'ellipsis', wordBreak: 'break-word' }}>{item.packaging_types_name}</div>), sortable: true },
     { key: 'factor', title: 'معامل التحويل', headerAlign: 'right', align: 'right', render: (item) => item.packaging_types_default_conversion_factor ?? '–' },
     { key: 'compatible_unit', title: 'الوحدة المتوافقة', headerAlign: 'right', align: 'right', render: (item) => getBaseUnitName(item.packaging_types_compatible_base_unit_id) || '–' },

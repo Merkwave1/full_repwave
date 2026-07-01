@@ -12,11 +12,11 @@ import { getAllUsers } from "../../../../apis/users.js";
 // Import currency formatting utility
 import { formatCurrency } from "../../../../utils/currency.js";
 import Alert from "../../../common/Alert/Alert.jsx";
-import Button from "../../../common/Button/Button.jsx";
 import CustomPageHeader from "../../../common/CustomPageHeader/CustomPageHeader.jsx";
 import FilterBar from "../../../common/FilterBar/FilterBar.jsx";
 import GlobalTable from "../../../common/GlobalTable/GlobalTable.jsx";
-import { CheckIcon } from "@heroicons/react/24/outline";
+import { CheckIcon, Squares2X2Icon } from "@heroicons/react/24/outline";
+import { modalSecondaryBtnClass, modalPrimaryBtnClass } from "../../../common/AppModalShell.jsx";
 
 function ClientAssignmentsTab() {
   const { setGlobalMessage } = useOutletContext();
@@ -554,7 +554,7 @@ function ClientAssignmentsTab() {
               className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
                 selectedClients.includes(Number(client.clients_id))
                   ? "bg-[#8B5FD6] border-[#8B5FD6] text-white"
-                  : "border-gray-300 bg-white hover:border-blue-400"
+                  : "border-gray-300 bg-white hover:border-[#8B5FD6]/50"
               }`}
               onClick={(event) => {
                 event.stopPropagation();
@@ -808,15 +808,19 @@ function ClientAssignmentsTab() {
             activeChips={activeFilterChips}
             onClearAll={activeFilterChips.length ? clearFilters : null}
           >
-            <Button
+            <button
               type="button"
-              variant="secondary"
               onClick={handleSelectAll}
               disabled={filteredClients.length === 0}
-              className="whitespace-nowrap"
+              className={`inline-flex items-center justify-center gap-2 w-full md:w-auto h-11 px-4 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 self-end transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${
+                areAllFilteredSelected
+                  ? "bg-gradient-to-l from-[#8B5FD6] to-[#6B45B0] text-white border border-transparent hover:from-[#7A52C2] hover:to-[#5A3A9E]"
+                  : `${modalSecondaryBtnClass} hover:border-[#8B5FD6] hover:text-[#8B5FD6]`
+              }`}
             >
+              <Squares2X2Icon className="h-4 w-4 shrink-0" />
               {areAllFilteredSelected ? "إلغاء تحديد الكل" : "تحديد كل النتائج"}
-            </Button>
+            </button>
           </FilterBar>
         </>
       )}
@@ -843,18 +847,26 @@ function ClientAssignmentsTab() {
       )}
 
       {selectedPlan && selectedClients.length > 0 && (
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 shadow-lg z-10">
+        <div className="sticky bottom-0 bg-white/95 backdrop-blur-sm border-t border-[#EDE7FF] p-4 shadow-[0_-4px_20px_rgba(139,95,214,0.12)] z-10">
           <div className="flex justify-center">
-            <Button
+            <button
               type="button"
               onClick={handleSaveAssignedClients}
               disabled={isAssigning}
-              isLoading={isAssigning}
-              className="px-8 py-3 text-lg font-bold"
+              className={`${modalPrimaryBtnClass} inline-flex items-center justify-center gap-2 px-8 py-3 text-base font-bold min-w-[220px] disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              <CheckIcon className="h-5 w-5 ml-2" />
-              حفظ التغييرات ({selectedClients.length} عميل)
-            </Button>
+              {isAssigning ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  جاري الحفظ...
+                </>
+              ) : (
+                <>
+                  <CheckIcon className="h-5 w-5 shrink-0" />
+                  حفظ التغييرات ({selectedClients.length} عميل)
+                </>
+              )}
+            </button>
           </div>
         </div>
       )}
@@ -907,12 +919,12 @@ function ClientAssignmentsTab() {
             dir="rtl"
           >
             {/* Header */}
-            <div className="flex justify-between items-center px-6 py-4 bg-[#02415A] text-white">
+            <div className="flex justify-between items-center px-6 py-4 bg-[#1A0F35] text-white">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">📋</span>
                 <div>
                   <h3 className="text-lg font-bold">اختيار خطة الزيارة</h3>
-                  <p className="text-xs text-blue-200 mt-0.5">
+                  <p className="text-xs text-[#C4A8F0] mt-0.5">
                     حدد الخطة التي تريد تخصيص العملاء لها
                   </p>
                 </div>
@@ -963,13 +975,13 @@ function ClientAssignmentsTab() {
                       }}
                       className={`w-full text-right px-4 py-3 rounded-xl border-2 flex items-center justify-between gap-3 transition-all duration-150 group ${
                         isActive
-                          ? "border-[#02415A] bg-[#02415A]/8 shadow-sm"
-                          : "border-gray-200 bg-gray-50 hover:border-[#02415A]/50 hover:bg-[#02415A]/5"
+                          ? "border-[#1A0F35] bg-[#1A0F35]/8 shadow-sm"
+                          : "border-gray-200 bg-gray-50 hover:border-[#1A0F35]/50 hover:bg-[#1A0F35]/5"
                       }`}
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         <div
-                          className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isActive ? "bg-[#02415A] text-white" : "bg-gray-200 text-gray-500 group-hover:bg-[#02415A]/20"}`}
+                          className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isActive ? "bg-[#1A0F35] text-white" : "bg-gray-200 text-gray-500 group-hover:bg-[#1A0F35]/20"}`}
                         >
                           <svg
                             className="w-5 h-5"
@@ -987,7 +999,7 @@ function ClientAssignmentsTab() {
                         </div>
                         <div className="min-w-0">
                           <p
-                            className={`font-semibold truncate ${isActive ? "text-[#02415A]" : "text-gray-800"}`}
+                            className={`font-semibold truncate ${isActive ? "text-[#1A0F35]" : "text-gray-800"}`}
                           >
                             {plan.visit_plan_name}
                           </p>
@@ -1010,7 +1022,7 @@ function ClientAssignmentsTab() {
                         </div>
                       </div>
                       {isActive && (
-                        <CheckIcon className="w-5 h-5 text-[#02415A] shrink-0" />
+                        <CheckIcon className="w-5 h-5 text-[#1A0F35] shrink-0" />
                       )}
                     </button>
                   );

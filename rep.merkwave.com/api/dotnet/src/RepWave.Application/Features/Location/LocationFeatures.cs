@@ -14,7 +14,9 @@ public record LocationDto(
     decimal Longitude,
     DateTime TrackingTime,
     byte? BatteryLevel,
-    string? PhoneInfo);
+    string? PhoneInfo,
+    string? UserEmail = null,
+    string? UserRole = null);
 
 public record TrackLocationRequest(
     int UserId,
@@ -46,7 +48,9 @@ public class GetTrackingHistoryQueryHandler(IApplicationDbContext db)
             .Take(request.Limit)
             .Select(r => new LocationDto(
                 r.Id, r.UserId, r.User != null ? r.User.UsersName : null,
-                r.Latitude, r.Longitude, r.TrackingTime, r.BatteryLevel, r.PhoneInfo))
+                r.Latitude, r.Longitude, r.TrackingTime, r.BatteryLevel, r.PhoneInfo,
+                r.User != null ? r.User.UsersEmail : null,
+                r.User != null ? r.User.UsersRole : null))
             .ToListAsync(ct);
 
         return ApiResponse<List<LocationDto>>.Success(list);
@@ -60,15 +64,31 @@ public class GetAllRepsLastLocationQueryHandler(IApplicationDbContext db)
 {
     public async Task<ApiResponse<List<LocationDto>>> Handle(GetAllRepsLastLocationQuery request, CancellationToken ct)
     {
-        // Latest tracking point per user
-        var list = await db.RepLocationTrackings.AsNoTracking()
-            .Include(r => r.User)
+        var latestByUser = await db.RepLocationTrackings.AsNoTracking()
             .GroupBy(r => r.UserId)
-            .Select(g => g.OrderByDescending(x => x.TrackingTime).First())
-            .Select(r => new LocationDto(
-                r.Id, r.UserId, r.User != null ? r.User.UsersName : null,
-                r.Latitude, r.Longitude, r.TrackingTime, r.BatteryLevel, r.PhoneInfo))
+            .Select(g => new { UserId = g.Key, MaxTime = g.Max(x => x.TrackingTime) })
             .ToListAsync(ct);
+
+        if (latestByUser.Count == 0)
+            return ApiResponse<List<LocationDto>>.Success([]);
+
+        var userIds = latestByUser.Select(x => x.UserId).ToList();
+        var maxLookup = latestByUser.ToDictionary(x => x.UserId, x => x.MaxTime);
+
+        var rows = await db.RepLocationTrackings.AsNoTracking()
+            .Include(r => r.User)
+            .Where(r => userIds.Contains(r.UserId))
+            .ToListAsync(ct);
+
+        var list = rows
+            .Where(r => maxLookup.TryGetValue(r.UserId, out var t) && r.TrackingTime == t)
+            .GroupBy(r => r.UserId)
+            .Select(g => g.OrderByDescending(x => x.Id).First())
+            .Select(r => new LocationDto(
+                r.Id, r.UserId, r.User?.UsersName,
+                r.Latitude, r.Longitude, r.TrackingTime, r.BatteryLevel, r.PhoneInfo,
+                r.User?.UsersEmail, r.User?.UsersRole))
+            .ToList();
 
         return ApiResponse<List<LocationDto>>.Success(list);
     }

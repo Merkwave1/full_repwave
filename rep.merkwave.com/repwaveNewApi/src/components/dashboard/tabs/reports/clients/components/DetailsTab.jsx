@@ -93,7 +93,7 @@ const DetailsTab = ({ data, loading }) => {
       {/* Client Status */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <div className="flex items-center space-x-3 space-x-reverse mb-6">
-          <div className="p-2 rounded-lg bg-indigo-100 text-[#8B5FD6]">
+          <div className="p-2 rounded-lg bg-[#EDE7FF] text-[#8B5FD6]">
             <ChartBarIcon className="w-5 h-5" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900">تفاصيل حالة العملاء</h3>

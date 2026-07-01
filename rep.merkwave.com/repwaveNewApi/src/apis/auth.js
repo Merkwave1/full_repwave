@@ -2,6 +2,12 @@
 // Authentication API for the .NET RepWave backend (JWT Bearer, tenant-based)
 
 import { api, storeAuth, clearAuth, getStoredUser } from '../utils/axiosInstance.js';
+import { getAllClients } from './clients.js';
+import { getPendingSalesOrdersForDelivery } from './sales_deliveries.js';
+import { categorizeSettings } from '../utils/settingsCategorizer.js';
+
+const SETTINGS_CATEGORIZED_KEY = 'appSettingsCategorized';
+const SETTINGS_FLAT_KEY = 'appSettings';
 
 // ── Login / Logout ─────────────────────────────────────────────────────────────
 export async function loginUser(email, password, tenantId) {
@@ -49,17 +55,39 @@ export function getUserData() { return getStoredUser(); }
 // Components that relied on pre-fetched data now fetch fresh from the API.
 
 export async function getAppSettings()   { return api.get('/settings'); }
-export async function getAppSettingsCategorized() {
-  const data = await api.get('/settings');
-  // Return as-is; components expecting a categorized structure will get the
-  // flat array and can adapt, or the backend returns categorized groups.
-  return data;
+export async function getAppSettingsCategorized(forceApiRefresh = false) {
+  if (!forceApiRefresh) {
+    try {
+      const cached = localStorage.getItem(SETTINGS_CATEGORIZED_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && Array.isArray(parsed.company)) {
+          return parsed;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const raw = await api.get('/settings');
+  const flat = Array.isArray(raw) ? raw : [];
+  const categorized = categorizeSettings(flat);
+
+  try {
+    localStorage.setItem(SETTINGS_CATEGORIZED_KEY, JSON.stringify(categorized));
+    localStorage.setItem(SETTINGS_FLAT_KEY, JSON.stringify(flat));
+  } catch {
+    /* ignore quota errors */
+  }
+
+  return categorized;
 }
 export async function getAppUsers()         { return api.get('/users'); }
-export async function getAppClients()       { return api.get('/clients'); }
-export async function getAppSuppliers()     { return api.get('/suppliers'); }
-export async function getAppWarehouses()    { return api.get('/warehouses'); }
-export async function getAppProducts()      { return api.get('/products'); }
+export async function getAppClients() { return getAllClients(); }
+export async function getAppSuppliers()     { return api.get('/suppliers', { pageSize: 500 }); }
+export async function getAppWarehouses()    { return api.get('/warehouses', { pageSize: 500 }); }
+export async function getAppProducts()      { return api.get('/products', { pageSize: 500 }); }
 export async function getAppBaseUnits()     { return api.get('/lookups/base-units'); }
 export async function getAppPackagingTypes() { return api.get('/packaging-types'); }
 export async function getAppCategories()    { return api.get('/lookups/categories'); }
@@ -75,10 +103,19 @@ export async function getAppCountriesWithGovernorates() { return api.get('/looku
 // Purchase / Sales order helpers
 export async function getAppPurchaseOrders()    { return api.get('/purchase-orders'); }
 export async function getAppPendingPurchaseOrdersForReceive() {
-  return api.get('/purchase-orders?status=approved');
+  const orders = await api.get('/purchase-orders/pending-for-receive');
+  const list = Array.isArray(orders)
+    ? orders
+    : Array.isArray(orders?.data)
+      ? orders.data
+      : Array.isArray(orders?.purchase_orders)
+        ? orders.purchase_orders
+        : [];
+  return { data: list };
 }
 export async function getAppDeliverableSalesOrders() {
-  return api.get('/sales-orders?status=approved');
+  const list = await getPendingSalesOrdersForDelivery();
+  return { data: list };
 }
 
 // Cache-invalidation no-op (was localStorage cache busting in old API)

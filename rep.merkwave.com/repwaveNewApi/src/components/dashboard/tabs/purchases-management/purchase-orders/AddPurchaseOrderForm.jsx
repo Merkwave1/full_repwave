@@ -1,16 +1,25 @@
-﻿import React, { useState, useMemo, useCallback } from "react";
+﻿import React, { useState, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   PlusCircleIcon,
   MinusCircleIcon,
   ExclamationTriangleIcon,
   TrashIcon,
+  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 import ConfirmOrderModal from "./ConfirmOrderModal";
-import SearchableSelect from "../../../../common/SearchableSelect/SearchableSelect"; // Import the new SearchableSelect component
+import SearchableSelect from "../../../../common/SearchableSelect/SearchableSelect";
 import NumberInput from "../../../../common/NumberInput/NumberInput";
 import useCurrency from "../../../../../hooks/useCurrency";
 import { getCurrentLocalDateTime } from "../../../../../utils/dateUtils";
+import AppModalShell, {
+  modalPrimaryBtnClass,
+  modalSecondaryBtnClass,
+  modalSectionClass,
+  modalSectionHeaderClass,
+  modalInputClass,
+} from "../../../../common/AppModalShell.jsx";
+import { getProductPreferredPackagingIds } from "../../../../../utils/unwrapList";
 
 export default function AddPurchaseOrderForm({
   onAdd,
@@ -24,28 +33,10 @@ export default function AddPurchaseOrderForm({
   const navigate = useNavigate();
   const { symbol, formatCurrency } = useCurrency();
 
-  // Debug logging for received props
-
-  // Fallback data for testing
-  const fallbackSuppliers = [
-    { supplier_id: 1, supplier_name: "مورد تجريبي 1" },
-    { supplier_id: 2, supplier_name: "مورد تجريبي 2" },
-  ];
-
-  const fallbackWarehouses = [
-    { warehouse_id: 1, warehouse_name: "المستودع الرئيسي" },
-    { warehouse_id: 2, warehouse_name: "مستودع الفرع" },
-  ];
-
-  // Use actual data if available, otherwise use fallback
-  const displaySuppliers =
-    Array.isArray(suppliers) && suppliers.length > 0
-      ? suppliers
-      : fallbackSuppliers;
-  const displayWarehouses =
-    Array.isArray(warehouses) && warehouses.length > 0
-      ? warehouses
-      : fallbackWarehouses;
+  const displaySuppliers = Array.isArray(suppliers) ? suppliers : [];
+  const displayWarehouses = Array.isArray(warehouses) ? warehouses : [];
+  const displayProducts = Array.isArray(products) ? products : [];
+  const displayPackagingTypes = Array.isArray(packagingTypes) ? packagingTypes : [];
 
   const [formData, setFormData] = useState({
     purchase_orders_supplier_id: "",
@@ -56,76 +47,175 @@ export default function AddPurchaseOrderForm({
   });
 
   const [isConfirmOrderModalOpen, setIsConfirmOrderModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitLockRef = useRef(false);
 
   // Memoize a flattened list of all variants, including their parent product's name and base unit ID
   // Formatted for SearchableSelect: { value: variant_id, label: "Product Name - Variant Name" }
   const allVariantsOptions = useMemo(() => {
     const variantsList = [];
-    if (Array.isArray(products)) {
-      products.forEach((product) => {
-        if (Array.isArray(product.variants) && product.variants.length > 0) {
-          product.variants.forEach((variant) => {
-            variantsList.push({
-              value: variant.variant_id.toString(),
-              label: variant.variant_name || `خيار #${variant.variant_id}`,
-              products_id: product.products_id,
-              products_unit_of_measure_id: product.products_unit_of_measure_id,
-              preferred_packaging_ids: Array.isArray(
-                product.preferred_packaging,
-              )
-                ? product.preferred_packaging.map((p) => p.packaging_types_id)
-                : [],
-            });
-          });
-        } else {
-          // If a product has no variants, treat the product itself as a "variant" option
+    displayProducts.forEach((product) => {
+      if (Array.isArray(product.variants) && product.variants.length > 0) {
+        product.variants.forEach((variant) => {
           variantsList.push({
-            value: product.products_id.toString(),
-            label: product.products_name,
+            value: String(variant.variant_id),
+            label:
+              variant.variant_name ||
+              `${product.products_name} - #${variant.variant_id}`,
             products_id: product.products_id,
             products_unit_of_measure_id: product.products_unit_of_measure_id,
-            preferred_packaging_ids: Array.isArray(product.preferred_packaging)
-              ? product.preferred_packaging.map((p) => p.packaging_types_id)
-              : [],
+            preferred_packaging_ids: getProductPreferredPackagingIds(product),
           });
-        }
-      });
-    }
+        });
+      }
+    });
     return variantsList;
-  }, [products]);
+  }, [displayProducts]);
 
   // Removed auto-select warehouse to enforce explicit user choice
 
-  // Helper to filter packaging types by base unit ID
+  // Helper to filter packaging types by base unit ID (with universal fallback)
   const getCompatiblePackagingTypes = useCallback(
     (baseUnitId) => {
-      if (!baseUnitId || !Array.isArray(packagingTypes)) return [];
-      return packagingTypes.filter(
-        (pt) => String(pt.packaging_types_compatible_base_unit_id) === String(baseUnitId),
+      if (!displayPackagingTypes.length) return [];
+      const strictMatch = displayPackagingTypes.filter(
+        (pt) =>
+          pt.packaging_types_compatible_base_unit_id != null &&
+          String(pt.packaging_types_compatible_base_unit_id) ===
+            String(baseUnitId),
       );
+      if (strictMatch.length > 0) return strictMatch;
+
+      const universal = displayPackagingTypes.filter(
+        (pt) => pt.packaging_types_compatible_base_unit_id == null,
+      );
+      return universal.length > 0 ? universal : displayPackagingTypes;
     },
-    [packagingTypes],
+    [displayPackagingTypes],
   );
 
-  // Helper to get preferred packaging types for a given product, falling back to compatible if none set
   const getPreferredPackagingTypes = useCallback(
     (productId, baseUnitId) => {
       const compatible = getCompatiblePackagingTypes(baseUnitId);
       if (!productId) return compatible;
-      const product = Array.isArray(products)
-        ? products.find(
-            (p) => p.products_id?.toString() === productId?.toString(),
-          )
-        : null;
-      const preferredIds = Array.isArray(product?.preferred_packaging)
-        ? product.preferred_packaging.map((p) => p.packaging_types_id)
-        : [];
+      const product = displayProducts.find(
+        (p) => String(p.products_id) === String(productId),
+      );
+      const preferredIds = getProductPreferredPackagingIds(product);
       if (preferredIds.length === 0) return compatible;
-      return compatible.filter((pt) =>
-        preferredIds.includes(pt.packaging_types_id),
+      const preferred = compatible.filter((pt) =>
+        preferredIds.includes(Number(pt.packaging_types_id)),
+      );
+      return preferred.length > 0 ? preferred : compatible;
+    },
+    [displayProducts, getCompatiblePackagingTypes],
+  );
+
+  const getPackagingOptionsForItem = useCallback(
+    (item) => {
+      if (item?.variant_id) {
+        return getPreferredPackagingTypes(
+          item.products_id,
+          item.products_unit_of_measure_id,
+        );
+      }
+      return displayPackagingTypes;
+    },
+    [displayPackagingTypes, getPreferredPackagingTypes],
+  );
+
+  const productSupportsPackaging = useCallback(
+    (product, packagingTypeId) => {
+      if (!product || !packagingTypeId) return false;
+      const pkgId = Number(packagingTypeId);
+      const preferredIds = getProductPreferredPackagingIds(product);
+      if (preferredIds.includes(pkgId)) return true;
+
+      const packagingType = displayPackagingTypes.find(
+        (pt) => Number(pt.packaging_types_id) === pkgId,
+      );
+      if (!packagingType) return false;
+
+      const baseUnitId = product.products_unit_of_measure_id;
+      if (packagingType.packaging_types_compatible_base_unit_id == null) {
+        return true;
+      }
+      return (
+        String(packagingType.packaging_types_compatible_base_unit_id) ===
+        String(baseUnitId)
       );
     },
-    [products, getCompatiblePackagingTypes],
+    [displayPackagingTypes],
+  );
+
+  const resolveVariantForPackaging = useCallback(
+    (packagingTypeId, currentItem) => {
+      if (!packagingTypeId) return null;
+
+      const candidates = allVariantsOptions.filter((opt) => {
+        const product = displayProducts.find(
+          (p) => String(p.products_id) === String(opt.products_id),
+        );
+        return productSupportsPackaging(product, packagingTypeId);
+      });
+
+      if (currentItem?.variant_id) {
+        const currentMatch = candidates.find(
+          (c) => String(c.value) === String(currentItem.variant_id),
+        );
+        if (currentMatch) return currentMatch;
+      }
+
+      if (currentItem?.products_id) {
+        const sameProduct = candidates.find(
+          (c) => String(c.products_id) === String(currentItem.products_id),
+        );
+        if (sameProduct) return sameProduct;
+      }
+
+      return candidates[0] ?? null;
+    },
+    [allVariantsOptions, displayProducts, productSupportsPackaging],
+  );
+
+  const getVariantOptionsForItem = useCallback(
+    (item) => {
+      if (!item?.packaging_type_id) return allVariantsOptions;
+      return allVariantsOptions.filter((opt) => {
+        const product = displayProducts.find(
+          (p) => String(p.products_id) === String(opt.products_id),
+        );
+        return productSupportsPackaging(product, item.packaging_type_id);
+      });
+    },
+    [allVariantsOptions, displayProducts, productSupportsPackaging],
+  );
+
+  // Helper: get registered price from products with packaging conversion
+  const getRegisteredPrice = useCallback(
+    (variantId, packagingTypeId) => {
+      for (const product of displayProducts) {
+        const variant = product.variants?.find(
+          (v) => String(v.variant_id) === String(variantId),
+        );
+        if (!variant?.variant_cost_price) continue;
+
+        let basePrice = parseFloat(variant.variant_cost_price);
+        if (packagingTypeId) {
+          const selectedPackaging = displayPackagingTypes.find(
+            (pt) =>
+              String(pt.packaging_types_id) === String(packagingTypeId),
+          );
+          const factor = parseFloat(
+            selectedPackaging?.packaging_types_default_conversion_factor,
+          );
+          if (factor && !Number.isNaN(factor)) basePrice *= factor;
+        }
+        return basePrice;
+      }
+      return null;
+    },
+    [displayProducts, displayPackagingTypes],
   );
 
   const handleChange = (e) => {
@@ -157,15 +247,35 @@ export default function AddPurchaseOrderForm({
         selectedVariantData.products_id,
         selectedVariantData.products_unit_of_measure_id,
       );
-      if (preferredPts.length > 0) {
-        newItems[index].packaging_type_id =
-          preferredPts[0].packaging_types_id.toString();
-      } else {
-        const compatiblePts = getCompatiblePackagingTypes(
-          selectedVariantData.products_unit_of_measure_id,
+      const currentPackagingValid =
+        newItems[index].packaging_type_id &&
+        preferredPts.some(
+          (pt) =>
+            String(pt.packaging_types_id) ===
+            String(newItems[index].packaging_type_id),
         );
-        newItems[index].packaging_type_id =
-          compatiblePts[0]?.packaging_types_id?.toString() || "";
+
+      if (!currentPackagingValid) {
+        if (preferredPts.length > 0) {
+          newItems[index].packaging_type_id =
+            preferredPts[0].packaging_types_id.toString();
+        } else {
+          const compatiblePts = getCompatiblePackagingTypes(
+            selectedVariantData.products_unit_of_measure_id,
+          );
+          newItems[index].packaging_type_id =
+            compatiblePts[0]?.packaging_types_id?.toString() || "";
+        }
+      }
+
+      if (newItems[index].packaging_type_id) {
+        const price = getRegisteredPrice(
+          newItems[index].variant_id,
+          newItems[index].packaging_type_id,
+        );
+        if (price != null) {
+          newItems[index].unit_cost = String(price);
+        }
       }
     } else {
       // Reset if no variant is selected (e.g., placeholder selected)
@@ -183,14 +293,57 @@ export default function AddPurchaseOrderForm({
     }));
   };
 
-  // handleItemChange for other fields (quantity, cost, packaging type)
+  const handleItemPackagingSelect = (index, packagingTypeId) => {
+    const newItems = [...formData.purchase_order_items];
+    newItems[index] = {
+      ...newItems[index],
+      packaging_type_id: packagingTypeId || "",
+    };
+
+    if (packagingTypeId) {
+      const resolved = resolveVariantForPackaging(
+        packagingTypeId,
+        newItems[index],
+      );
+      if (resolved) {
+        newItems[index].variant_id = resolved.value;
+        newItems[index].products_id = resolved.products_id;
+        newItems[index].products_unit_of_measure_id =
+          resolved.products_unit_of_measure_id;
+      }
+
+      const price = getRegisteredPrice(
+        newItems[index].variant_id,
+        packagingTypeId,
+      );
+      if (price != null) {
+        newItems[index].unit_cost = String(price);
+      }
+    } else if (!newItems[index].variant_id) {
+      newItems[index].products_id = "";
+      newItems[index].products_unit_of_measure_id = null;
+    }
+
+    setFormData((prevData) => ({
+      ...prevData,
+      purchase_order_items: newItems,
+    }));
+  };
+
   const handleItemFieldChange = (index, e) => {
     const { name, value, type, checked } = e.target;
+
+    if (name === "packaging_type_id") {
+      handleItemPackagingSelect(index, value);
+      return;
+    }
+
     const newItems = [...formData.purchase_order_items];
     newItems[index] = {
       ...newItems[index],
       [name]: type === "checkbox" ? checked : value,
     };
+
     setFormData((prevData) => ({
       ...prevData,
       purchase_order_items: newItems,
@@ -223,8 +376,9 @@ export default function AddPurchaseOrderForm({
     }));
   };
 
-  const handleSaveAsDraft = (e) => {
+  const handleSaveAsDraft = async (e) => {
     e.preventDefault();
+    if (submitLockRef.current || isSubmitting) return;
 
     // Check for empty items (items without variant or packaging type selected)
     const emptyItems = formData.purchase_order_items.filter(
@@ -245,23 +399,30 @@ export default function AddPurchaseOrderForm({
     const discountNote = formData.order_discount
       ? `\n(خصم أمر: ${formData.order_discount})`
       : "";
-    onAdd({
-      supplier_id: parseInt(formData.purchase_orders_supplier_id) || null,
-      warehouse_id: formData.purchase_orders_warehouse_id
-        ? parseInt(formData.purchase_orders_warehouse_id)
-        : null,
-      order_date: formData.purchase_orders_order_date || null,
-      notes: ((formData.purchase_orders_notes || "") + discountNote) || null,
-      status: "Draft",
-      items: itemsToSubmit.map((it) => ({
-        variant_id: it.variant_id ? parseInt(it.variant_id) : null,
-        packaging_type_id: it.packaging_type_id
-          ? parseInt(it.packaging_type_id)
+    submitLockRef.current = true;
+    setIsSubmitting(true);
+    try {
+      await onAdd({
+        supplier_id: parseInt(formData.purchase_orders_supplier_id) || null,
+        warehouse_id: formData.purchase_orders_warehouse_id
+          ? parseInt(formData.purchase_orders_warehouse_id)
           : null,
-        quantity_ordered: parseInt(it.quantity_ordered) || 0,
-        unit_cost: parseFloat(it.unit_cost) || 0,
-      })),
-    });
+        order_date: formData.purchase_orders_order_date || null,
+        notes: ((formData.purchase_orders_notes || "") + discountNote) || null,
+        status: "Draft",
+        items: itemsToSubmit.map((it) => ({
+          variant_id: it.variant_id ? parseInt(it.variant_id) : null,
+          packaging_type_id: it.packaging_type_id
+            ? parseInt(it.packaging_type_id)
+            : null,
+          quantity_ordered: parseInt(it.quantity_ordered) || 0,
+          unit_cost: parseFloat(it.unit_cost) || 0,
+        })),
+      });
+    } finally {
+      setIsSubmitting(false);
+      submitLockRef.current = false;
+    }
   };
 
   const handleConfirmOrder = (e) => {
@@ -269,7 +430,9 @@ export default function AddPurchaseOrderForm({
     setIsConfirmOrderModalOpen(true);
   };
 
-  const handleFinalConfirmOrder = () => {
+  const handleFinalConfirmOrder = async () => {
+    if (submitLockRef.current || isSubmitting) return;
+
     // Check for empty items (items without variant or packaging type selected)
     const emptyItems = formData.purchase_order_items.filter(
       (item) => !item.variant_id || !item.packaging_type_id,
@@ -290,24 +453,31 @@ export default function AddPurchaseOrderForm({
     const discountNote = formData.order_discount
       ? `\n(خصم أمر: ${formData.order_discount})`
       : "";
-    onAdd({
-      supplier_id: parseInt(formData.purchase_orders_supplier_id) || null,
-      warehouse_id: formData.purchase_orders_warehouse_id
-        ? parseInt(formData.purchase_orders_warehouse_id)
-        : null,
-      order_date: formData.purchase_orders_order_date || null,
-      notes: ((formData.purchase_orders_notes || "") + discountNote) || null,
-      status: "Ordered",
-      items: itemsToSubmit.map((it) => ({
-        variant_id: it.variant_id ? parseInt(it.variant_id) : null,
-        packaging_type_id: it.packaging_type_id
-          ? parseInt(it.packaging_type_id)
+    submitLockRef.current = true;
+    setIsSubmitting(true);
+    try {
+      await onAdd({
+        supplier_id: parseInt(formData.purchase_orders_supplier_id) || null,
+        warehouse_id: formData.purchase_orders_warehouse_id
+          ? parseInt(formData.purchase_orders_warehouse_id)
           : null,
-        quantity_ordered: parseInt(it.quantity_ordered) || 0,
-        unit_cost: parseFloat(it.unit_cost) || 0,
-      })),
-    });
-    setIsConfirmOrderModalOpen(false);
+        order_date: formData.purchase_orders_order_date || null,
+        notes: ((formData.purchase_orders_notes || "") + discountNote) || null,
+        status: "Ordered",
+        items: itemsToSubmit.map((it) => ({
+          variant_id: it.variant_id ? parseInt(it.variant_id) : null,
+          packaging_type_id: it.packaging_type_id
+            ? parseInt(it.packaging_type_id)
+            : null,
+          quantity_ordered: parseInt(it.quantity_ordered) || 0,
+          unit_cost: parseFloat(it.unit_cost) || 0,
+        })),
+      });
+      setIsConfirmOrderModalOpen(false);
+    } finally {
+      setIsSubmitting(false);
+      submitLockRef.current = false;
+    }
   };
 
   // Calculation helpers (similar to sales order form but simplified for now)
@@ -317,53 +487,6 @@ export default function AddPurchaseOrderForm({
     const subtotal = quantity * unitCost;
     return { subtotal, total: subtotal };
   }, []);
-
-  // Helper: get registered price from localStorage appProducts with packaging conversion
-  const getRegisteredPrice = (variantId, packagingTypeId) => {
-    try {
-      // Get products from localStorage
-      const appProducts = JSON.parse(
-        localStorage.getItem("appProducts") || "[]",
-      );
-      const productsData = Array.isArray(appProducts) ? appProducts : appProducts.data || [];
-
-      // Find variant in products data
-      for (const product of productsData) {
-        if (Array.isArray(product.variants)) {
-          const variant = product.variants.find(
-            (v) => v.variant_id?.toString() === variantId?.toString(),
-          );
-          if (variant && variant.variant_cost_price) {
-            let basePrice = parseFloat(variant.variant_cost_price);
-
-            // If packaging type is selected, apply conversion rate
-            if (packagingTypeId && Array.isArray(packagingTypes)) {
-              const selectedPackaging = packagingTypes.find(
-                (pt) =>
-                  pt.packaging_types_id?.toString() ===
-                  packagingTypeId?.toString(),
-              );
-              if (
-                selectedPackaging &&
-                selectedPackaging.packaging_types_default_conversion_factor
-              ) {
-                const conversionRate =
-                  parseFloat(
-                    selectedPackaging.packaging_types_default_conversion_factor,
-                  ) || 1;
-                basePrice = basePrice * conversionRate;
-              }
-            }
-
-            return basePrice;
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error getting registered price:", error);
-    }
-    return null;
-  };
 
   const orderTotals = useMemo(() => {
     const base = formData.purchase_order_items.reduce(
@@ -384,6 +507,7 @@ export default function AddPurchaseOrderForm({
     calculateItemTotals,
   ]);
   const isFormActionDisabled =
+    isSubmitting ||
     !formData.purchase_orders_supplier_id ||
     !formData.purchase_orders_warehouse_id ||
     formData.purchase_order_items.length === 0;
@@ -396,82 +520,88 @@ export default function AddPurchaseOrderForm({
     [formatCurrency],
   );
 
-  // Conditional rendering based on warehouses availability
   if (!Array.isArray(warehouses) || warehouses.length === 0) {
     return (
-      <div
-        className="bg-white p-8 rounded-lg shadow-md max-w-xl mx-auto text-center"
-        dir="rtl"
+      <AppModalShell
+        portal
+        open
+        onClose={onCancel}
+        title="لا توجد مخازن"
+        subtitle="أضف مخزناً أولاً لإنشاء أمر شراء"
+        icon={ExclamationTriangleIcon}
+        size="md"
+        footer={
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={onCancel} className={modalSecondaryBtnClass}>
+              إغلاق
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard/inventory-management/warehouses")}
+              className={modalPrimaryBtnClass}
+            >
+              الذهاب للمخازن
+            </button>
+          </div>
+        }
       >
-        <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-yellow-500" />
-        <h3 className="mt-4 text-2xl font-bold text-gray-800">
-          لا توجد مخازن متاحة
-        </h3>
-        <p className="mt-2 text-gray-600">
+        <p className="text-sm text-gray-600 text-center py-4">
           يجب عليك أولاً إضافة مخزن قبل إضافة أمر شراء جديد.
         </p>
-        <div className="mt-6 flex justify-center gap-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-          >
-            رجوع
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              navigate("/dashboard/inventory-management/warehouses")
-            }
-            className="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#8B5FD6] hover:bg-[#7A52C2]"
-          >
-            الذهاب لصفحة المخازن
-          </button>
-        </div>
-      </div>
+      </AppModalShell>
     );
   }
 
   return (
-    <div
-      className="bg-white rounded-2xl shadow-2xl border border-gray-100 max-w-6xl mx-auto overflow-hidden"
-      dir="rtl"
-    >
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between px-4 sm:px-8 py-4 sm:py-5 bg-gradient-to-l from-[#1A0F35] to-[#02415A] text-white">
-        <div>
-          <h3 className="text-lg sm:text-2xl font-bold leading-tight">
-            إضافة أمر شراء جديد
-          </h3>
-          <p className="text-xs sm:text-sm text-blue-200 mt-0.5">
-            أملأ التفاصيل أدناه ثم احفظ كمسودة أو أكّد الطلب
-          </p>
+    <AppModalShell
+      portal
+      open
+      onClose={onCancel}
+      title="إضافة أمر شراء جديد"
+      subtitle="اختر المورد والمخزن ثم أضف المنتجات"
+      icon={ClipboardDocumentListIcon}
+      size="3xl"
+      bodyClassName="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 bg-[#FAFAFE] max-h-[75vh]"
+      footer={
+        <div className="flex flex-wrap justify-end gap-2 sm:gap-3">
+          <button type="button" onClick={onCancel} className={modalSecondaryBtnClass}>
+            إلغاء
+          </button>
+          <button
+            type="button"
+            onClick={handleSaveAsDraft}
+            disabled={isFormActionDisabled}
+            className={`${modalSecondaryBtnClass} disabled:opacity-50`}
+          >
+            حفظ كمسودة
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirmOrder}
+            disabled={isFormActionDisabled}
+            className={`${modalPrimaryBtnClass} disabled:opacity-50`}
+          >
+            تأكيد الطلب
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="p-2 rounded-full hover:bg-white/20 transition"
-          aria-label="إغلاق"
-        >
-          <MinusCircleIcon className="h-6 w-6 text-white" />
-        </button>
-      </div>
-
+      }
+    >
       {!dataLoaded && (
-        <div className="mx-4 sm:mx-8 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-sm text-amber-700">
-          <ExclamationTriangleIcon className="h-5 w-5 flex-shrink-0 text-amber-500" />
-          جاري تحميل البيانات… قد تظهر بيانات تجريبية حتى يكتمل التحميل.
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-sm text-amber-700">
+          <ExclamationTriangleIcon className="h-5 w-5 shrink-0 text-amber-500" />
+          جاري تحميل الموردين والمنتجات وأنواع التعبئة…
         </div>
       )}
 
-      <form className="p-4 sm:p-8 space-y-8">
-        {/* ── Section 1: Supplier & Warehouse ── */}
-        <div className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-4 sm:px-6 py-3 border-b border-gray-200 bg-gray-100">
-            <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-              معلومات الطلب
-            </h4>
-          </div>
+      {allVariantsOptions.length === 0 && dataLoaded && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+          لا توجد منتجات/خيارات متاحة. أضف منتجات من إدارة المنتجات أولاً.
+        </div>
+      )}
+
+      <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+        <div className={modalSectionClass}>
+          <div className={modalSectionHeaderClass}>معلومات الطلب</div>
           <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <div>
               <label
@@ -593,19 +723,22 @@ export default function AddPurchaseOrderForm({
               </div>
             ) : (
               formData.purchase_order_items.map((item, index) => {
-                const { total } = calculateItemTotals(item);
+                const { subtotal, total } = calculateItemTotals(item);
+                const packagingOptions = getPackagingOptionsForItem(item);
                 const registeredPrice = getRegisteredPrice(
                   item.variant_id,
                   item.packaging_type_id,
                 );
+                const qty = parseFloat(item.quantity_ordered) || 0;
+                const unitCost = parseFloat(item.unit_cost) || 0;
                 return (
                   <div
                     key={index}
                     className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
                   >
                     {/* Item header bar */}
-                    <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
-                      <span className="text-xs font-semibold text-gray-500">
+                    <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-l from-[#F8F5FF] to-white border-b border-[#EDE7FF]">
+                      <span className="text-xs font-semibold text-[#7A52C2]">
                         عنصر #{index + 1}
                       </span>
                       <button
@@ -618,42 +751,59 @@ export default function AddPurchaseOrderForm({
                       </button>
                     </div>
 
-                    <div className="p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                      {/* Product */}
-                      <div className="sm:col-span-2 lg:col-span-2">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          المنتج / الخيار
-                        </label>
-                        <SearchableSelect
-                          options={allVariantsOptions}
-                          value={item.variant_id}
-                          onChange={(val) =>
-                            handleItemVariantSelect(index, val)
-                          }
-                          placeholder="ابحث أو اختر…"
-                          id={`item_variant_select_${index}`}
-                          className="text-sm"
-                        />
-                      </div>
+                    <div className="p-3 sm:p-4 space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+                        {/* Product */}
+                        <div className="lg:col-span-4">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            المنتج / الخيار <span className="text-red-500">*</span>
+                          </label>
+                          <SearchableSelect
+                            options={getVariantOptionsForItem(item)}
+                            value={item.variant_id}
+                            onChange={(val) =>
+                              handleItemVariantSelect(index, val)
+                            }
+                            placeholder="ابحث أو اختر…"
+                            id={`item_variant_select_${index}`}
+                            className="text-sm"
+                          />
+                        </div>
 
-                      {/* Packaging */}
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          نوع التعبئة
-                        </label>
-                        <select
-                          name="packaging_type_id"
-                          value={item.packaging_type_id}
-                          onChange={(e) => handleItemFieldChange(index, e)}
-                          className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#8B5FD6] focus:border-[#8B5FD6]"
-                        >
-                          <option value="">--</option>
-                          {item.products_unit_of_measure_id &&
-                            Array.isArray(packagingTypes) &&
-                            getPreferredPackagingTypes(
-                              item.products_id,
-                              item.products_unit_of_measure_id,
-                            ).map((pt) => (
+                        {/* Qty first — then packaging */}
+                        <div className="lg:col-span-2">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            الكمية <span className="text-red-500">*</span>
+                          </label>
+                          <NumberInput
+                            value={String(item.quantity_ordered ?? "")}
+                            onChange={(v) =>
+                              handleItemFieldChange(index, {
+                                target: { name: "quantity_ordered", value: v },
+                              })
+                            }
+                            className="w-full px-2 py-2 text-sm"
+                            placeholder="0"
+                          />
+                        </div>
+
+                        {/* Packaging */}
+                        <div className="lg:col-span-2">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            نوع التعبئة <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            name="packaging_type_id"
+                            value={item.packaging_type_id}
+                            onChange={(e) => handleItemFieldChange(index, e)}
+                            className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#8B5FD6] focus:border-[#8B5FD6]"
+                          >
+                            <option value="">
+                              {packagingOptions.length
+                                ? "اختر التعبئة…"
+                                : "لا توجد تعبئة متاحة"}
+                            </option>
+                            {packagingOptions.map((pt) => (
                               <option
                                 key={pt.packaging_types_id}
                                 value={pt.packaging_types_id}
@@ -661,59 +811,59 @@ export default function AddPurchaseOrderForm({
                                 {pt.packaging_types_name}
                               </option>
                             ))}
-                        </select>
-                      </div>
+                          </select>
+                        </div>
 
-                      {/* Qty */}
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          الكمية
-                        </label>
-                        <NumberInput
-                          value={String(item.quantity_ordered ?? "")}
-                          onChange={(v) =>
-                            handleItemFieldChange(index, {
-                              target: { name: "quantity_ordered", value: v },
-                            })
-                          }
-                          className="w-full px-2 py-2 text-sm"
-                          placeholder="0"
-                        />
-                      </div>
+                        {/* Unit cost */}
+                        <div className="lg:col-span-2">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            سعر الوحدة
+                          </label>
+                          <NumberInput
+                            value={String(item.unit_cost ?? "")}
+                            onChange={(v) =>
+                              handleItemFieldChange(index, {
+                                target: { name: "unit_cost", value: v },
+                              })
+                            }
+                            className="w-full px-2 py-2 text-sm"
+                            placeholder="0.00"
+                          />
+                          {registeredPrice != null && (
+                            <p className="mt-1 text-[10px] text-gray-400">
+                              السعر المسجل:{" "}
+                              <button
+                                type="button"
+                                className="font-medium text-[#8B5FD6] hover:underline"
+                                onClick={() =>
+                                  handleItemFieldChange(index, {
+                                    target: {
+                                      name: "unit_cost",
+                                      value: String(registeredPrice),
+                                    },
+                                  })
+                                }
+                              >
+                                {formatAmount(registeredPrice)} {symbol}
+                              </button>
+                            </p>
+                          )}
+                        </div>
 
-                      {/* Unit cost + registered price hint */}
-                      <div className="sm:col-span-2 lg:col-span-1">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          سعر الوحدة
-                        </label>
-                        <NumberInput
-                          value={String(item.unit_cost ?? "")}
-                          onChange={(v) =>
-                            handleItemFieldChange(index, {
-                              target: { name: "unit_cost", value: v },
-                            })
-                          }
-                          className="w-full px-2 py-2 text-sm"
-                          placeholder="0.00"
-                        />
-                        {registeredPrice != null && (
-                          <p className="mt-1 text-[10px] text-gray-400">
-                            السعر المسجل:{" "}
-                            <span className="font-medium text-gray-600">
-                              {formatAmount(registeredPrice)} {symbol}
-                            </span>
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Row total chip */}
-                      <div className="flex items-end">
-                        <div className="w-full">
+                        {/* Line total */}
+                        <div className="lg:col-span-2 flex flex-col justify-end">
                           <label className="block text-xs font-medium text-gray-600 mb-1">
                             الإجمالي
                           </label>
-                          <div className="px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-sm font-bold text-emerald-700 text-center">
-                            {formatAmount(total)} {symbol}
+                          <div className="rounded-xl border border-[#C4A8F0]/40 bg-gradient-to-l from-[#F3EEFF] to-white px-3 py-2.5 text-center">
+                            <p className="text-[10px] text-gray-500 leading-tight">
+                              {qty > 0 && unitCost > 0
+                                ? `${qty} × ${formatAmount(unitCost)}`
+                                : "—"}
+                            </p>
+                            <p className="text-base font-bold text-[#6B45B0] leading-tight mt-0.5">
+                              {formatAmount(total, { withSymbol: true })}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -739,74 +889,54 @@ export default function AddPurchaseOrderForm({
         </div>
 
         {/* ── Section 3: Totals & Discount ── */}
-        <div className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-4 sm:px-6 py-3 border-b border-gray-200 bg-gray-100">
-            <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+        <div className="rounded-xl border border-[#C4A8F0]/30 overflow-hidden bg-gradient-to-l from-[#FAFAFE] to-[#F3EEFF]">
+          <div className="px-4 sm:px-6 py-3 border-b border-[#EDE7FF] bg-white/70">
+            <h4 className="text-sm font-semibold text-[#4A2D8C]">
               ملخص المبالغ
             </h4>
           </div>
           <div className="p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row justify-end gap-4 sm:gap-8 text-sm">
-              <div className="flex items-center justify-between sm:flex-col sm:items-end gap-1">
-                <span className="text-gray-500">إجمالي العناصر</span>
-                <span className="font-semibold text-gray-800 text-base">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="rounded-xl bg-white border border-gray-200 px-4 py-3 text-center sm:text-right">
+                <p className="text-xs text-gray-500 mb-1">إجمالي العناصر</p>
+                <p className="text-lg font-bold text-gray-800">
                   {formatAmount(orderTotals.subtotal, { withSymbol: true })}
-                </span>
+                </p>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  {formData.purchase_order_items.length} عنصر
+                </p>
               </div>
-              <div className="flex items-center justify-between sm:flex-col sm:items-end gap-1">
-                <label className="text-gray-500">خصم على الطلب</label>
+              <div className="rounded-xl bg-white border border-gray-200 px-4 py-3">
+                <label className="block text-xs text-gray-500 mb-2 text-center sm:text-right">
+                  خصم على الطلب
+                </label>
                 <NumberInput
                   value={String(formData.order_discount ?? "")}
                   onChange={(v) =>
                     setFormData((p) => ({ ...p, order_discount: v }))
                   }
-                  className="w-32 px-2 py-1.5 text-sm text-center"
+                  className="w-full px-2 py-2 text-sm text-center"
                   placeholder="0.00"
                 />
               </div>
-              <div className="flex items-center justify-between sm:flex-col sm:items-end gap-1 pt-2 sm:pt-0 border-t sm:border-t-0 sm:border-r border-gray-300 sm:pr-8">
-                <span className="font-bold text-gray-700">
-                  الإجمالي النهائي
-                </span>
-                <span className="text-xl font-extrabold text-[#8B5FD6]">
+              <div className="rounded-xl bg-gradient-to-l from-[#8B5FD6] to-[#6B45B0] px-4 py-3 text-white text-center sm:text-right shadow-md">
+                <p className="text-xs text-white/80 mb-1">الإجمالي النهائي</p>
+                <p className="text-2xl font-extrabold tracking-tight">
                   {formatAmount(orderTotals.finalTotal || 0, {
                     withSymbol: true,
                   })}
-                </span>
+                </p>
+                {(orderTotals.discount || 0) > 0 && (
+                  <p className="text-[11px] text-white/70 mt-1">
+                    بعد خصم {formatAmount(orderTotals.discount, { withSymbol: true })}
+                  </p>
+                )}
               </div>
             </div>
           </div>
         </div>
-
-        {/* ── Action Buttons ── */}
-        <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition shadow-sm"
-          >
-            إلغاء
-          </button>
-          <button
-            type="button"
-            onClick={handleSaveAsDraft}
-            disabled={isFormActionDisabled}
-            className={`px-5 py-2.5 rounded-xl text-sm font-semibold text-black shadow-sm transition ${isFormActionDisabled ? "bg-amber-300 cursor-not-allowed" : "bg-amber-500 hover:bg-amber-600"}`}
-          >
-            حفظ كمسودة
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirmOrder}
-            disabled={isFormActionDisabled}
-            className={`px-5 py-2.5 rounded-xl text-sm font-semibold text-black shadow-sm transition ${isFormActionDisabled ? "bg-blue-300 cursor-not-allowed" : "bg-[#8B5FD6] hover:bg-[#7A52C2]"}`}
-          >
-            تأكيد أمر الشراء
-          </button>
-        </div>
       </form>
 
-      {/* Confirmation Modal */}
       {isConfirmOrderModalOpen && (
         <ConfirmOrderModal
           isOpen={isConfirmOrderModalOpen}
@@ -833,6 +963,6 @@ export default function AddPurchaseOrderForm({
           })()}
         />
       )}
-    </div>
+    </AppModalShell>
   );
 }

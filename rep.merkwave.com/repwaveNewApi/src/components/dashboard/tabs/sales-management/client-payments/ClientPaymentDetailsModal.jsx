@@ -1,13 +1,13 @@
 ﻿// src/components/dashboard/tabs/sales-management/client-payments/ClientPaymentDetailsModal.jsx
-import React from "react";
-import { createPortal } from "react-dom";
-import { XMarkIcon, BanknotesIcon } from "@heroicons/react/24/outline";
-import { formatCurrency } from "../../../../../utils/currency";
+import React from 'react';
+import { BanknotesIcon } from '@heroicons/react/24/outline';
+import AppModalShell, { modalSecondaryBtnClass } from '../../../../common/AppModalShell.jsx';
+import { formatCurrency } from '../../../../../utils/currency';
 
 const Row = ({ label, value }) => (
   <div className="flex items-center justify-between py-2">
     <span className="text-sm text-gray-600">{label}</span>
-    <span className="text-sm font-medium text-gray-900">{value || "-"}</span>
+    <span className="text-sm font-medium text-gray-900">{value || '-'}</span>
   </div>
 );
 
@@ -28,88 +28,58 @@ const ClientPaymentDetailsModal = ({
   const clientName = findLabel(
     clients,
     payment.client_payments_client_id || payment.client_id,
-    "clients_id",
-    "clients_company_name",
+    'clients_id',
+    'clients_company_name',
   );
   const safeName = findLabel(
     safes,
     payment.client_payments_safe_id || payment.safe_id,
-    "safes_id",
-    "safes_name",
+    'safes_id',
+    'safes_name',
   );
   const methodName = findLabel(
     paymentMethods,
     payment.client_payments_method_id || payment.payment_method_id,
-    "payment_methods_id",
-    "payment_methods_name",
+    'payment_methods_id',
+    'payment_methods_name',
   );
 
-  const modal = (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-[9999] p-3 sm:p-6 overflow-y-auto"
-      onClick={onClose}
+  return (
+    <AppModalShell
+      open
+      onClose={onClose}
+      title="تفاصيل دفعة عميل"
+      subtitle={clientName ? String(clientName) : undefined}
+      icon={BanknotesIcon}
+      size="md"
+      gradient="green"
+      zIndex="z-[9999]"
+      portal
+      footer={
+        <div className="flex justify-end">
+          <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+            إغلاق
+          </button>
+        </div>
+      }
     >
-      <div
-        className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-2 sm:mx-4 max-h-[95vh] overflow-hidden flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="bg-gradient-to-r from-green-100 to-emerald-100 px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-300 shrink-0">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base sm:text-xl font-bold text-gray-800 flex items-center gap-2 truncate">
-              <BanknotesIcon className="h-6 w-6 text-[#8B5FD6]" />
-              تفاصيل دفعة عميل
-            </h3>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-all"
-            >
-              <XMarkIcon className="h-5 w-5 text-gray-600" />
-            </button>
-          </div>
-        </div>
-
-        <div className="p-3 sm:p-6 overflow-y-auto flex-1" dir="rtl">
-          <div className="space-y-2">
-            <Row label="العميل" value={clientName} />
-            <Row label="الخزنة" value={safeName} />
-            <Row label="طريقة الدفع" value={methodName} />
-            <Row
-              label="المبلغ"
-              value={formatCurrency(
-                payment.client_payments_amount || payment.amount || 0,
-              )}
-            />
-            <Row
-              label="التاريخ"
-              value={(
-                payment.client_payments_date ||
-                payment.payment_date ||
-                ""
-              ).slice(0, 10)}
-            />
-            <Row
-              label="ملاحظات"
-              value={payment.client_payments_notes || payment.notes}
-            />
-            <Row
-              label="المعرف"
-              value={payment.client_payments_id || payment.id}
-            />
-          </div>
-
-          <div className="pt-6 flex justify-end">
-            <button
-              onClick={onClose}
-              className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300"
-            >
-              إغلاق
-            </button>
-          </div>
-        </div>
+      <div className="space-y-2">
+        <Row label="العميل" value={clientName} />
+        <Row label="الخزنة" value={safeName} />
+        <Row label="طريقة الدفع" value={methodName} />
+        <Row
+          label="المبلغ"
+          value={formatCurrency(payment.client_payments_amount || payment.amount || 0)}
+        />
+        <Row
+          label="التاريخ"
+          value={(payment.client_payments_date || payment.payment_date || '').slice(0, 10)}
+        />
+        <Row label="ملاحظات" value={payment.client_payments_notes || payment.notes} />
+        <Row label="المعرف" value={payment.client_payments_id || payment.id} />
       </div>
-    </div>
+    </AppModalShell>
   );
-  return createPortal(modal, document.body);
 };
 
 export default ClientPaymentDetailsModal;

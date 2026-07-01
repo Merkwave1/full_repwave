@@ -229,7 +229,7 @@ const RepresentativesTab = ({ data }) => {
                       </p>
                       <p className="text-xs text-gray-600">إجمالي الزيارات</p>
                     </div>
-                    <DocumentTextIcon className="h-6 w-6 sm:h-8 sm:w-8 text-blue-400" />
+                    <DocumentTextIcon className="h-6 w-6 sm:h-8 sm:w-8 text-[#8B5FD6]" />
                   </div>
                 </div>
 

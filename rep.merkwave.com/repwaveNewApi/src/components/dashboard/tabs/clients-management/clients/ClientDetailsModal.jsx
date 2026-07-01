@@ -1,7 +1,7 @@
 ﻿// src/components/dashboard/tabs/clients-management/clients/ClientDetailsModal.jsx
 import React, { useMemo, useState, useEffect, useCallback } from "react";
-// Removed: import Modal from '../../../../common/Modal/Modal';
-import MapPicker from "../../../../common/MapPicker/MapPicker"; // Assuming this path is correct
+import AppModalShell, { modalPrimaryBtnClass } from "../../../../common/AppModalShell.jsx";
+import GoogleMapsLocationField from "../../../../common/GoogleMapsLocationField/GoogleMapsLocationField.jsx";
 import {
   BuildingOffice2Icon,
   EnvelopeIcon,
@@ -21,8 +21,8 @@ import {
   CurrencyDollarIcon,
   HashtagIcon,
   UserIcon,
-  XMarkIcon, // Import XMarkIcon for the close button
-  Bars3BottomLeftIcon, // For modal header icon
+  XMarkIcon,
+  Bars3BottomLeftIcon,
   CubeIcon,
   PlusCircleIcon,
   TrashIcon,
@@ -41,6 +41,24 @@ import {
 } from "../../../../../apis/clientInterestedProducts";
 import { getAppProducts } from "../../../../../apis/products";
 
+function normalizeInterestedProduct(item) {
+  if (!item || typeof item !== "object") return item;
+  return {
+    products_id: item.products_id ?? item.product_id,
+    products_name: item.products_name ?? item.product_name,
+    products_brand: item.products_brand ?? item.product_brand,
+    products_category:
+      item.products_category ?? item.product_category ?? item.categories_name,
+    products_description: item.products_description ?? item.product_description,
+    products_image_url: item.products_image_url ?? item.product_image_url,
+    products_is_active: item.products_is_active ?? item.product_is_active ?? true,
+  };
+}
+
+function isProductActive(value) {
+  return value === true || value === 1 || value === "1" || value === "true";
+}
+
 // Reusable DetailItem component (re-defined for clarity, assuming it's not globally available)
 const DetailItem = ({
   icon,
@@ -53,7 +71,7 @@ const DetailItem = ({
     <div className="flex items-start gap-1.5 min-w-0 shrink max-w-[52%]">
       <span className="shrink-0 mt-0.5">
         {React.cloneElement(icon, {
-          className: "h-4 w-4 md:h-5 md:w-5 text-blue-500",
+          className: "h-4 w-4 md:h-5 md:w-5 text-[#8B5FD6]",
         })}
       </span>
       <span className="font-medium text-gray-700 break-words leading-snug">
@@ -69,34 +87,6 @@ const DetailItem = ({
     )}
   </div>
 );
-
-// Assuming Modal component is defined elsewhere or will be defined here
-const Modal = ({
-  isOpen,
-  onClose,
-  dir = "rtl",
-  modalWidthClass = "max-w-2xl",
-  children,
-}) => {
-  if (!isOpen) return null;
-  return (
-    <div
-      className="fixed inset-0 backdrop-blur-sm bg-black/40 flex justify-center items-center p-2 sm:p-4 z-50"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose?.();
-        }
-      }}
-    >
-      <div
-        className={`bg-white rounded-xl shadow-2xl p-2 sm:p-6 ${modalWidthClass} w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col`}
-        dir={dir}
-      >
-        {children}
-      </div>
-    </div>
-  );
-};
 
 function ClientDetailsModal({
   isOpen,
@@ -231,7 +221,9 @@ function ClientDetailsModal({
       try {
         const data = await getClientInterestedProducts(clientId);
         if (!cancelRef?.current) {
-          setInterestedProducts(Array.isArray(data) ? data : []);
+          setInterestedProducts(
+            Array.isArray(data) ? data.map(normalizeInterestedProduct) : [],
+          );
         }
       } catch (err) {
         const message = err?.message || "فشل في تحميل المنتجات المهتم بها.";
@@ -545,22 +537,12 @@ function ClientDetailsModal({
               />
             </div>
             <div className="mt-4 pt-4 border-t border-gray-200">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                الموقع على الخريطة:
-              </label>
-              {client.clients_latitude && client.clients_longitude ? (
-                <div className="h-56 rounded-lg overflow-hidden border border-gray-300 shadow-sm">
-                  <MapPicker
-                    initialLatitude={parseFloat(client.clients_latitude)}
-                    initialLongitude={parseFloat(client.clients_longitude)}
-                    onLocationChange={() => {}} // Read-only map
-                  />
-                </div>
-              ) : (
-                <div className="h-56 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 border border-gray-300 shadow-sm">
-                  <p>لا توجد إحداثيات متاحة لعرضها على الخريطة.</p>
-                </div>
-              )}
+              <GoogleMapsLocationField
+                label="الموقع على الخريطة"
+                latitude={client.clients_latitude}
+                longitude={client.clients_longitude}
+                readOnly
+              />
             </div>
           </div>
         );
@@ -618,7 +600,7 @@ function ClientDetailsModal({
       case "interests":
         return (
           <div className="space-y-4 sm:space-y-6">
-            <div className="bg-white border border-blue-100 rounded-xl shadow-sm p-3 sm:p-5 md:p-6">
+            <div className="bg-white border border-[#EDE7FF] rounded-xl shadow-sm p-3 sm:p-5 md:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h4 className="text-base sm:text-lg md:text-xl font-bold text-[#2D1B69] flex items-center gap-2">
@@ -663,7 +645,7 @@ function ClientDetailsModal({
                   disabled={addLoading || !selectedProductId}
                   className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
                     addLoading || !selectedProductId
-                      ? "bg-blue-200 text-white cursor-not-allowed"
+                      ? "bg-[#C4A8F0]/30 text-white cursor-not-allowed"
                       : "bg-[#8B5FD6] text-white hover:bg-[#7A52C2]"
                   }`}
                 >
@@ -688,7 +670,7 @@ function ClientDetailsModal({
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
               <div className="px-3 sm:px-5 md:px-6 py-2.5 sm:py-4 border-b border-gray-100 flex items-center justify-between">
                 <h4 className="text-sm sm:text-base md:text-lg font-semibold text-gray-800 flex items-center gap-2">
-                  <CubeIcon className="h-5 w-5 sm:h-6 sm:w-6 text-blue-500 shrink-0" />
+                  <CubeIcon className="h-5 w-5 sm:h-6 sm:w-6 text-[#8B5FD6] shrink-0" />
                   المنتجات المهتم بها
                 </h4>
                 <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
@@ -698,7 +680,7 @@ function ClientDetailsModal({
               <div className="p-3 sm:p-5 md:p-6">
                 {interestedLoading ? (
                   <div className="py-6 sm:py-8 flex items-center justify-center text-gray-500 gap-3 text-sm">
-                    <span className="inline-block h-5 w-5 rounded-full border-2 border-blue-300 border-t-transparent animate-spin" />
+                    <span className="inline-block h-5 w-5 rounded-full border-2 border-[#C4A8F0] border-t-transparent animate-spin" />
                     جاري تحميل المنتجات المرتبطة...
                   </div>
                 ) : interestedProducts.length === 0 ? (
@@ -756,9 +738,9 @@ function ClientDetailsModal({
                                   </span>
                                 )}
                                 <span
-                                  className={`px-2 py-1 rounded-full font-semibold ${Number(product.products_is_active) === 1 ? "bg-green-100 text-green-700 border border-[#C4A8F0]" : "bg-red-100 text-red-700 border border-red-200"}`}
+                                  className={`px-2 py-1 rounded-full font-semibold ${isProductActive(product.products_is_active) ? "bg-green-100 text-green-700 border border-[#C4A8F0]" : "bg-red-100 text-red-700 border border-red-200"}`}
                                 >
-                                  {Number(product.products_is_active) === 1
+                                  {isProductActive(product.products_is_active)
                                     ? "نشط"
                                     : "غير نشط"}
                                 </span>
@@ -820,29 +802,23 @@ function ClientDetailsModal({
   }
 
   return (
-    <Modal
-      isOpen={isOpen}
+    <AppModalShell
+      open={isOpen}
       onClose={onClose}
-      dir="rtl"
-      modalWidthClass="max-w-4xl"
+      title="تفاصيل العميل"
+      subtitle={client.clients_company_name}
+      icon={BuildingOffice2Icon}
+      size="3xl"
+      gradient="purple"
+      footer={
+        <div className="flex justify-center">
+          <button type="button" onClick={onClose} className={modalPrimaryBtnClass}>
+            إغلاق
+          </button>
+        </div>
+      }
     >
-      {" "}
-      {/* Adjusted modalWidthClass */}
-      {/* Header */}
-      <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200 bg-white rounded-t-xl sticky top-0 z-10">
-        <h3 className="text-base sm:text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-1.5 sm:gap-2">
-          <Bars3BottomLeftIcon className="h-5 w-5 sm:h-7 sm:w-7 text-[#8B5FD6] shrink-0" />
-          تفاصيل العميل
-        </h3>
-        <button
-          onClick={onClose}
-          className="p-1.5 sm:p-2 rounded-full text-gray-500 hover:bg-red-100 hover:text-red-600 transition-colors"
-        >
-          <XMarkIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-        </button>
-      </div>
-      {/* Body */}
-      <div className="p-3 sm:p-6 flex-grow overflow-y-auto bg-gray-50">
+      <div className="space-y-3 sm:space-y-6">
         {/* Top section - Client Header */}
         <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 md:p-6 mb-3 sm:mb-6 flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-5 md:gap-6">
           <div className="flex-shrink-0">
@@ -955,18 +931,7 @@ function ClientDetailsModal({
           {renderTabContent()}
         </div>
       </div>
-      {/* Footer */}
-      <div className="p-4 bg-gray-100 border-t border-gray-200 rounded-b-xl sticky bottom-0">
-        <div className="flex justify-center">
-          <button
-            onClick={onClose}
-            className="w-full sm:w-auto px-4 py-3 sm:px-6 sm:py-2.5 bg-[#8B5FD6] text-white rounded-md hover:bg-[#7A52C2] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8B5FD6] transition duration-150 ease-in-out shadow-md text-base sm:text-sm"
-          >
-            إغلاق
-          </button>
-        </div>
-      </div>
-    </Modal>
+    </AppModalShell>
   );
 }
 

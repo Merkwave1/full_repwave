@@ -9,11 +9,6 @@ import {
 import SearchableSelect from "../../../../common/SearchableSelect/SearchableSelect";
 import { addSafe } from "../../../../../apis/safes";
 import { getAllUsers } from "../../../../../apis/users";
-import { getPaymentMethods } from "../../../../../apis/payment_methods";
-import {
-  PAYMENT_METHOD_ICONS,
-  PAYMENT_METHOD_COLORS,
-} from "../../../../../constants/paymentMethods";
 import {
   SAFE_COLORS,
   DEFAULT_SAFE_COLOR,
@@ -29,7 +24,6 @@ const AddSafeForm = ({ onClose, onSubmit }) => {
     initial_balance: "0.00",
     type: "rep", // 'company' or 'rep' or 'store_keeper'
     rep_user_id: "",
-    payment_method_id: 1, // Default to Cash
     is_active: true,
     color: DEFAULT_SAFE_COLOR, // Default color
   });
@@ -38,12 +32,9 @@ const AddSafeForm = ({ onClose, onSubmit }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
-  const [paymentMethods, setPaymentMethods] = useState([]);
-  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
 
   useEffect(() => {
     loadUsers();
-    loadPaymentMethods();
   }, []);
 
   const loadUsers = async () => {
@@ -55,18 +46,6 @@ const AddSafeForm = ({ onClose, onSubmit }) => {
       setUsers([]);
     } finally {
       setLoadingUsers(false);
-    }
-  };
-
-  const loadPaymentMethods = async () => {
-    try {
-      const response = await getPaymentMethods();
-      setPaymentMethods(response?.payment_methods || []);
-    } catch (error) {
-      console.error("Error loading payment methods:", error);
-      setPaymentMethods([]);
-    } finally {
-      setLoadingPaymentMethods(false);
     }
   };
 
@@ -94,10 +73,6 @@ const AddSafeForm = ({ onClose, onSubmit }) => {
 
     if (!formData.type) {
       newErrors.type = "نوع الخزنة مطلوب";
-    }
-
-    if (!formData.payment_method_id) {
-      newErrors.payment_method_id = "طريقة الدفع مطلوبة";
     }
 
     if (
@@ -132,7 +107,7 @@ const AddSafeForm = ({ onClose, onSubmit }) => {
           formData.type === "rep" || formData.type === "store_keeper"
             ? parseInt(formData.rep_user_id) || null
             : null,
-        safes_payment_method_id: parseInt(formData.payment_method_id) || null,
+        safes_payment_method_id: null,
         safes_is_active: Boolean(formData.is_active),
         safes_color: formData.color,
       };
@@ -162,7 +137,7 @@ const AddSafeForm = ({ onClose, onSubmit }) => {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-5 py-4 flex items-center justify-between" style={{ background: "linear-gradient(135deg, #8B5FD6 0%, #F97366 100%)" }}>
+        <div className="px-5 py-4 flex items-center justify-between" style={{ background: "linear-gradient(135deg, #8B5FD6 0%, #7A52C2 100%)" }}>
           <div className="flex items-center gap-3">
             <div className="bg-white/20 rounded-xl p-2">
               <ArchiveBoxIcon className="h-6 w-6 text-white" />
@@ -196,7 +171,7 @@ const AddSafeForm = ({ onClose, onSubmit }) => {
             {/* Basic Information */}
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50">
-                <ArchiveBoxIcon className="h-4 w-4 text-blue-500" />
+                <ArchiveBoxIcon className="h-4 w-4 text-[#8B5FD6]" />
                 <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
                   معلومات الخزنة الأساسية
                 </span>
@@ -256,44 +231,6 @@ const AddSafeForm = ({ onClose, onSubmit }) => {
                   </select>
                   {errors.type && (
                     <p className="text-red-500 text-xs mt-1">{errors.type}</p>
-                  )}
-                </div>
-
-                {/* Payment Method */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                    طريقة الدفع <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.payment_method_id}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "payment_method_id",
-                        parseInt(e.target.value),
-                      )
-                    }
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#8B5FD6] focus:border-[#8B5FD6] outline-none"
-                    disabled={loadingPaymentMethods}
-                  >
-                    {loadingPaymentMethods ? (
-                      <option>جاري التحميل...</option>
-                    ) : (
-                      paymentMethods.map((method) => (
-                        <option
-                          key={method.payment_methods_id}
-                          value={method.payment_methods_id}
-                        >
-                          {PAYMENT_METHOD_ICONS[method.payment_methods_type] ||
-                            "💳"}{" "}
-                          {method.payment_methods_name}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  {errors.payment_method_id && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.payment_method_id}
-                    </p>
                   )}
                 </div>
 
@@ -484,7 +421,7 @@ const AddSafeForm = ({ onClose, onSubmit }) => {
                 type="submit"
                 onClick={handleSubmit}
                 disabled={isSubmitting || loadingUsers}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-bold text-white  hover:from-blue-700 hover:to-indigo-600 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" style={{ background: "linear-gradient(135deg, #8B5FD6 0%, #F97366 100%)" }}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-bold text-white  hover:from-[#7A52C2] hover:to-[#6B45B0] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" style={{ background: "linear-gradient(135deg, #8B5FD6 0%, #7A52C2 100%)" }}
               >
                 {isSubmitting ? (
                   <>

@@ -32,6 +32,7 @@ import {
   getSalesReturnDetails,
   getAllSalesReturns,
 } from "../../../../../apis/sales_returns";
+import { getAllClients } from "../../../../../apis/clients.js";
 
 import SalesReturnForm from "./SalesReturnForm";
 import SalesReturnDetailsModal from "./SalesReturnDetailsModal";
@@ -201,6 +202,7 @@ export default function SalesReturnsTab() {
     total_pages: 1,
   });
   const lastFetchKeyRef = useRef("");
+  const addReturnInFlightRef = useRef(false);
 
   const [currentView, setCurrentView] = useState("list"); // 'list', 'add', 'edit', 'details'
   const [selectedReturn, setSelectedReturn] = useState(null);
@@ -409,13 +411,22 @@ export default function SalesReturnsTab() {
         }
       };
 
-      setClients(readCachedArray("appClients"));
       setProducts(readCachedArray("appProducts"));
       setBaseUnits(readCachedArray("appBaseUnits"));
       setPackagingTypes(readCachedArray("appPackagingTypes"));
       setWarehouses(readCachedArray("appWarehouses"));
 
       try {
+        getAllClients()
+          .then((freshClients) => {
+            if (Array.isArray(freshClients) && freshClients.length > 0) {
+              setClients(freshClients);
+            } else {
+              setClients(readCachedArray("appClients"));
+            }
+          })
+          .catch(() => setClients(readCachedArray("appClients")));
+
         const filterParams = {
           page,
           limit: perPage,
@@ -497,27 +508,33 @@ export default function SalesReturnsTab() {
 
   // Handle add new return
   const handleAddReturn = async (returnData) => {
+    if (addReturnInFlightRef.current) return;
+    addReturnInFlightRef.current = true;
     try {
       setGlobalMessage({ type: "info", message: "جاري إنشاء مرتجع البيع..." });
 
-      // Pass the form payload directly; the API layer maps to backend field names
       const result = await addSalesReturn(returnData);
+      const returnId =
+        result?.returns_id ?? result?.ReturnsId ?? result?.id ?? null;
 
-      if (result.status === "success") {
+      if (returnId) {
         setGlobalMessage({
           type: "success",
           message: "تم إنشاء مرتجع البيع بنجاح!",
         });
         setCurrentView("list");
-        await loadAllSalesReturnData(true); // Refresh data
+        await loadAllSalesReturnData(true);
       } else {
-        throw new Error(result.message || "فشل في إنشاء مرتجع البيع");
+        throw new Error("فشل في إنشاء مرتجع البيع");
       }
     } catch (error) {
       setGlobalMessage({
         type: "error",
         message: `خطأ في إنشاء مرتجع البيع: ${error.message}`,
       });
+      throw error;
+    } finally {
+      addReturnInFlightRef.current = false;
     }
   };
 
@@ -694,7 +711,7 @@ export default function SalesReturnsTab() {
           ),
         className: "min-w-[140px]",
         render: (it) => (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-[#7A52C2]">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#EDE7FF] text-[#7A52C2]">
             {it.items_count ||
               it.total_items ||
               (Array.isArray(it.items) ? it.items.length : 0) ||
@@ -708,17 +725,28 @@ export default function SalesReturnsTab() {
         title: "التاريخ",
         sortable: true,
         sortAccessor: (it) =>
-          new Date(it.returns_return_date || it.return_date).getTime() || 0,
+          new Date(
+            it.returns_return_date ||
+              it.return_date ||
+              it.returns_date ||
+              it.returns_created_at,
+          ).getTime() || 0,
         className: "min-w-[140px]",
-        render: (it) => (
+        render: (it) => {
+          const rawDate =
+            it.returns_return_date ||
+            it.return_date ||
+            it.returns_date ||
+            it.returns_created_at ||
+            it.created_at;
+          return (
           <div className="text-sm text-gray-700">
-            {it.returns_return_date || it.return_date
-              ? new Date(
-                  it.returns_return_date || it.return_date,
-                ).toLocaleDateString("en-GB")
+            {rawDate
+              ? new Date(rawDate).toLocaleDateString("en-GB")
               : "—"}
           </div>
-        ),
+        );
+        },
       },
       {
         key: "returns_status",
@@ -1075,7 +1103,7 @@ export default function SalesReturnsTab() {
                 />
               ) : (
                 <div className="bg-white rounded-2xl p-10 text-center text-gray-500">
-                  <div className="w-8 h-8 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
+                  <div className="w-8 h-8 border-4 border-gray-200 border-t-[#8B5FD6] rounded-full animate-spin mx-auto mb-3" />
                   جاري تحميل البيانات...
                 </div>
               )}

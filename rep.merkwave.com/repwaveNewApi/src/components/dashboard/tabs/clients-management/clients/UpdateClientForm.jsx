@@ -1,7 +1,13 @@
 ﻿// src/components/dashboard/tabs/clients/UpdateClientForm.js
 import React, { useState, useEffect } from "react";
+import { PencilSquareIcon } from "@heroicons/react/24/outline";
 import Alert from "../../../../common/Alert/Alert";
-import MapPicker from "../../../../common/MapPicker/MapPicker";
+import AppModalShell, {
+  modalPrimaryBtnClass,
+  modalSecondaryBtnClass,
+  modalSectionClass,
+} from "../../../../common/AppModalShell.jsx";
+import GoogleMapsLocationField from "../../../../common/GoogleMapsLocationField/GoogleMapsLocationField.jsx";
 import {
   countries,
   getCitiesByCountryCode,
@@ -191,11 +197,11 @@ function UpdateClientForm({
     }
   };
 
-  const handleMapChange = (lat, lng) => {
+  const handleLocationChange = (lat, lng) => {
     setFormData((prev) => ({
       ...prev,
-      clients_latitude: lat ? lat.toString() : "",
-      clients_longitude: lng ? lng.toString() : "",
+      clients_latitude: lat || "",
+      clients_longitude: lng || "",
     }));
   };
 
@@ -930,54 +936,13 @@ function UpdateClientForm({
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-3">
-                  تحديد الموقع على الخريطة
-                </label>
-                <div className="rounded-lg overflow-hidden shadow-md border border-gray-200 h-64">
-                  <MapPicker
-                    initialLatitude={parseFloat(formData.clients_latitude)}
-                    initialLongitude={parseFloat(formData.clients_longitude)}
-                    onLocationChange={handleMapChange}
-                  />
-                </div>
-                <div className="flex gap-4 mt-4">
-                  <div className="flex-1">
-                    <label
-                      htmlFor="clients_latitude"
-                      className="block text-xs font-medium text-gray-600 mb-1"
-                    >
-                      خط العرض
-                    </label>
-                    <input
-                      type="text"
-                      id="clients_latitude"
-                      name="clients_latitude"
-                      value={formData.clients_latitude}
-                      onChange={handleChange}
-                      maxLength={20}
-                      className={premiumInputSmall}
-                      placeholder="30.0444"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label
-                      htmlFor="clients_longitude"
-                      className="block text-xs font-medium text-gray-600 mb-1"
-                    >
-                      خط الطول
-                    </label>
-                    <input
-                      type="text"
-                      id="clients_longitude"
-                      name="clients_longitude"
-                      value={formData.clients_longitude}
-                      onChange={handleChange}
-                      maxLength={20}
-                      className={premiumInputSmall}
-                      placeholder="31.2357"
-                    />
-                  </div>
-                </div>
+                <GoogleMapsLocationField
+                  label="موقع العميل على الخريطة"
+                  hint="الصق رابط Google Maps وسيتم استخراج الإحداثيات تلقائياً مع معاينة الموقع."
+                  latitude={formData.clients_latitude}
+                  longitude={formData.clients_longitude}
+                  onLocationChange={handleLocationChange}
+                />
               </div>
             </div>
           </div>
@@ -1073,116 +1038,38 @@ function UpdateClientForm({
   };
 
   return (
-    <div
-      className="
-      bg-white/90 backdrop-blur-md
-      p-4 sm:p-6 lg:p-8
-      rounded-2xl
-      shadow-[0_15px_40px_rgba(0,0,0,0.08)]
-      max-w-5xl mx-auto
-      border border-[#C4A8F0]/10
-    "
-      dir="rtl"
-    >
-      {/* Top accent */}
-      <div
-        className="h-1.5 w-full rounded-t-2xl mb-4"
-        style={{ background: "#8DD8F5" }}
-      />
-
-      {/* Strong Title with Icon */}
-      <div className="relative mb-8 text-center">
-        <div className="flex flex-row-reverse md:flex items-center  justify-center gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            aria-label="إغلاق"
-            className="
-      md:absolute top-0 right-0
-      p-2
-      rounded-lg
-      text-[#1A0F35]/70
-      hover:bg-[#C4A8F0]/20
-      transition
-    "
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+    <AppModalShell
+      open
+      onClose={onCancel}
+      title="تعديل العميل"
+      subtitle={client?.clients_company_name}
+      icon={PencilSquareIcon}
+      size="2xl"
+      portal
+      bodyClassName="p-4 sm:p-6 overflow-y-auto overflow-x-hidden flex-1 min-h-0 bg-[#FAFAFE] max-h-[70vh]"
+      footer={
+        <div className="flex flex-col sm:flex-row gap-3 justify-end">
+          <button type="button" onClick={onCancel} className={modalSecondaryBtnClass}>
+            إلغاء
           </button>
-
-          <div
-            className="
-      w-12 h-12
-      rounded-xl
-      bg-[#C4A8F0]/20
-      flex items-center justify-center
-      text-[#C4A8F0]
-      shadow-sm
-    "
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 11c1.657 0 3-1.343 3-3S13.657 5 12 5 9 6.343 9 8s1.343 3 3 3z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M19 21v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2"
-              />
-            </svg>
-          </div>
-
-          <h3
-            className="
-        text-2xl sm:text-3xl lg:text-4xl
-        font-black
-        text-[#1A0F35]
-        tracking-tight
-      "
-          >
-            تعديل العميل
-          </h3>
+          <button type="submit" form="update-client-form" className={modalPrimaryBtnClass}>
+            تحديث العميل
+          </button>
         </div>
-
-        {/* bottom glow line */}
-        <div className="mt-3 flex justify-center">
-          <span className="w-24 h-1 rounded-full bg-[#C4A8F0]/70" />
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+      }
+    >
+      <form id="update-client-form" onSubmit={handleSubmit} className="space-y-4">
         {formError && (
           <Alert
             message={formError}
             type="error"
-            className="mb-4"
+            className="mb-2"
             onClose={() => setFormError("")}
           />
         )}
 
-        {/* Tabs */}
-        <div className="border-b border-gray-100 overflow-x-auto">
-          <nav className="flex min-w-max gap-2 sm:gap-4 pb-1" aria-label="Tabs">
+        <div className="border-b border-[#EDE7FF]">
+          <nav className="flex flex-wrap gap-1 sm:gap-2 pb-1" aria-label="Tabs">
             {[
               { key: "general", label: "المعلومات الأساسية" },
               { key: "contact", label: "معلومات الاتصال" },
@@ -1193,19 +1080,11 @@ function UpdateClientForm({
                 key={tab.key}
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
-                className={`
-                whitespace-nowrap
-                px-4 sm:px-5 py-2.5
-                rounded-t-xl
-                text-xs sm:text-sm font-semibold
-                border-b-2
-                transition-all duration-200
-                ${
+                className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-t-xl border-b-2 transition-colors ${
                   activeTab === tab.key
-                    ? "border-[#C4A8F0] text-[#1A0F35] bg-[#C4A8F0]/10 shadow-sm"
-                    : "border-transparent text-[#1A0F35]/60 hover:text-[#1A0F35] hover:bg-gray-50"
-                }
-              `}
+                    ? "border-[#8B5FD6] text-[#1A0F35] bg-[#EDE7FF]/60"
+                    : "border-transparent text-gray-500 hover:text-[#1A0F35] hover:bg-gray-50"
+                }`}
               >
                 {tab.label}
               </button>
@@ -1213,59 +1092,9 @@ function UpdateClientForm({
           </nav>
         </div>
 
-        {/* Content */}
-        <div className="mt-4 sm:mt-6">{renderTabContent()}</div>
-
-        {/* Actions */}
-        <div
-          className="
-        flex flex-col sm:flex-row
-        gap-3 sm:gap-4
-        justify-end
-        mt-8 pt-6
-        border-t border-gray-100
-      "
-        >
-          <button
-            type="button"
-            onClick={onCancel}
-            className="
-            px-6 py-2.5
-            rounded-xl
-            border border-gray-200
-            text-sm font-semibold
-            text-[#1A0F35]
-            bg-white
-            hover:bg-gray-50
-            focus:outline-none
-            focus:ring-2 focus:ring-[#C4A8F0]/30
-            transition
-          "
-          >
-            إلغاء
-          </button>
-
-          <button
-            type="submit"
-            className="
-            px-6 py-2.5
-            rounded-xl
-            text-sm font-semibold
-            text-[#1A0F35]
-            bg-[#C4A8F0]
-            hover:bg-[#7ccfee]
-            focus:outline-none
-            focus:ring-2 focus:ring-[#C4A8F0]/40
-            shadow-lg
-            transition
-            transform hover:scale-[1.02]
-          "
-          >
-            تحديث عميل
-          </button>
-        </div>
+        <div className={`${modalSectionClass} p-4 sm:p-5`}>{renderTabContent()}</div>
       </form>
-    </div>
+    </AppModalShell>
   );
 }
 

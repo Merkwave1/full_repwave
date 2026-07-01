@@ -8,4 +8,10 @@ public class TransferRequest
     public string? RequestNotes { get; set; }
     public int? RequestSourceWarehouseId { get; set; }
     public int? RequestDestinationWarehouseId { get; set; }
+    public int? RequestCreatedByUserId { get; set; }
+
+    public Warehouse? SourceWarehouse { get; set; }
+    public Warehouse? DestinationWarehouse { get; set; }
+    public User? CreatedByUser { get; set; }
+    public ICollection<TransferRequestItem> Items { get; set; } = [];
 }

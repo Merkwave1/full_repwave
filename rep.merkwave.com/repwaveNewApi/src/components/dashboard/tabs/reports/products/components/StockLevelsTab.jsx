@@ -1,4 +1,5 @@
 ﻿import React from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ExclamationTriangleIcon,
   ChartBarIcon,
@@ -6,6 +7,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 const StockLevelsTab = ({ data, loading }) => {
+  const navigate = useNavigate();
   if (loading || !data) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -15,6 +17,7 @@ const StockLevelsTab = ({ data, loading }) => {
   }
 
   const stockLevels = data;
+  const lowStockItems = stockLevels.low_stock_items ?? [];
 
   return (
     <div className="space-y-6">
@@ -66,8 +69,7 @@ const StockLevelsTab = ({ data, loading }) => {
           </div>
         </div>
         <div className="hidden md:block">
-          {stockLevels.low_stock_items &&
-          stockLevels.low_stock_items.length > 0 ? (
+          {lowStockItems.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -93,7 +95,7 @@ const StockLevelsTab = ({ data, loading }) => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {stockLevels.low_stock_items.map((item, index) => (
+                  {lowStockItems.map((item, index) => (
                     <tr
                       key={index}
                       className={
@@ -157,7 +159,18 @@ const StockLevelsTab = ({ data, loading }) => {
           )}
         </div>
         <div className="space-y-4 md:hidden">
-          {stockLevels.low_stock_items.map((item, index) => (
+          {lowStockItems.length === 0 ? (
+            <div className="text-center py-8">
+              <ExclamationTriangleIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                لا توجد تنبيهات مخزون
+              </h3>
+              <p className="text-gray-500">
+                جميع المنتجات لديها مستويات مخزون مناسبة
+              </p>
+            </div>
+          ) : (
+            lowStockItems.map((item, index) => (
             <div
               key={index}
               className={`p-4 rounded-xl border shadow-sm ${
@@ -219,13 +232,13 @@ const StockLevelsTab = ({ data, loading }) => {
                 </div>
               </div>
             </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
       {/* Action Recommendations */}
-      {stockLevels.low_stock_items &&
-        stockLevels.low_stock_items.length > 0 && (
+      {lowStockItems.length > 0 && (
           <div className="bg-white rounded-lg shadow-sm border p-6">
             <div className="flex items-center space-x-3 space-x-reverse mb-6">
               <div className="p-2 rounded-lg bg-[#EDE7FF] text-[#8B5FD6]">
@@ -244,7 +257,13 @@ const StockLevelsTab = ({ data, loading }) => {
                   {stockLevels.stock_summary["Out of Stock"] || 0} منتج نفد
                   مخزونه ويحتاج إعادة طلب فورية
                 </p>
-                <button className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors">
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate("/dashboard/purchases-management/purchase-orders")
+                  }
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors"
+                >
                   عرض قائمة إعادة الطلب
                 </button>
               </div>
@@ -256,7 +275,13 @@ const StockLevelsTab = ({ data, loading }) => {
                   {stockLevels.stock_summary["Low Stock"] || 0} منتج لديه مخزون
                   منخفض ويحتاج مراقبة
                 </p>
-                <button className="bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-700 transition-colors">
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate("/dashboard/inventory-management/inventory")
+                  }
+                  className="bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-700 transition-colors"
+                >
                   جدولة إعادة الطلب
                 </button>
               </div>

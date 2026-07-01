@@ -68,7 +68,7 @@ const OverviewTab = ({ data, loading }) => {
       {/* New Products Last 30 Days */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <div className="flex items-center space-x-3 space-x-reverse mb-4">
-          <div className="p-2 rounded-lg bg-indigo-100 text-[#8B5FD6]">
+          <div className="p-2 rounded-lg bg-[#EDE7FF] text-[#8B5FD6]">
             <CalendarDaysIcon className="w-5 h-5" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900">منتجات جديدة (آخر 30 يوم)</h3>
@@ -102,7 +102,7 @@ const OverviewTab = ({ data, loading }) => {
       {/* Product Statistics Summary */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <div className="flex items-center space-x-3 space-x-reverse mb-4">
-          <div className="p-2 rounded-lg bg-teal-100 text-[#8B5FD6]">
+          <div className="p-2 rounded-lg bg-[#EDE7FF] text-[#8B5FD6]">
             <ChartBarIcon className="w-5 h-5" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900">إحصائيات سريعة</h3>

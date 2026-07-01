@@ -53,7 +53,7 @@ export default function ClientOrdersModal({ client, open, onClose }) {
       {error && <div className="text-red-600 font-semibold">{error}</div>}
       {!loading && !error && (
         <>
-          <div className="p-2 rounded-md bg-indigo-50 text-[#7A52C2] text-xs font-bold flex justify-between"><span>عدد:</span><span>{filtered.length}</span><span>الإجمالي:</span><span>{total.toFixed(2)}</span></div>
+          <div className="p-2 rounded-md bg-[#f5f3ff] text-[#7A52C2] text-xs font-bold flex justify-between"><span>عدد:</span><span>{filtered.length}</span><span>الإجمالي:</span><span>{total.toFixed(2)}</span></div>
           {filtered.length===0 ? <Empty /> : (
             <div className="overflow-x-auto border rounded-lg">
               <table className="min-w-full text-[11px]">

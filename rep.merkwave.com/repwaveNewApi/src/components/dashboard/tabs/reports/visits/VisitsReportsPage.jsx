@@ -55,14 +55,14 @@ const VisitsReportsPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const tabs = [
-    { key: 'overview', label: 'نظرة عامة', icon: ChartBarIcon },
-    { key: 'details', label: 'تفاصيل الزيارات', icon: DocumentTextIcon },
-    { key: 'areas', label: 'المناطق', icon: MapPinIcon },
-    { key: 'representatives', label: 'المندوبين', icon: UserGroupIcon },
-    { key: 'analytics', label: 'التحليلات', icon: PresentationChartLineIcon },
-    { key: 'performance', label: 'الأداء', icon: TrophyIcon },
-    { key: 'top_clients', label: 'أهم العملاء', icon: CalendarDaysIcon },
+  const SUB_TABS = [
+    { key: 'overview', label: 'نظرة عامة', desc: 'ملخص الزيارات', icon: ChartBarIcon, gradientFrom: '#8B5FD6', gradientTo: '#6B45B0', iconBg: '#EDE7FF', iconColor: '#8B5FD6' },
+    { key: 'details', label: 'تفاصيل الزيارات', desc: 'سجل كامل بالزيارات', icon: DocumentTextIcon, gradientFrom: '#10b981', gradientTo: '#059669', iconBg: '#ecfdf5', iconColor: '#10b981' },
+    { key: 'areas', label: 'المناطق', desc: 'توزيع الزيارات جغرافياً', icon: MapPinIcon, gradientFrom: '#f59e0b', gradientTo: '#d97706', iconBg: '#fffbeb', iconColor: '#f59e0b' },
+    { key: 'representatives', label: 'المندوبين', desc: 'أداء كل مندوب', icon: UserGroupIcon, gradientFrom: '#F97366', gradientTo: '#d45a4e', iconBg: '#FFF0EE', iconColor: '#F97366' },
+    { key: 'analytics', label: 'التحليلات', desc: 'تحليل بياني للزيارات', icon: PresentationChartLineIcon, gradientFrom: '#64748b', gradientTo: '#475569', iconBg: '#f1f5f9', iconColor: '#64748b' },
+    { key: 'performance', label: 'الأداء', desc: 'مؤشرات الأداء الرئيسية', icon: TrophyIcon, gradientFrom: '#7A52C2', gradientTo: '#5A3AA0', iconBg: '#f3e8ff', iconColor: '#7A52C2' },
+    { key: 'top_clients', label: 'أهم العملاء', desc: 'أكثر العملاء زيارة', icon: CalendarDaysIcon, gradientFrom: '#ef4444', gradientTo: '#dc2626', iconBg: '#fef2f2', iconColor: '#ef4444' },
   ];
 
   // Sync state with URL param
@@ -206,66 +206,46 @@ const VisitsReportsPage = () => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-50" dir="rtl">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <div className="p-2 rounded-lg bg-green-500 text-white ml-3">
-              <MapPinIcon className="w-3 h-3 md:w-6 md:h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">تقارير الزيارات</h1>
-              <p className="text-gray-600 mt-1">تقارير شاملة لجميع زيارات المندوبين للعملاء</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-4 space-x-reverse">
-            <button
-              onClick={loadVisitsData}
-              disabled={loading}
-              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
-            >
-              {loading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white ml-2"></div>
-              ) : (
-                <ChartBarIcon className="h-4 w-4 ml-2" />
-              )}
-              تحديث البيانات
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="bg-white border-b border-gray-200">
-        <nav className="flex px-6 overflow-x-auto" aria-label="Tabs">
-          {tabs.map((tabItem) => {
-            const Icon = tabItem.icon;
-            const isActive = activeTab === tabItem.key;
+    <div className="h-full flex flex-col" dir="rtl">
+      <div className="flex-1 flex overflow-hidden">
+        <aside className="w-52 flex-shrink-0 bg-white border-l border-gray-100 flex flex-col py-3 px-2 gap-1 overflow-y-auto">
+          {SUB_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
             return (
               <button
-                key={tabItem.key}
-                onClick={() => onChangeTab(tabItem.key)}
-                className={`${
+                key={tab.key}
+                onClick={() => onChangeTab(tab.key)}
+                className={`w-full text-right px-3 py-3 flex items-center gap-3 rounded-xl transition-all duration-200 ${
+                  !isActive ? 'hover:bg-gray-50' : ''
+                }`}
+                style={
                   isActive
-                    ? 'border-green-500 text-green-600 bg-green-50'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
-                } whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm flex items-center space-x-2 space-x-reverse transition-colors`}
+                    ? { background: `linear-gradient(135deg, ${tab.gradientFrom} 0%, ${tab.gradientTo} 100%)`, boxShadow: '0 4px 14px rgba(0,0,0,0.18)' }
+                    : {}
+                }
               >
-                <Icon className="w-4 h-4" />
-                <span>{tabItem.label}</span>
+                <div
+                  className="p-1.5 rounded-lg flex-shrink-0"
+                  style={{ backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : tab.iconBg }}
+                >
+                  <Icon className="h-4 w-4" style={{ color: isActive ? '#fff' : tab.iconColor }} />
+                </div>
+                <div className="min-w-0 text-right">
+                  <p className="text-sm font-semibold leading-tight" style={{ color: isActive ? '#fff' : '#1f2937' }}>
+                    {tab.label}
+                  </p>
+                  <p className="text-xs leading-tight mt-0.5 truncate" style={{ color: isActive ? 'rgba(255,255,255,0.7)' : '#9ca3af' }}>
+                    {tab.desc}
+                  </p>
+                </div>
               </button>
             );
           })}
-        </nav>
-      </div>
-
-      {/* Tab Content */}
-      <div className="flex-1 bg-gray-50 overflow-hidden">
-        <div className="h-full overflow-y-auto">
-          {renderTabContent()}
-        </div>
+        </aside>
+        <main className="flex-1 overflow-y-auto bg-gray-50">
+          <div className="p-5">{renderTabContent()}</div>
+        </main>
       </div>
     </div>
   );

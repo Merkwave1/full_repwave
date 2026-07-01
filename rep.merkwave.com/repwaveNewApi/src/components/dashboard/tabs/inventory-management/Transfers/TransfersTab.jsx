@@ -31,7 +31,7 @@ import {
   updateTransferStatus,
   getTransferDetails,
 } from "../../../../../apis/transfers";
-import { getAllTransferRequests } from "../../../../../apis/transfer_requests";
+import { getAllTransferRequests, updateTransferRequestStatus } from "../../../../../apis/transfer_requests";
 // Use the centralized getApp* functions from auth for supporting data
 import {
   getAppWarehouses,
@@ -132,7 +132,7 @@ export default function TransfersTab() {
           : transfersResp?.data || [];
         setTransfers(extractedTransfers);
         setServerPagination(transfersResp?.pagination || null);
-        setRequests(requestsData || []);
+        setRequests(Array.isArray(requestsData) ? requestsData : []);
         setWarehouses(Array.isArray(warehousesData) ? warehousesData : []);
         setAllInventoryItems(Array.isArray(inventoryData) ? inventoryData : []);
         setProducts(Array.isArray(productsData) ? productsData : []);
@@ -432,9 +432,25 @@ export default function TransfersTab() {
   };
 
   // Request actions
-  const handleRejectRequest = async () => {
-    // Per user request: Do not call request status APIs. Just close modal.
-    closeRequestDetailsModal();
+  const handleRejectRequest = async (requestId, adminNote) => {
+    if (!requestId) return;
+    setLoading(true);
+    try {
+      await updateTransferRequestStatus(requestId, "Rejected", adminNote);
+      setGlobalMessage({
+        type: "success",
+        message: "تم رفض الطلب.",
+      });
+      closeRequestDetailsModal();
+      await loadAllTransferData(true);
+    } catch (e) {
+      setGlobalMessage({
+        type: "error",
+        message: e.message || "فشل في رفض الطلب.",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleApproveAllocateRequest = async (
@@ -476,6 +492,7 @@ export default function TransfersTab() {
         items,
       };
       await addTransfer(payload);
+      await updateTransferRequestStatus(requestId, "Approved", adminNote);
       setGlobalMessage({
         type: "success",
         message: "تم إنشاء التحويل من الطلب بنجاح.",

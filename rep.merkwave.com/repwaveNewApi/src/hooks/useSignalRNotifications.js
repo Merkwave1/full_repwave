@@ -32,6 +32,11 @@ export function useSignalRNotifications(onNotification, enabled = true) {
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(HUB_URL, {
         accessTokenFactory: () => getToken() ?? '',
+        transport:
+          signalR.HttpTransportType.WebSockets |
+          signalR.HttpTransportType.ServerSentEvents |
+          signalR.HttpTransportType.LongPolling,
+        skipNegotiation: false,
       })
       .withAutomaticReconnect(RECONNECT_DELAYS)
       .configureLogging(signalR.LogLevel.None)

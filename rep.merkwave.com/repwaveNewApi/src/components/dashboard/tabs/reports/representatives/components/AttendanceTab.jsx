@@ -419,7 +419,7 @@ export default function AttendanceTab({ representatives = [] }) {
       sortable: true,
       render: (row) => (
         <div className="flex items-center">
-          <UserIcon className="h-4 w-4 text-blue-500 ml-2" />
+          <UserIcon className="h-4 w-4 text-[#8B5FD6] ml-2" />
           <span>{row.users_name || "-"}</span>
         </div>
       ),

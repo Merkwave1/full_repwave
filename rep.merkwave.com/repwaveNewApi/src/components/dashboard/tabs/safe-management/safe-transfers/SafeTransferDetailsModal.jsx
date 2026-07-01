@@ -1,8 +1,6 @@
 ﻿// src/components/dashboard/tabs/safe-management/safe-transfers/SafeTransferDetailsModal.jsx
 import React, { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
 import {
-  XMarkIcon,
   ArrowsRightLeftIcon,
   CalendarIcon,
   UserIcon,
@@ -11,6 +9,7 @@ import {
   XCircleIcon,
   ClockIcon,
 } from "@heroicons/react/24/outline";
+import AppModalShell, { modalPrimaryBtnClass, modalSecondaryBtnClass } from "../../../../common/AppModalShell.jsx";
 import { getSafeTransferDetails } from "../../../../../apis/safe_transfers";
 import { updateTransactionStatus } from "../../../../../apis/safe_transactions";
 import Loader from "../../../../common/Loader/Loader";
@@ -139,57 +138,73 @@ const SafeTransferDetailsModal = ({
 
   const formatDate = (dateString) => formatLocalDateTime(dateString);
 
-  const modal = (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-[9999] p-3 sm:p-6 overflow-y-auto"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Premium Header */}
-        <div className="rounded-t-2xl px-4 py-4 sm:px-6" style={{ background: "linear-gradient(135deg, #8B5FD6 0%, #F97366 100%)" }}>
-          <div className="flex items-start justify-between gap-2">
-            {/* Title + badge stacked — badge never overlaps close btn */}
-            <div className="flex flex-col gap-1.5 min-w-0">
-              <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                <ArrowsRightLeftIcon className="h-5 w-5 text-white shrink-0" />
-                تفاصيل التحويل
-              </h3>
-              {transfer && (
-                <span
-                  className={`self-start inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusInfo.className}`}
-                >
-                  {StatusIcon ? <StatusIcon className="h-3.5 w-3.5" /> : null}
-                  <span>{statusInfo.label}</span>
-                </span>
-              )}
+  return (
+    <AppModalShell
+      open
+      onClose={onClose}
+      title="تفاصيل التحويل"
+      subtitle={transfer ? `#${transfer.safe_transactions_id}` : undefined}
+      icon={ArrowsRightLeftIcon}
+      size="lg"
+      gradient="brand"
+      zIndex="z-[9999]"
+      portal
+      footer={
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2">
+          {canTakeAction ? (
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={() => handleDecision("rejected")}
+                disabled={actionLoading}
+                className={`${modalPrimaryBtnClass} bg-red-500 hover:bg-red-600 flex items-center justify-center gap-2 disabled:opacity-60`}
+              >
+                {actionLoading && pendingDecision === "rejected" ? (
+                  <>جاري الرفض...</>
+                ) : (
+                  <>
+                    <XCircleIcon className="h-4 w-4" /> رفض الطلب
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDecision("approved")}
+                disabled={actionLoading}
+                className={`${modalPrimaryBtnClass} bg-green-600 hover:bg-green-700 flex items-center justify-center gap-2 disabled:opacity-60`}
+              >
+                {actionLoading && pendingDecision === "approved" ? (
+                  <>جاري الموافقة...</>
+                ) : (
+                  <>
+                    <CheckCircleIcon className="h-4 w-4" /> الموافقة على التحويل
+                  </>
+                )}
+              </button>
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 hover:bg-white/20 rounded-lg transition-colors shrink-0 mt-0.5"
-              type="button"
-            >
-              <XMarkIcon className="h-5 w-5 text-white" />
-            </button>
-          </div>
+          ) : (
+            <p className="text-sm text-gray-500">
+              {overallStatus === "approved"
+                ? "✓ تمت الموافقة على هذا التحويل."
+                : overallStatus === "rejected"
+                  ? "✗ تم رفض هذا التحويل."
+                  : null}
+            </p>
+          )}
+          <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+            إغلاق
+          </button>
         </div>
-
-        {/* Body */}
-        <div dir="rtl">
+      }
+    >
           {loading ? (
-            <div className="p-6">
-              <Loader />
-            </div>
+            <Loader />
           ) : error ? (
-            <div className="p-4 sm:p-6">
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-                {error}
-              </div>
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+              {error}
             </div>
           ) : transfer ? (
-            <div className="p-3 sm:p-5 space-y-3">
+            <div className="space-y-3">
               {/* Transfer Overview Card */}
               <div className="rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="bg-[#f5f3ff] px-4 py-2 flex items-center gap-2">
@@ -240,7 +255,7 @@ const SafeTransferDetailsModal = ({
                     </div>
                   </div>
                   <div className="flex items-center justify-center sm:justify-end">
-                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl px-5 py-4 text-center">
+                    <div className="bg-gradient-to-br from-[#f5f3ff] to-[#f5f3ff] border border-[#EDE7FF] rounded-xl px-5 py-4 text-center">
                       <p className="text-2xl sm:text-3xl font-bold text-[#8B5FD6]">
                         {formatMoney(transfer.safe_transactions_amount)}
                       </p>
@@ -404,73 +419,10 @@ const SafeTransferDetailsModal = ({
               )}
             </div>
           ) : (
-            <div className="p-6 text-center text-sm text-gray-500">
-              لا توجد بيانات للعرض
-            </div>
+            <div className="text-center text-sm text-gray-500">لا توجد بيانات للعرض</div>
           )}
-
-          {/* Footer */}
-          <div className="border-t border-gray-100 px-3 sm:px-5 py-3 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 bg-gray-50 rounded-b-2xl">
-            {canTakeAction ? (
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleDecision("rejected")}
-                  disabled={actionLoading}
-                  className="inline-flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {actionLoading && pendingDecision === "rejected" ? (
-                    <>
-                      <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{" "}
-                      جاري الرفض...
-                    </>
-                  ) : (
-                    <>
-                      <XCircleIcon className="h-4 w-4" /> رفض الطلب
-                    </>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDecision("approved")}
-                  disabled={actionLoading}
-                  className="inline-flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {actionLoading && pendingDecision === "approved" ? (
-                    <>
-                      <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{" "}
-                      جاري الموافقة...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircleIcon className="h-4 w-4" /> الموافقة على
-                      التحويل
-                    </>
-                  )}
-                </button>
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500">
-                {overallStatus === "approved"
-                  ? "✓ تمت الموافقة على هذا التحويل."
-                  : overallStatus === "rejected"
-                    ? "✗ تم رفض هذا التحويل."
-                    : null}
-              </p>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-100 transition"
-            >
-              إغلاق
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </AppModalShell>
   );
-  return createPortal(modal, document.body);
 };
 
 export default SafeTransferDetailsModal;

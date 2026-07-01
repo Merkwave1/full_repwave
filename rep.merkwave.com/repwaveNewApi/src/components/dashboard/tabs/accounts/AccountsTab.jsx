@@ -18,6 +18,11 @@ import FilterBar from "../../../common/FilterBar/FilterBar";
 import accountsApi from "../../../../apis/accounts.js";
 import AddAccountForm from "./AddAccountForm";
 import UpdateAccountForm from "./UpdateAccountForm";
+import {
+  safePrimaryBtnClass,
+  safePageIconClass,
+  safePageWrapperClass,
+} from "../safe-management/safeManagementUi";
 
 export default function AccountsTab() {
   const { setGlobalMessage, setChildRefreshHandler } = useOutletContext();
@@ -255,19 +260,17 @@ export default function AccountsTab() {
   if (loading && accounts.length === 0) return <Loader />;
 
   return (
-    <div className="p-6" dir="rtl">
+    <div className={safePageWrapperClass} dir="rtl">
       <CustomPageHeader
         title="إدارة الحسابات"
         subtitle="إضافة وتعديل الحسابات المالية للنظام"
-        icon={<IdentificationIcon className="w-8 h-8 text-[#1A0F35]" />}
+        icon={<IdentificationIcon className={safePageIconClass} />}
+        color="purple"
         statValue={accounts.length}
         statLabel="إجمالي الحسابات"
         actionButton={
-          <button
-            onClick={handleAddAccount}
-            className="bg-[#1A0F35] text-[#C4A8F0] hover:bg-[#374151] px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg font-bold text-lg"
-          >
-            <PlusIcon className="w-5 h-5 ml-2" />
+          <button onClick={handleAddAccount} className={safePrimaryBtnClass}>
+            <PlusIcon className="w-5 h-5" />
             إضافة حساب جديد
           </button>
         }

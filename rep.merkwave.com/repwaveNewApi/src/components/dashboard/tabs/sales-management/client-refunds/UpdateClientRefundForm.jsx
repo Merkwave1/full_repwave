@@ -120,7 +120,7 @@ const UpdateClientRefundForm = ({
         className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-2 sm:mx-4 max-h-[95vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-gradient-to-r from-indigo-100 to-blue-100 px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-300 shrink-0">
+        <div className="bg-gradient-to-r from-[#EDE7FF] to-[#EDE7FF] px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-300 shrink-0">
           <div className="flex items-center justify-between">
             <h3 className="text-base sm:text-xl font-bold text-gray-800 flex items-center gap-2 truncate">
               <PencilSquareIcon className="h-6 w-6 text-[#8B5FD6]" />

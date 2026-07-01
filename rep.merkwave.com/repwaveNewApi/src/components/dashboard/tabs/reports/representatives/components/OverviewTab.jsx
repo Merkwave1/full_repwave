@@ -97,14 +97,14 @@ const OverviewTab = ({ data, loading, error }) => {
         border: 'border-purple-200'
       },
       indigo: {
-        bg: 'bg-indigo-100',
+        bg: 'bg-[#EDE7FF]',
         icon: 'text-[#8B5FD6]',
-        border: 'border-indigo-200'
+        border: 'border-[#C4A8F0]/50'
       },
       teal: {
-        bg: 'bg-teal-100',
+        bg: 'bg-[#EDE7FF]',
         icon: 'text-[#8B5FD6]',
-        border: 'border-teal-200'
+        border: 'border-[#C4A8F0]/50'
       },
       orange: {
         bg: 'bg-orange-100',

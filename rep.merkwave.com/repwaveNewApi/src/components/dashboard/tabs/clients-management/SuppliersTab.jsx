@@ -322,7 +322,7 @@ export default function SuppliersTab() {
             {/* Suppliers Table */}
             {!loading && !error && sortedSuppliers.length === 0 && (
               <div className="bg-white rounded-xl shadow border border-gray-200 p-12 text-center animate-fadeIn">
-                <div className="text-4xl mb-4 text-blue-300">🚚</div>
+                <div className="text-4xl mb-4 text-[#C4A8F0]">🚚</div>
                 <p className="text-gray-700 text-lg font-semibold">
                   لا توجد موردين لعرضهم
                 </p>
@@ -490,7 +490,7 @@ export default function SuppliersTab() {
                             setShowAccountStatement(true);
                           }}
                           className="px-2.5 py-1.5 rounded-full text-xs font-semibold
-                   bg-indigo-100 text-[#7A52C2] border border-indigo-200
+                   bg-[#EDE7FF] text-[#7A52C2] border border-[#C4A8F0]/50
                    hover:bg-[#8B5FD6] hover:text-white hover:border-[#8B5FD6]
                    hover:shadow-[0_0_14px_rgba(99,102,241,0.45)]
                    transition-all duration-200"
@@ -549,16 +549,14 @@ export default function SuppliersTab() {
       {renderContent()}
       {/* Add supplier modal overlay */}
       {currentView === "add" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-black/40 backdrop-blur-sm p-4">
           <AddSupplierForm
             onAdd={handleAdd}
             onCancel={() => setCurrentView("list")}
           />
-        </div>
       )}
       {/* Edit supplier modal overlay */}
       {currentView === "edit" && selectedSupplier && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-black/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-[#1A0F35]/40 backdrop-blur-md p-4">
           <UpdateSupplierForm
             supplier={selectedSupplier}
             onUpdate={handleUpdate}

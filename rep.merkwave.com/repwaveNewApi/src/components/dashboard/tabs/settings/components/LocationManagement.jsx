@@ -1,45 +1,26 @@
 ﻿// src/components/dashboard/tabs/settings/components/LocationManagement.jsx
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
-  PlusIcon, PencilIcon, TrashIcon, ArrowPathIcon, 
+  PencilIcon, TrashIcon, 
   MagnifyingGlassIcon, GlobeAltIcon, MapPinIcon,
-  ArrowUpIcon, ArrowDownIcon, CheckIcon, XMarkIcon
+  CheckIcon, XMarkIcon
 } from '@heroicons/react/24/outline';
-import Button from '../../../../common/Button/Button.jsx';
-import TextField from '../../../../common/TextField/TextField.jsx';
 import Loader from '../../../../common/Loader/Loader.jsx';
 import Alert from '../../../../common/Alert/Alert.jsx';
+import { SettingsCard } from '../SettingsFormField.jsx';
+import {
+  settingsInputClass,
+  settingsSelectClass,
+  settingsSearchInputClass,
+  settingsPrimaryBtnClass,
+  settingsSecondaryBtnClass,
+  settingsListItemClass,
+  settingsFieldCardClass,
+  settingsFieldsStackClass,
+  settingsSectionsStackClass,
+} from '../settingsUi.js';
 import { getAllCountries, getAllCountriesWithGovernorates, addCountry, updateCountry, deleteCountry } from '../../../../../apis/countries.js';
 import { getAllGovernorates, addGovernorate, updateGovernorate, deleteGovernorate } from '../../../../../apis/governorates.js';
-
-// Card component
-const Card = ({ title, icon, description, children, refreshing, onRefresh }) => (
-  <div className="bg-white border border-gray-100 rounded-xl shadow-sm flex flex-col overflow-hidden hover:shadow-md transition-shadow duration-200">
-    <div className="px-5 pt-5 flex items-start justify-between gap-3">
-      <div className="flex items-start gap-3">
-        <div className="p-2 rounded-lg bg-[#f5f3ff] text-[#8B5FD6]">
-          {icon}
-        </div>
-        <div>
-          <h3 className="text-sm font-semibold text-gray-800 mb-1">{title}</h3>
-          {description && <p className="text-xs text-gray-500 leading-relaxed">{description}</p>}
-        </div>
-      </div>
-      <button
-        className={`inline-flex items-center text-xs font-medium px-3 py-1.5 rounded-md border ${
-          refreshing ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white hover:bg-gray-50 text-gray-600 border-gray-200'
-        }`}
-        onClick={onRefresh}
-        disabled={refreshing}
-        title="تحديث"
-      >
-        <ArrowPathIcon className={`h-4 w-4 ml-1 ${refreshing ? 'animate-spin' : ''}`} />
-        {refreshing ? 'جاري...' : 'تحديث'}
-      </button>
-    </div>
-    <div className="p-5 pt-3 flex-1 flex flex-col">{children}</div>
-  </div>
-);
 
 // Normalize country/governorate shapes across cache/API responses
 const normalizeCountry = (c) => ({
@@ -226,25 +207,23 @@ function CountriesManager() {
 
   if (loading) {
     return (
-      <Card
+      <SettingsCard
         title="إدارة الدول"
         icon={<GlobeAltIcon className="h-5 w-5" />}
-        description="إضافة وتعديل وترتيب الدول"
-        refreshing={false}
-        onRefresh={() => {}}
+        subtitle="إضافة وتعديل وترتيب الدول"
       >
         <div className="flex justify-center items-center py-8">
           <Loader size="md" />
         </div>
-      </Card>
+      </SettingsCard>
     );
   }
 
   return (
-    <Card
+    <SettingsCard
       title="إدارة الدول"
       icon={<GlobeAltIcon className="h-5 w-5" />}
-      description="إضافة وتعديل وترتيب الدول"
+      subtitle="إضافة وتعديل وترتيب الدول"
       refreshing={refreshing}
       onRefresh={() => fetchCountries(true)}
     >
@@ -252,58 +231,49 @@ function CountriesManager() {
         <Alert type="error" message={error} onClose={() => setError(null)} className="mb-4" />
       )}
 
-      {/* Add New Country */}
-      <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <h4 className="text-xs font-semibold text-gray-700 mb-3">إضافة دولة جديدة</h4>
-        <div className="flex gap-3 items-center">
-          <div className="flex-1">
-            <TextField
-              value={newCountry.name_ar}
-              onChange={(e) => setNewCountry({ ...newCountry, name_ar: e.target.value })}
-              placeholder="الاسم بالعربي (مثال: مصر)"
-              className="text-sm"
-            />
-          </div>
-          <div className="flex-1">
-            <TextField
-              value={newCountry.name_en}
-              onChange={(e) => setNewCountry({ ...newCountry, name_en: e.target.value })}
-              placeholder="Name in English (e.g., Egypt)"
-              className="text-sm"
-            />
-          </div>
-          <div className="w-24">
-            <TextField
-              type="number"
-              value={newCountry.sort_order}
-              onChange={(e) => setNewCountry({ ...newCountry, sort_order: e.target.value })}
-              placeholder="الترتيب"
-              className="text-sm"
-            />
-          </div>
-          <div>
-            <Button
-              onClick={handleAdd}
-              disabled={saving || !newCountry.name_ar.trim() || !newCountry.name_en.trim()}
-              className="text-sm whitespace-nowrap"
-              variant="primary"
-            >
-              {saving ? 'جاري الإضافة...' : 'إضافة'}
-            </Button>
-          </div>
+      <div className={`mb-4 p-4 ${settingsFieldCardClass}`}>
+        <h4 className="text-xs font-semibold text-[#2D1B69] mb-3">إضافة دولة جديدة</h4>
+        <div className={settingsFieldsStackClass}>
+          <input
+            className={settingsInputClass}
+            value={newCountry.name_ar}
+            onChange={(e) => setNewCountry({ ...newCountry, name_ar: e.target.value })}
+            placeholder="الاسم بالعربي (مثال: مصر)"
+          />
+          <input
+            className={settingsInputClass}
+            value={newCountry.name_en}
+            onChange={(e) => setNewCountry({ ...newCountry, name_en: e.target.value })}
+            placeholder="Name in English (e.g., Egypt)"
+            dir="ltr"
+          />
+          <input
+            type="number"
+            className={settingsInputClass}
+            value={newCountry.sort_order}
+            onChange={(e) => setNewCountry({ ...newCountry, sort_order: e.target.value })}
+            placeholder="الترتيب"
+          />
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={saving || !newCountry.name_ar.trim() || !newCountry.name_en.trim()}
+            className={`${settingsPrimaryBtnClass} whitespace-nowrap justify-center`}
+          >
+            {saving ? 'جاري الإضافة...' : 'إضافة'}
+          </button>
         </div>
       </div>
 
-      {/* Search */}
       <div className="mb-4">
         <div className="relative">
-          <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8B5FD6]/50" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="بحث في الدول..."
-            className="w-full pr-10 pl-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8B5FD6]"
+            className={settingsSearchInputClass}
           />
         </div>
       </div>
@@ -314,46 +284,46 @@ function CountriesManager() {
           <p className="text-center text-gray-500 text-sm py-8">لا توجد دول</p>
         ) : (
           filteredCountries.map((country) => (
-            <div
-              key={country.id}
-              className="p-3 bg-white border border-gray-200 rounded-lg hover:border-blue-300 transition-colors"
-            >
+            <div key={country.id} className={settingsListItemClass}>
               {editingId === country.id ? (
                 <div className="space-y-2">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <TextField
+                  <div className={settingsFieldsStackClass}>
+                    <input
+                      className={settingsInputClass}
                       value={editingData.name_ar}
                       onChange={(e) => setEditingData({ ...editingData, name_ar: e.target.value })}
                       placeholder="الاسم بالعربي"
-                      className="text-sm"
                     />
-                    <TextField
+                    <input
+                      className={settingsInputClass}
                       value={editingData.name_en}
                       onChange={(e) => setEditingData({ ...editingData, name_en: e.target.value })}
                       placeholder="Name in English"
-                      className="text-sm"
+                      dir="ltr"
                     />
-                    <TextField
+                    <input
                       type="number"
+                      className={settingsInputClass}
                       value={editingData.sort_order}
                       onChange={(e) => setEditingData({ ...editingData, sort_order: e.target.value })}
                       placeholder="الترتيب"
-                      className="text-sm"
                     />
                   </div>
                   <div className="flex gap-2">
                     <button
+                      type="button"
                       onClick={handleUpdate}
                       disabled={saving}
-                      className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-md disabled:opacity-50"
+                      className={`inline-flex items-center px-3 py-1.5 text-xs ${settingsPrimaryBtnClass}`}
                     >
                       <CheckIcon className="h-4 w-4 ml-1" />
                       حفظ
                     </button>
                     <button
+                      type="button"
                       onClick={cancelEdit}
                       disabled={saving}
-                      className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md disabled:opacity-50"
+                      className={`inline-flex items-center px-3 py-1.5 text-xs ${settingsSecondaryBtnClass}`}
                     >
                       <XMarkIcon className="h-4 w-4 ml-1" />
                       إلغاء
@@ -367,7 +337,7 @@ function CountriesManager() {
                       {country.sort_order}
                     </span>
                     <div>
-                      <p className="text-sm font-medium text-gray-800">{country.name_ar}</p>
+                      <p className="text-sm font-medium text-[#2D1B69]">{country.name_ar}</p>
                       <p className="text-xs text-gray-500">
                         {country.name_en} • {country.governorates_count} محافظة
                       </p>
@@ -396,7 +366,7 @@ function CountriesManager() {
           ))
         )}
       </div>
-    </Card>
+    </SettingsCard>
   );
 }
 
@@ -592,25 +562,23 @@ function GovernoratesManager() {
 
   if (loading) {
     return (
-      <Card
+      <SettingsCard
         title="إدارة المحافظات"
         icon={<MapPinIcon className="h-5 w-5" />}
-        description="إضافة وتعديل وترتيب المحافظات حسب الدولة"
-        refreshing={false}
-        onRefresh={() => {}}
+        subtitle="إضافة وتعديل وترتيب المحافظات حسب الدولة"
       >
         <div className="flex justify-center items-center py-8">
           <Loader size="md" />
         </div>
-      </Card>
+      </SettingsCard>
     );
   }
 
   return (
-    <Card
+    <SettingsCard
       title="إدارة المحافظات"
       icon={<MapPinIcon className="h-5 w-5" />}
-      description="إضافة وتعديل وترتيب المحافظات حسب الدولة"
+      subtitle="إضافة وتعديل وترتيب المحافظات حسب الدولة"
       refreshing={refreshing}
       onRefresh={() => fetchData(true)}
     >
@@ -618,80 +586,65 @@ function GovernoratesManager() {
         <Alert type="error" message={error} onClose={() => setError(null)} className="mb-4" />
       )}
 
-      {/* Add New Governorate */}
-      <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <h4 className="text-xs font-semibold text-gray-700 mb-3">إضافة محافظة جديدة</h4>
-        <div className="flex gap-3 items-center">
-
-                      <div className="w-48">
-            <select
-              value={newGovernorate.country_id}
-              onChange={(e) => setNewGovernorate({ ...newGovernorate, country_id: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8B5FD6]"
-            >
-              <option value="">اختر الدولة</option>
-              {countries.map(country => (
-                <option key={country.id} value={country.id}>{country.name_ar} - {country.name_en}</option>
-              ))}
-            </select>
-          </div>
-
-          
-          <div className="flex-1">
-            <TextField
-              value={newGovernorate.name_ar}
-              onChange={(e) => setNewGovernorate({ ...newGovernorate, name_ar: e.target.value })}
-              placeholder="الاسم بالعربي"
-              className="text-sm"
-            />
-          </div>
-          <div className="flex-1">
-            <TextField
-              value={newGovernorate.name_en}
-              onChange={(e) => setNewGovernorate({ ...newGovernorate, name_en: e.target.value })}
-              placeholder="Name in English"
-              className="text-sm"
-            />
-          </div>
-
-          <div className="w-24">
-            <TextField
-              type="number"
-              value={newGovernorate.sort_order}
-              onChange={(e) => setNewGovernorate({ ...newGovernorate, sort_order: e.target.value })}
-              placeholder="الترتيب"
-              className="text-sm"
-            />
-          </div>
-          <div>
-            <Button
-              onClick={handleAdd}
-              disabled={saving || !newGovernorate.name_ar.trim() || !newGovernorate.name_en.trim() || !newGovernorate.country_id}
-              className="text-sm whitespace-nowrap"
-              variant="primary"
-            >
-              {saving ? 'جاري الإضافة...' : 'إضافة'}
-            </Button>
-          </div>
+      <div className={`mb-4 p-4 ${settingsFieldCardClass}`}>
+        <h4 className="text-xs font-semibold text-[#2D1B69] mb-3">إضافة محافظة جديدة</h4>
+        <div className={settingsFieldsStackClass}>
+          <select
+            value={newGovernorate.country_id}
+            onChange={(e) => setNewGovernorate({ ...newGovernorate, country_id: e.target.value })}
+            className={settingsSelectClass}
+          >
+            <option value="">اختر الدولة</option>
+            {countries.map(country => (
+              <option key={country.id} value={country.id}>{country.name_ar} - {country.name_en}</option>
+            ))}
+          </select>
+          <input
+            className={settingsInputClass}
+            value={newGovernorate.name_ar}
+            onChange={(e) => setNewGovernorate({ ...newGovernorate, name_ar: e.target.value })}
+            placeholder="الاسم بالعربي"
+          />
+          <input
+            className={settingsInputClass}
+            value={newGovernorate.name_en}
+            onChange={(e) => setNewGovernorate({ ...newGovernorate, name_en: e.target.value })}
+            placeholder="Name in English"
+            dir="ltr"
+          />
+          <input
+            type="number"
+            className={settingsInputClass}
+            value={newGovernorate.sort_order}
+            onChange={(e) => setNewGovernorate({ ...newGovernorate, sort_order: e.target.value })}
+            placeholder="الترتيب"
+          />
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={saving || !newGovernorate.name_ar.trim() || !newGovernorate.name_en.trim() || !newGovernorate.country_id}
+            className={`${settingsPrimaryBtnClass} whitespace-nowrap justify-center`}
+          >
+            {saving ? 'جاري الإضافة...' : 'إضافة'}
+          </button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+      <div className={`${settingsFieldsStackClass} mb-4`}>
         <div className="relative">
-          <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8B5FD6]/50" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="بحث في المحافظات..."
-            className="w-full pr-10 pl-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8B5FD6]"
+            className={settingsSearchInputClass}
           />
         </div>
         <select
           value={filterCountryId}
           onChange={(e) => setFilterCountryId(e.target.value)}
-          className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8B5FD6]"
+          className={settingsSelectClass}
         >
           <option value="">كل الدول</option>
           {countries.map(country => (
@@ -700,62 +653,61 @@ function GovernoratesManager() {
         </select>
       </div>
 
-      {/* Governorates List */}
       <div className="space-y-2 max-h-96 overflow-y-auto">
         {filteredGovernorates.length === 0 ? (
           <p className="text-center text-gray-500 text-sm py-8">لا توجد محافظات</p>
         ) : (
           filteredGovernorates.map((gov) => (
-            <div
-              key={gov.id}
-              className="p-3 bg-white border border-gray-200 rounded-lg hover:border-blue-300 transition-colors"
-            >
+            <div key={gov.id} className={settingsListItemClass}>
               {editingId === gov.id ? (
                 <div className="space-y-2">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                    <TextField
+                  <div className={settingsFieldsStackClass}>
+                    <input
+                      className={settingsInputClass}
                       value={editingData.name_ar}
                       onChange={(e) => setEditingData({ ...editingData, name_ar: e.target.value })}
                       placeholder="الاسم بالعربي"
-                      className="text-sm"
                     />
-                    <TextField
+                    <input
+                      className={settingsInputClass}
                       value={editingData.name_en}
                       onChange={(e) => setEditingData({ ...editingData, name_en: e.target.value })}
                       placeholder="Name in English"
-                      className="text-sm"
+                      dir="ltr"
                     />
                     <select
                       value={editingData.country_id}
                       onChange={(e) => setEditingData({ ...editingData, country_id: e.target.value })}
-                      className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8B5FD6]"
+                      className={settingsSelectClass}
                     >
                       <option value="">اختر الدولة</option>
                       {countries.map(country => (
                         <option key={country.id} value={country.id}>{country.name_ar} - {country.name_en}</option>
                       ))}
                     </select>
-                    <TextField
+                    <input
                       type="number"
+                      className={settingsInputClass}
                       value={editingData.sort_order}
                       onChange={(e) => setEditingData({ ...editingData, sort_order: e.target.value })}
                       placeholder="الترتيب"
-                      className="text-sm"
                     />
                   </div>
                   <div className="flex gap-2">
                     <button
+                      type="button"
                       onClick={handleUpdate}
                       disabled={saving}
-                      className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-md disabled:opacity-50"
+                      className={`inline-flex items-center px-3 py-1.5 text-xs ${settingsPrimaryBtnClass}`}
                     >
                       <CheckIcon className="h-4 w-4 ml-1" />
                       حفظ
                     </button>
                     <button
+                      type="button"
                       onClick={cancelEdit}
                       disabled={saving}
-                      className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md disabled:opacity-50"
+                      className={`inline-flex items-center px-3 py-1.5 text-xs ${settingsSecondaryBtnClass}`}
                     >
                       <XMarkIcon className="h-4 w-4 ml-1" />
                       إلغاء
@@ -765,11 +717,11 @@ function GovernoratesManager() {
               ) : (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-600 text-xs font-semibold">
+                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#EDE7FF] text-[#8B5FD6] text-xs font-semibold">
                       {gov.sort_order}
                     </span>
                     <div>
-                      <p className="text-sm font-medium text-gray-800">{gov.name_ar}</p>
+                      <p className="text-sm font-medium text-[#2D1B69]">{gov.name_ar}</p>
                       <p className="text-xs text-gray-500">
                         {gov.name_en} • {gov.country_name_ar} - {gov.country_name_en}
                       </p>
@@ -777,15 +729,17 @@ function GovernoratesManager() {
                   </div>
                   <div className="flex gap-2">
                     <button
+                      type="button"
                       onClick={() => startEdit(gov)}
-                      className="p-1.5 text-[#8B5FD6] hover:bg-[#f5f3ff] rounded-md transition-colors"
+                      className="p-1.5 text-[#8B5FD6] hover:bg-[#F8F5FF] rounded-xl transition-colors"
                       title="تعديل"
                     >
                       <PencilIcon className="h-4 w-4" />
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleDelete(gov.id)}
-                      className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                      className="p-1.5 text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                       title="حذف"
                     >
                       <TrashIcon className="h-4 w-4" />
@@ -797,18 +751,16 @@ function GovernoratesManager() {
           ))
         )}
       </div>
-    </Card>
+    </SettingsCard>
   );
 }
 
 // Main Component
-export default function LocationManagement() {
+export default function LocationManagement({ embedded = false }) {
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <CountriesManager />
-        <GovernoratesManager />
-      </div>
+    <div className={settingsSectionsStackClass}>
+      <CountriesManager />
+      <GovernoratesManager />
     </div>
   );
 }

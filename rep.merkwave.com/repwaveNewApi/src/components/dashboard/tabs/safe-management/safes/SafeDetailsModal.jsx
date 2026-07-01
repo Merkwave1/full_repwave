@@ -1,9 +1,6 @@
 ﻿// src/components/dashboard/tabs/safe-management/safes/SafeDetailsModal.jsx
-import React, { useState } from "react";
-import { createPortal } from "react-dom";
+import React, { useState, useEffect } from "react";
 import {
-  XMarkIcon,
-  EyeIcon,
   ArchiveBoxIcon,
   BanknotesIcon,
   UserIcon,
@@ -12,6 +9,7 @@ import {
   PlusIcon,
   CreditCardIcon,
 } from "@heroicons/react/24/outline";
+import AppModalShell, { modalPrimaryBtnClass, modalSecondaryBtnClass } from "../../../../common/AppModalShell.jsx";
 import Loader from "../../../../common/Loader/Loader";
 import { getSafeDetails } from "../../../../../apis/safes";
 import {
@@ -43,6 +41,12 @@ const SafeDetailsModal = ({ safeId, onClose }) => {
     }
   };
 
+  useEffect(() => {
+    if (safeId) {
+      fetchSafeDetails();
+    }
+  }, [safeId]);
+
   const getStatusBadge = (isActive) => {
     return (
       <span
@@ -58,49 +62,24 @@ const SafeDetailsModal = ({ safeId, onClose }) => {
   };
 
   if (loading) {
-    return createPortal(
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-[9999] p-3 sm:p-6 overflow-y-auto">
-        <div className="bg-white rounded-xl shadow-xl p-4 sm:p-6 my-auto">
-          <Loader />
-          <p className="text-center mt-4 text-gray-600">
-            جاري تحميل تفاصيل الخزنة...
-          </p>
-        </div>
-      </div>,
-      document.body,
+    return (
+      <AppModalShell open onClose={onClose} title="تفاصيل الخزنة" icon={ArchiveBoxIcon} size="md" gradient="brand" zIndex="z-[9999]" portal>
+        <Loader />
+        <p className="text-center mt-4 text-gray-600">جاري تحميل تفاصيل الخزنة...</p>
+      </AppModalShell>
     );
   }
 
   if (error) {
-    return createPortal(
-      <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-[9999] p-3 sm:p-6 overflow-y-auto"
-        onClick={onClose}
-      >
-        <div
-          className="bg-white rounded-xl shadow-xl max-w-md w-full mx-2 sm:mx-4 my-auto"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="p-6">
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                <XMarkIcon className="h-6 w-6 text-red-600" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                خطأ في تحميل البيانات
-              </h3>
-              <p className="text-sm text-gray-500 mb-4">{error}</p>
-              <button
-                onClick={onClose}
-                className="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-              >
-                إغلاق
-              </button>
-            </div>
-          </div>
+    return (
+      <AppModalShell open onClose={onClose} title="خطأ في تحميل البيانات" icon={ArchiveBoxIcon} size="sm" gradient="danger" zIndex="z-[9999]" portal>
+        <div className="text-center">
+          <p className="text-sm text-gray-500 mb-4">{error}</p>
+          <button type="button" onClick={onClose} className={`${modalPrimaryBtnClass} w-full bg-red-600 hover:bg-red-700`}>
+            إغلاق
+          </button>
         </div>
-      </div>,
-      document.body,
+      </AppModalShell>
     );
   }
 
@@ -108,39 +87,37 @@ const SafeDetailsModal = ({ safeId, onClose }) => {
     return null;
   }
 
-  const modal = (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-[9999] p-3 sm:p-6 overflow-y-auto"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden mx-2 sm:mx-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-[#f5f3ff] to-[#E8DFFF] px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-300">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base sm:text-xl font-bold text-gray-800 flex items-center gap-2 truncate">
-              <EyeIcon className="h-6 w-6 text-[#8B5FD6]" />
-              تفاصيل خزنة: {safe.safes_name}
-            </h3>
+  return (
+    <>
+      <AppModalShell
+        open
+        onClose={onClose}
+        title="تفاصيل الخزنة"
+        subtitle={safe.safes_name}
+        icon={ArchiveBoxIcon}
+        size="3xl"
+        gradient="brand"
+        zIndex="z-[9999]"
+        portal
+        footer={
+          <div className="flex flex-col-reverse sm:flex-row gap-3 justify-between">
             <button
-              onClick={onClose}
-              className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-all"
+              type="button"
+              onClick={() => setShowAddTransaction(true)}
+              className={`${modalPrimaryBtnClass} bg-green-600 hover:bg-green-700 flex items-center justify-center gap-2`}
             >
-              <XMarkIcon className="h-5 w-5 text-gray-600" />
+              <PlusIcon className="h-4 w-4" />
+              إضافة معاملة
+            </button>
+            <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+              إغلاق
             </button>
           </div>
-        </div>
-
-        {/* Content */}
-        <div
-          className="overflow-y-auto max-h-[calc(95vh-110px)] sm:max-h-[calc(90vh-140px)]"
-          dir="rtl"
-        >
-          <div className="p-3 sm:p-6 space-y-6">
+        }
+      >
+          <div className="space-y-6">
             {/* Safe Status & Balance */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-[#C4A8F0]">
+            <div className="bg-gradient-to-r from-[#f5f3ff] to-[#f5f3ff] p-6 rounded-lg border border-[#C4A8F0]">
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-4">
                   <div className="bg-[#8B5FD6] p-3 rounded-full">
@@ -346,7 +323,7 @@ const SafeDetailsModal = ({ safeId, onClose }) => {
 
             {/* Recent Activity Summary */}
             {safe.recent_transactions_count !== undefined && (
-              <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-200">
+              <div className="bg-[#f5f3ff] p-6 rounded-lg border border-[#C4A8F0]/50">
                 <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                   <ClipboardDocumentListIcon className="h-5 w-5 text-[#8B5FD6]" />
                   ملخص النشاط الحديث
@@ -382,42 +359,20 @@ const SafeDetailsModal = ({ safeId, onClose }) => {
               </div>
             )}
           </div>
-        </div>
+      </AppModalShell>
 
-        {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-          <div className="flex flex-col-reverse sm:flex-row gap-3 justify-between">
-            <button
-              onClick={() => setShowAddTransaction(true)}
-              className="w-full sm:w-auto px-4 py-3 sm:px-6 sm:py-2.5 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors flex items-center justify-center gap-2 text-base sm:text-sm"
-            >
-              <PlusIcon className="h-4 w-4" />
-              إضافة معاملة
-            </button>
-            <button
-              onClick={onClose}
-              className="w-full sm:w-auto px-4 py-3 sm:px-6 sm:py-2.5 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 text-base sm:text-sm"
-            >
-              إغلاق
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Add Transaction Modal */}
       {showAddTransaction && (
         <AddSafeTransactionForm
           safeId={safeId}
           onClose={() => setShowAddTransaction(false)}
           onSubmit={() => {
             setShowAddTransaction(false);
-            fetchSafeDetails(); // Refresh safe details
+            fetchSafeDetails();
           }}
         />
       )}
-    </div>
+    </>
   );
-  return createPortal(modal, document.body);
 };
 
 export default SafeDetailsModal;

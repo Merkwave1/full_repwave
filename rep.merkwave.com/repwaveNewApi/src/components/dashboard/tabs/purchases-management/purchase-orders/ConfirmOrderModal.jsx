@@ -1,31 +1,31 @@
 ﻿// src/components/dashboard/tabs/purchases-management/purchase-orders/ConfirmOrderModal.jsx
 import React from 'react';
-import Modal from '../../../../common/Modal/Modal'; // Assuming you have a generic Modal component
-import Button from '../../../../common/Button/Button'; // Assuming you have a generic Button component
+import { ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
+import AppModalShell, { modalPrimaryBtnClass, modalSecondaryBtnClass } from '../../../../common/AppModalShell.jsx';
 
-function ConfirmOrderModal({ isOpen, onClose, onConfirm, message }) {
+function ConfirmOrderModal({ isOpen, onClose, onConfirm, message, title = "تأكيد أمر الشراء" }) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="تأكيد أمر الشراء">
-      <div dir="rtl">
-  <p className="mb-4 text-sm text-gray-700 whitespace-pre-line">{message}</p>
-        <div className="flex justify-end space-x-2 rtl:space-x-reverse">
-          <Button
-            type="button"
-            onClick={onClose}
-            className="bg-gray-500 hover:bg-gray-600"
-          >
+    <AppModalShell
+      open={isOpen}
+      onClose={onClose}
+      portal
+      zIndex="z-[10000]"
+      title={title}
+      icon={ClipboardDocumentCheckIcon}
+      size="md"
+      footer={
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
             إلغاء
-          </Button>
-          <Button
-            type="button"
-            onClick={onConfirm}
-            className="bg-[#8B5FD6] hover:bg-[#7A52C2]"
-          >
+          </button>
+          <button type="button" onClick={onConfirm} className={modalPrimaryBtnClass}>
             تأكيد
-          </Button>
+          </button>
         </div>
-      </div>
-    </Modal>
+      }
+    >
+      <p className="text-sm text-gray-700 whitespace-pre-line" dir="rtl">{message}</p>
+    </AppModalShell>
   );
 }
 

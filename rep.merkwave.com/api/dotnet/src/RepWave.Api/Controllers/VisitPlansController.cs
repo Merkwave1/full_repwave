@@ -29,6 +29,10 @@ public class VisitPlansController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> AddClient(int planId, [FromBody] AddVisitPlanClientRequest req)
         => Ok(await mediator.Send(new AddClientToVisitPlanCommand(planId, req)));
 
+    [HttpPut("{planId:int}/clients")]
+    public async Task<IActionResult> SyncClients(int planId, [FromBody] SyncVisitPlanClientsRequest req)
+        => Ok(await mediator.Send(new SyncVisitPlanClientsCommand(planId, req)));
+
     [HttpDelete("{planId:int}/clients/{clientId:int}")]
     public async Task<IActionResult> RemoveClient(int planId, int clientId)
         => Ok(await mediator.Send(new RemoveClientFromVisitPlanCommand(planId, clientId)));

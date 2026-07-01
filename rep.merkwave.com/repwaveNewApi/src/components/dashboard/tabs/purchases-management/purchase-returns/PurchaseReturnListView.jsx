@@ -98,7 +98,7 @@ export default function PurchaseReturnListView({
               {filteredReturns.map((returnItem) => (
                 <tr key={returnItem.purchase_returns_id} className="hover:bg-gray-50 transition-all duration-150">
                   <td className="text-center px-4 py-3 border-r border-gray-200">
-                    <span className="bg-indigo-100 text-[#7A52C2] text-xs px-2 py-1 rounded-full font-semibold">
+                    <span className="bg-[#EDE7FF] text-[#7A52C2] text-xs px-2 py-1 rounded-full font-semibold">
                       #{returnItem.purchase_returns_id}
                     </span>
                   </td>

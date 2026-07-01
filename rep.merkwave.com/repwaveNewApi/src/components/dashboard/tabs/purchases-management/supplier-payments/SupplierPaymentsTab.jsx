@@ -147,7 +147,9 @@ export default function SupplierPaymentsTab() {
       }
       try {
         const fresh = await fetchFn();
-        const arr = Array.isArray(fresh) ? fresh : fresh?.data || [];
+        const arr = Array.isArray(fresh)
+          ? fresh
+          : fresh?.payment_methods || fresh?.data || [];
         if (arr.length > 0) {
           localStorage.setItem(keys[0], JSON.stringify(arr));
           setter(arr);

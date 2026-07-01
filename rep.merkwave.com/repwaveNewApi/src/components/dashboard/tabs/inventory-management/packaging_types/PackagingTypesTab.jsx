@@ -20,7 +20,7 @@ import PackagingTypeListView from "./PackagingTypeListView";
 import AddPackagingTypeForm from "./AddPackagingTypeForm";
 import UpdatePackagingTypeForm from "./UpdatePackagingTypeForm";
 import PackagingTypeDetailsModal from "./PackagingTypeDetailsModal";
-import Modal from "../../../../common/Modal/Modal";
+import { unwrapList } from "../../../../../utils/unwrapList";
 
 export default function PackagingTypesTab() {
   const { setGlobalMessage, setChildRefreshHandler } = useOutletContext();
@@ -41,8 +41,8 @@ export default function PackagingTypesTab() {
         getAllPackagingTypes(),
         getAllBaseUnits(), // Assuming this fetches all base units for dropdowns
       ]);
-      setPackagingTypes(typesData);
-      setBaseUnits(unitsData);
+      setPackagingTypes(unwrapList(typesData));
+      setBaseUnits(unwrapList(unitsData));
     } catch (e) {
       setError(e.message || "Error loading packaging types or base units");
       setGlobalMessage({
@@ -186,13 +186,11 @@ export default function PackagingTypesTab() {
       {renderContent()}
       {/* Add packaging type modal overlay */}
       {currentView === "add" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-black/40 backdrop-blur-sm p-4">
           <AddPackagingTypeForm
             onAdd={handleAdd}
             onCancel={() => setCurrentView("list")}
             baseUnits={baseUnits}
           />
-        </div>
       )}
       {/* Edit packaging type modal overlay */}
       {currentView === "edit" && selectedPackagingType && (

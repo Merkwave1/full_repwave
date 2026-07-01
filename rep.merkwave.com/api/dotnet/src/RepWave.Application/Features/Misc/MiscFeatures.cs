@@ -176,14 +176,63 @@ public class GetAllSettingsHandler(IApplicationDbContext db) : IRequestHandler<G
         return ApiResponse<List<SettingDto>>.Success(items);
     }
 }
-public record UpdateSettingCommand(string Key, string? Value) : IRequest<ApiResponse<object>>;
+public record UpdateSettingCommand(string Key, string? Value, string? Description = null, string? Type = null) : IRequest<ApiResponse<object>>;
 public class UpdateSettingHandler(IApplicationDbContext db) : IRequestHandler<UpdateSettingCommand, ApiResponse<object>>
 {
+    private static string InferCategory(string key)
+    {
+        if (key.StartsWith("company_", StringComparison.OrdinalIgnoreCase)) return "company";
+        if (key.Contains("currency", StringComparison.OrdinalIgnoreCase) ||
+            key.Contains("tax", StringComparison.OrdinalIgnoreCase) ||
+            key.Contains("payment", StringComparison.OrdinalIgnoreCase) ||
+            key.Equals("defult_client_credit_limit", StringComparison.OrdinalIgnoreCase))
+            return "financial";
+        if (key.Contains("stock", StringComparison.OrdinalIgnoreCase) ||
+            key.Contains("inventory", StringComparison.OrdinalIgnoreCase) ||
+            key.Contains("reorder", StringComparison.OrdinalIgnoreCase) ||
+            key.Contains("expiry", StringComparison.OrdinalIgnoreCase))
+            return "inventory";
+        return "general";
+    }
+
+    private static string InferType(string key) =>
+        key.Contains("threshold", StringComparison.OrdinalIgnoreCase) ||
+        key.Contains("_limit", StringComparison.OrdinalIgnoreCase) ||
+        key.Equals("decimal_places", StringComparison.OrdinalIgnoreCase)
+            ? "integer"
+            : key.StartsWith("allow_", StringComparison.OrdinalIgnoreCase) ||
+              key.Contains("_enabled", StringComparison.OrdinalIgnoreCase)
+                ? "boolean"
+                : "string";
+
     public async Task<ApiResponse<object>> Handle(UpdateSettingCommand cmd, CancellationToken ct)
     {
         var s = await db.Settings.FirstOrDefaultAsync(x => x.SettingsKey == cmd.Key, ct);
-        if (s is null) return ApiResponse<object>.Failure("Setting not found.");
-        s.SettingsValue = cmd.Value; s.UpdatedAt = DateTime.UtcNow;
+        if (s is null)
+        {
+            s = new Setting
+            {
+                SettingsKey = cmd.Key,
+                SettingsValue = cmd.Value,
+                SettingsDescription = cmd.Description,
+                SettingsCategory = InferCategory(cmd.Key),
+                SettingsType = cmd.Type ?? InferType(cmd.Key),
+                SettingsLabel = cmd.Description ?? cmd.Key,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+            };
+            db.Settings.Add(s);
+        }
+        else
+        {
+            s.SettingsValue = cmd.Value;
+            if (!string.IsNullOrWhiteSpace(cmd.Description))
+                s.SettingsDescription = cmd.Description;
+            if (!string.IsNullOrWhiteSpace(cmd.Type))
+                s.SettingsType = cmd.Type;
+            s.UpdatedAt = DateTime.UtcNow;
+        }
+
         await db.SaveChangesAsync(ct);
         return ApiResponse<object>.Success(null, "Setting updated.");
     }
@@ -199,44 +248,92 @@ public class GetDashboardStatsHandler(IApplicationDbContext db) : IRequestHandle
         var today = now.Date;
         var d7 = today.AddDays(-7);
         var d30 = today.AddDays(-30);
+        var d90 = today.AddDays(-90);
         var currentMonthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var prevMonthStart = currentMonthStart.AddMonths(-1);
 
-        // Sales
-        var salesQ = db.SalesOrders.AsNoTracking()
-            .Where(o => o.SalesOrdersStatus == "Invoiced" || o.SalesOrdersStatus == "Confirmed" || o.SalesOrdersStatus == "invoiced" || o.SalesOrdersStatus == "confirmed");
-        var s30 = await salesQ.Where(o => o.SalesOrdersOrderDate >= d30).ToListAsync(ct);
-        var s7 = s30.Where(o => o.SalesOrdersOrderDate >= d7).ToList();
-        var sToday = s30.Where(o => o.SalesOrdersOrderDate >= today).ToList();
+        static bool IsCountedSale(string? status)
+        {
+            if (string.IsNullOrWhiteSpace(status)) return false;
+            var s = status.Trim();
+            return s.Equals("Invoiced", StringComparison.OrdinalIgnoreCase)
+                || s.Equals("Confirmed", StringComparison.OrdinalIgnoreCase)
+                || s.Equals("Approved", StringComparison.OrdinalIgnoreCase)
+                || s.Equals("Delivered", StringComparison.OrdinalIgnoreCase)
+                || s.Equals("Partially Delivered", StringComparison.OrdinalIgnoreCase);
+        }
 
-        // All sales for monthly comparison
+        // Sales — use 90-day window for period stats (field names kept for frontend compat)
+        var allSales = await db.SalesOrders.AsNoTracking()
+            .Where(o => o.SalesOrdersOrderDate != null)
+            .ToListAsync(ct);
+        var countedSales = allSales.Where(o => IsCountedSale(o.SalesOrdersStatus)).ToList();
+        var s90 = countedSales.Where(o => o.SalesOrdersOrderDate >= d90).ToList();
+        var s7 = s90.Where(o => o.SalesOrdersOrderDate >= d7).ToList();
+        var sToday = s90.Where(o => o.SalesOrdersOrderDate >= today).ToList();
+
         var allSalesOrders = db.SalesOrders.AsNoTracking();
         var currentMonthOrders = await allSalesOrders.Where(o => o.SalesOrdersOrderDate >= currentMonthStart).ToListAsync(ct);
         var prevMonthOrders = await allSalesOrders.Where(o => o.SalesOrdersOrderDate >= prevMonthStart && o.SalesOrdersOrderDate < currentMonthStart).ToListAsync(ct);
 
         // Returns
-        var ret30 = await db.SalesReturns.AsNoTracking().Where(r => r.ReturnsDate >= d30).ToListAsync(ct);
-        var ret7 = ret30.Where(r => r.ReturnsDate >= d7).ToList();
-        var retToday = ret30.Where(r => r.ReturnsDate >= today).ToList();
+        var ret90 = await db.SalesReturns.AsNoTracking().Where(r => r.ReturnsDate >= d90).ToListAsync(ct);
+        var ret7 = ret90.Where(r => r.ReturnsDate >= d7).ToList();
+        var retToday = ret90.Where(r => r.ReturnsDate >= today).ToList();
 
         // Purchases
-        var pur30 = await db.PurchaseOrders.AsNoTracking().Where(p => p.PurchaseOrdersOrderDate >= d30).ToListAsync(ct);
-        var pur7 = pur30.Where(p => p.PurchaseOrdersOrderDate >= d7).ToList();
-        var purToday = pur30.Where(p => p.PurchaseOrdersOrderDate >= today).ToList();
+        var pur90 = await db.PurchaseOrders.AsNoTracking().Where(p => p.PurchaseOrdersOrderDate >= d90).ToListAsync(ct);
+        var pur7 = pur90.Where(p => p.PurchaseOrdersOrderDate >= d7).ToList();
+        var purToday = pur90.Where(p => p.PurchaseOrdersOrderDate >= today).ToList();
 
-        // Financial
-        var fin30 = await db.FinancialTransactions.AsNoTracking().Where(f => f.FinancialTransactionsDate >= d30).ToListAsync(ct);
-        var fin7 = fin30.Where(f => f.FinancialTransactionsDate >= d7).ToList();
-        var income30 = fin30.Where(f => (f.FinancialTransactionsType ?? "").ToLower().Contains("income") || (f.FinancialTransactionsType ?? "").ToLower() == "credit").Sum(f => f.FinancialTransactionsAmount);
-        var expenses30 = fin30.Where(f => (f.FinancialTransactionsType ?? "").ToLower().Contains("expense") || (f.FinancialTransactionsType ?? "").ToLower() == "debit").Sum(f => f.FinancialTransactionsAmount);
-        var income7 = fin7.Where(f => (f.FinancialTransactionsType ?? "").ToLower().Contains("income") || (f.FinancialTransactionsType ?? "").ToLower() == "credit").Sum(f => f.FinancialTransactionsAmount);
-        var expenses7 = fin7.Where(f => (f.FinancialTransactionsType ?? "").ToLower().Contains("expense") || (f.FinancialTransactionsType ?? "").ToLower() == "debit").Sum(f => f.FinancialTransactionsAmount);
+        // Financial — client cash uses types: payment (income), refund (expense)
+        var fin90 = await db.FinancialTransactions.AsNoTracking().Where(f => f.FinancialTransactionsDate >= d90).ToListAsync(ct);
+        var fin7 = fin90.Where(f => f.FinancialTransactionsDate >= d7).ToList();
+        static bool IsFinancialIncome(string? t)
+        {
+            if (string.IsNullOrWhiteSpace(t)) return false;
+            var s = t.Trim();
+            return s.Equals("payment", StringComparison.OrdinalIgnoreCase)
+                || s.Equals("income", StringComparison.OrdinalIgnoreCase)
+                || s.Equals("credit", StringComparison.OrdinalIgnoreCase)
+                || s.Equals("deposit", StringComparison.OrdinalIgnoreCase)
+                || s.Equals("receipt", StringComparison.OrdinalIgnoreCase)
+                || s.Contains("income", StringComparison.OrdinalIgnoreCase)
+                || s.Contains("collection", StringComparison.OrdinalIgnoreCase);
+        }
+        static bool IsFinancialExpense(string? t)
+        {
+            if (string.IsNullOrWhiteSpace(t)) return false;
+            var s = t.Trim();
+            return s.Equals("refund", StringComparison.OrdinalIgnoreCase)
+                || s.Equals("expense", StringComparison.OrdinalIgnoreCase)
+                || s.Equals("debit", StringComparison.OrdinalIgnoreCase)
+                || s.Equals("withdrawal", StringComparison.OrdinalIgnoreCase)
+                || s.Contains("expense", StringComparison.OrdinalIgnoreCase);
+        }
+        var income90 = fin90.Where(f => IsFinancialIncome(f.FinancialTransactionsType)).Sum(f => f.FinancialTransactionsAmount);
+        var expenses90 = fin90.Where(f => IsFinancialExpense(f.FinancialTransactionsType)).Sum(f => f.FinancialTransactionsAmount);
+        var income7 = fin7.Where(f => IsFinancialIncome(f.FinancialTransactionsType)).Sum(f => f.FinancialTransactionsAmount);
+        var expenses7 = fin7.Where(f => IsFinancialExpense(f.FinancialTransactionsType)).Sum(f => f.FinancialTransactionsAmount);
+
+        // Supplier payments count as cash outflows
+        var d90Date = DateOnly.FromDateTime(d90);
+        var d7Date = DateOnly.FromDateTime(d7);
+        expenses90 += await db.SupplierPayments.AsNoTracking()
+            .Where(p => p.PaymentDate >= d90Date)
+            .SumAsync(p => p.Amount, ct);
+        expenses7 += await db.SupplierPayments.AsNoTracking()
+            .Where(p => p.PaymentDate >= d7Date)
+            .SumAsync(p => p.Amount, ct);
 
         // Clients
         var totalActiveClients = await db.Clients.AsNoTracking().CountAsync(c => c.ClientsStatus == "active", ct);
-        var newClients30d = await db.Clients.AsNoTracking().CountAsync(c => c.ClientsCreatedAt >= d30, ct);
+        var newClients90d = await db.Clients.AsNoTracking().CountAsync(c => c.ClientsCreatedAt >= d90, ct);
         var newClients7d = await db.Clients.AsNoTracking().CountAsync(c => c.ClientsCreatedAt >= d7, ct);
         var totalClientsBalance = await db.Clients.AsNoTracking().SumAsync(c => c.ClientsCreditBalance, ct);
+
+        // Suppliers
+        var totalSuppliersBalance = await db.Suppliers.AsNoTracking().SumAsync(s => s.SupplierBalance, ct);
 
         // Recent visits
         var recentVisits = await db.Visits.AsNoTracking()
@@ -255,13 +352,99 @@ public class GetDashboardStatsHandler(IApplicationDbContext db) : IRequestHandle
             })
             .ToListAsync(ct);
 
+        // Top selling products (90d) — filter status in memory (local fn can't be used in EF trees)
+        var salesItems90 = await db.SalesOrderItems.AsNoTracking()
+            .Include(i => i.SalesOrder)
+            .Include(i => i.Variant!).ThenInclude(v => v.Product)
+            .Where(i => i.SalesOrder != null && i.SalesOrder.SalesOrdersOrderDate >= d90)
+            .ToListAsync(ct);
+        var topSelling = salesItems90
+            .Where(i => IsCountedSale(i.SalesOrder!.SalesOrdersStatus))
+            .GroupBy(i => i.SalesOrderItemsVariantId)
+            .Select(g => new
+            {
+                sales_order_items_variant_id = g.Key,
+                variant_name = g.First().Variant?.VariantName ?? "",
+                products_name = g.First().Variant?.Product?.ProductsName ?? "",
+                total_quantity = g.Sum(x => x.SalesOrderItemsQuantity),
+                total_revenue = g.Sum(x => x.SalesOrderItemsTotalPrice),
+                order_count = g.Select(x => x.SalesOrderItemsSalesOrderId).Distinct().Count()
+            })
+            .OrderByDescending(x => x.total_quantity)
+            .Take(10)
+            .ToList();
+
+        // Top returned products (90d)
+        var topReturned = await db.SalesReturnItems.AsNoTracking()
+            .Include(i => i.Return)
+            .Include(i => i.SalesOrderItem!).ThenInclude(soi => soi.Variant!).ThenInclude(v => v.Product)
+            .Where(i => i.Return != null && i.Return.ReturnsDate >= d90 && i.SalesOrderItem != null)
+            .GroupBy(i => i.SalesOrderItem!.SalesOrderItemsVariantId)
+            .Select(g => new
+            {
+                sales_order_items_variant_id = g.Key,
+                variant_name = g.First().SalesOrderItem!.Variant != null ? g.First().SalesOrderItem!.Variant!.VariantName : "",
+                products_name = g.First().SalesOrderItem!.Variant != null && g.First().SalesOrderItem!.Variant!.Product != null
+                    ? g.First().SalesOrderItem!.Variant!.Product!.ProductsName : "",
+                total_returned_quantity = g.Sum(x => x.ReturnItemsQuantity),
+                total_returned_value = g.Sum(x => x.ReturnItemsTotalPrice),
+                return_count = g.Select(x => x.ReturnItemsReturnId).Distinct().Count()
+            })
+            .OrderByDescending(x => x.total_returned_quantity)
+            .Take(10)
+            .ToListAsync(ct);
+
+        // Low stock (<= 20 units)
+        var lowStock = await db.Inventories.AsNoTracking()
+            .Include(i => i.Variant!).ThenInclude(v => v.Product)
+            .Include(i => i.Warehouse)
+            .Where(i => i.InventoryQuantity > 0 && i.InventoryQuantity <= 20)
+            .OrderBy(i => i.InventoryQuantity)
+            .Take(15)
+            .Select(i => new
+            {
+                variant_id = i.VariantId,
+                variant_name = i.Variant != null ? i.Variant!.VariantName : "",
+                products_name = i.Variant != null && i.Variant!.Product != null
+                    ? i.Variant!.Product!.ProductsName : "",
+                total_stock = i.InventoryQuantity,
+                warehouse_name = i.Warehouse != null ? i.Warehouse!.WarehouseName : ""
+            })
+            .ToListAsync(ct);
+
+        // Rep performance (90d)
+        var repOrders90 = await db.SalesOrders.AsNoTracking()
+            .Include(o => o.Representative)
+            .Where(o => o.SalesOrdersOrderDate >= d90 && o.SalesOrdersRepresentativeId != null)
+            .ToListAsync(ct);
+        var visitsByRep = await db.Visits.AsNoTracking()
+            .Where(v => v.VisitsStartTime >= d90)
+            .GroupBy(v => v.VisitsRepUserId)
+            .Select(g => new { RepId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.RepId, x => x.Count, ct);
+        var userPerformance = repOrders90
+            .Where(o => IsCountedSale(o.SalesOrdersStatus))
+            .GroupBy(o => o.SalesOrdersRepresentativeId)
+            .Select(g => new
+            {
+                users_id = g.Key,
+                users_name = g.First().Representative?.UsersName ?? "",
+                users_role = g.First().Representative?.UsersRole ?? "",
+                orders_handled = g.Count(),
+                total_sales_value = g.Sum(x => x.SalesOrdersTotalAmount),
+                visits_conducted = visitsByRep.GetValueOrDefault(g.Key ?? 0, 0)
+            })
+            .OrderByDescending(x => x.total_sales_value)
+            .Take(10)
+            .ToList();
+
         var result = new
         {
             meta = new { generated_at = now },
             sales = new
             {
-                invoiced_30d_count = s30.Count,
-                invoiced_30d_value = s30.Sum(o => o.SalesOrdersTotalAmount),
+                invoiced_30d_count = s90.Count,
+                invoiced_30d_value = s90.Sum(o => o.SalesOrdersTotalAmount),
                 invoiced_7d_count = s7.Count,
                 invoiced_7d_value = s7.Sum(o => o.SalesOrdersTotalAmount),
                 invoiced_today_count = sToday.Count,
@@ -269,8 +452,8 @@ public class GetDashboardStatsHandler(IApplicationDbContext db) : IRequestHandle
             },
             purchases = new
             {
-                active_30d_count = pur30.Count,
-                active_30d_value = pur30.Sum(p => p.PurchaseOrdersTotalAmount),
+                active_30d_count = pur90.Count,
+                active_30d_value = pur90.Sum(p => p.PurchaseOrdersTotalAmount),
                 active_7d_count = pur7.Count,
                 active_7d_value = pur7.Sum(p => p.PurchaseOrdersTotalAmount),
                 active_today_count = purToday.Count,
@@ -278,15 +461,15 @@ public class GetDashboardStatsHandler(IApplicationDbContext db) : IRequestHandle
             },
             financial = new
             {
-                income_30d = income30,
-                expenses_30d = expenses30,
+                income_30d = income90,
+                expenses_30d = expenses90,
                 income_7d = income7,
                 expenses_7d = expenses7,
             },
             returns = new
             {
-                returns_30d_count = ret30.Count,
-                returns_30d_value = ret30.Sum(r => r.ReturnsTotalAmount),
+                returns_30d_count = ret90.Count,
+                returns_30d_value = ret90.Sum(r => r.ReturnsTotalAmount),
                 returns_7d_count = ret7.Count,
                 returns_7d_value = ret7.Sum(r => r.ReturnsTotalAmount),
                 returns_today_count = retToday.Count,
@@ -295,13 +478,17 @@ public class GetDashboardStatsHandler(IApplicationDbContext db) : IRequestHandle
             clients = new
             {
                 total_active_clients = totalActiveClients,
-                new_clients_30d = newClients30d,
+                new_clients_30d = newClients90d,
                 new_clients_7d = newClients7d,
                 total_clients_balance = totalClientsBalance,
             },
-            top_selling_products = Array.Empty<object>(),
-            top_returned_products = Array.Empty<object>(),
-            low_stock_products = Array.Empty<object>(),
+            suppliers = new
+            {
+                total_balance = totalSuppliersBalance,
+            },
+            top_selling_products = topSelling,
+            top_returned_products = topReturned,
+            low_stock_products = lowStock,
             recent_visits = recentVisits,
             monthly_comparison = new
             {
@@ -310,7 +497,7 @@ public class GetDashboardStatsHandler(IApplicationDbContext db) : IRequestHandle
                 previous_month_sales = prevMonthOrders.Sum(o => o.SalesOrdersTotalAmount),
                 previous_month_orders = prevMonthOrders.Count,
             },
-            user_performance = Array.Empty<object>(),
+            user_performance = userPerformance,
         };
         return ApiResponse<object>.Success(result);
     }

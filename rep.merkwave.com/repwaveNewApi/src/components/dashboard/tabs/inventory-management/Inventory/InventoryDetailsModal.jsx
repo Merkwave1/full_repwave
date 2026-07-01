@@ -1,6 +1,9 @@
 ﻿// src/components/dashboard/tabs/inventory-management/Inventory/InventoryDetailsModal.jsx
 import React from "react";
-import Modal from "../../../../common/Modal/Modal"; // Assuming you have a reusable Modal component
+import AppModalShell, {
+  modalPrimaryBtnClass,
+  modalSectionClass,
+} from "../../../../common/AppModalShell.jsx";
 import {
   CubeIcon,
   TagIcon,
@@ -8,13 +11,9 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   InformationCircleIcon,
-  Bars3BottomLeftIcon,
-  SparklesIcon, // For variant details
-  XMarkIcon, // Corrected: Added XMarkIcon to the import list
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
-import { CubeIcon as PackageIcon } from "@heroicons/react/24/outline"; // Re-import CubeIcon as PackageIcon for clarity if desired, or just use CubeIcon directly
 
-// Reusable DetailItem component
 const DetailItem = ({
   icon,
   label,
@@ -22,9 +21,9 @@ const DetailItem = ({
   valueClassName = "text-slate-800",
   children,
 }) => (
-  <div className="flex items-start justify-between py-2 px-3 bg-white rounded-lg border border-gray-200">
+  <div className="flex items-start justify-between py-2 px-3 bg-white rounded-lg border border-[#EDE7FF]">
     <div className="flex items-center gap-2">
-      {React.cloneElement(icon, { className: "h-5 w-5 text-blue-500" })}
+      {React.cloneElement(icon, { className: "h-5 w-5 text-[#8B5FD6]" })}
       <span className="font-medium text-gray-700">{label}:</span>
     </div>
     {children || (
@@ -40,7 +39,6 @@ const DetailItem = ({
 function InventoryDetailsModal({ isOpen, onClose, inventory }) {
   if (!isOpen || !inventory) return null;
 
-  // Derive status based on thresholds (using cached settings) for display consistency
   let displayStatus = inventory.inventory_status;
   try {
     const cached = localStorage.getItem("appSettingsCategorized");
@@ -70,99 +68,72 @@ function InventoryDetailsModal({ isOpen, onClose, inventory }) {
   } catch {}
 
   return (
-    <Modal
-      isOpen={isOpen}
+    <AppModalShell
+      open={isOpen}
       onClose={onClose}
       title="تفاصيل عنصر المخزون"
-      dir="rtl"
-      modalWidthClass="max-w-3xl"
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white rounded-t-xl sticky top-0 z-10">
-        <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-          <Bars3BottomLeftIcon className="h-7 w-7 text-[#8B5FD6]" />
-          تفاصيل عنصر المخزون
-        </h3>
-        <button
-          onClick={onClose}
-          className="p-2 rounded-full text-gray-500 hover:bg-red-100 hover:text-red-600 transition-colors"
-        >
-          <XMarkIcon className="h-6 w-6" />
-        </button>
-      </div>
-
-      {/* Body */}
-      <div className="p-3 sm:p-6 flex-grow overflow-y-auto bg-gray-50">
-        {/* Main Info Section */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h4 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2 border-b pb-2">
-            <InformationCircleIcon className="h-6 w-6 text-[#8B5FD6]" />
-            معلومات عامة
-          </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <DetailItem
-              icon={<BuildingStorefrontIcon />}
-              label="المخزن"
-              value={`${inventory.warehouse_name} (${inventory.warehouse_code})`}
-            />
-            <DetailItem
-              icon={<TagIcon />}
-              label="المنتج"
-              value={inventory.products_name}
-            />
-            <DetailItem
-              icon={<CubeIcon />}
-              label="الكمية"
-              value={inventory.inventory_quantity}
-            />
-            <DetailItem
-              icon={<SparklesIcon />}
-              label="الخيار"
-              value={inventory.variant_name || "المنتج الرئيسي"}
-            />{" "}
-            {/* Display variant name */}
-            {/* <DetailItem icon={<PackageIcon />} label="نوع التعبئة" value={inventory.packaging_types_name || 'غير متوفر'} /> Display packaging type name */}
-            <DetailItem
-              icon={
-                displayStatus === "In Stock" ? (
-                  <CheckCircleIcon />
-                ) : (
-                  <XCircleIcon />
-                )
-              }
-              label="الحالة"
-            >
-              <span
-                className={`font-semibold px-3 py-1 rounded-full text-sm ${
-                  displayStatus === "In Stock"
-                    ? "bg-green-100 text-green-700"
-                    : displayStatus === "Low Stock"
-                      ? "bg-yellow-100 text-yellow-700"
-                      : "bg-red-100 text-red-700"
-                }`}
-              >
-                {displayStatus}
-              </span>
-            </DetailItem>
-          </div>
-        </div>
-
-        {/* Additional Details (if any, e.g., dates, notes) */}
-        {/* You can add more sections here if your inventory items have more fields */}
-      </div>
-
-      {/* Footer */}
-      <div className="p-4 bg-gray-100 border-t border-gray-200 rounded-b-xl sticky bottom-0">
+      subtitle={inventory.products_name}
+      icon={CubeIcon}
+      size="2xl"
+      footer={
         <div className="flex justify-center">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 bg-[#8B5FD6] text-white rounded-md hover:bg-[#7A52C2] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8B5FD6] transition duration-150 ease-in-out shadow-md"
-          >
+          <button type="button" onClick={onClose} className={modalPrimaryBtnClass}>
             إغلاق
           </button>
         </div>
+      }
+    >
+      <div className={`${modalSectionClass} p-4 sm:p-6`}>
+        <h4 className="text-lg font-bold text-[#2D1B69] mb-4 flex items-center gap-2 border-b border-[#EDE7FF] pb-2">
+          <InformationCircleIcon className="h-6 w-6 text-[#8B5FD6]" />
+          معلومات عامة
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <DetailItem
+            icon={<BuildingStorefrontIcon />}
+            label="المخزن"
+            value={`${inventory.warehouse_name} (${inventory.warehouse_code})`}
+          />
+          <DetailItem
+            icon={<TagIcon />}
+            label="المنتج"
+            value={inventory.products_name}
+          />
+          <DetailItem
+            icon={<CubeIcon />}
+            label="الكمية"
+            value={inventory.inventory_quantity}
+          />
+          <DetailItem
+            icon={<SparklesIcon />}
+            label="الخيار"
+            value={inventory.variant_name || "المنتج الرئيسي"}
+          />
+          <DetailItem
+            icon={
+              displayStatus === "In Stock" ? (
+                <CheckCircleIcon />
+              ) : (
+                <XCircleIcon />
+              )
+            }
+            label="الحالة"
+          >
+            <span
+              className={`font-semibold px-3 py-1 rounded-full text-sm ${
+                displayStatus === "In Stock"
+                  ? "bg-[#EDE7FF] text-[#7A52C2]"
+                  : displayStatus === "Low Stock"
+                    ? "bg-amber-100 text-amber-700"
+                    : "bg-red-100 text-red-700"
+              }`}
+            >
+              {displayStatus}
+            </span>
+          </DetailItem>
+        </div>
       </div>
-    </Modal>
+    </AppModalShell>
   );
 }
 

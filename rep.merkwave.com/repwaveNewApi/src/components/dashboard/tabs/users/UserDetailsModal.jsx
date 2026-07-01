@@ -1,7 +1,6 @@
 ﻿// src/components/dashboard/tabs/users/UserDetailsModal.jsx
 import React, { useEffect, useState, useCallback } from "react";
 import {
-  XMarkIcon,
   PencilSquareIcon,
   TrashIcon,
   PhoneIcon,
@@ -14,23 +13,24 @@ import {
 } from "@heroicons/react/24/outline";
 import { updateUser } from "../../../../apis/users.js";
 import Loader from "../../../common/Loader/Loader.jsx";
+import AppModalShell, {
+  modalPrimaryBtnClass,
+  modalSecondaryBtnClass,
+  modalHeaderActionClass,
+  modalSectionClass,
+  modalInputClass,
+} from "../../../common/AppModalShell.jsx";
 
-/* ── Role config ── */
 const ROLE_CONFIG = {
-  admin: { gradient: "from-purple-600 to-indigo-700", label: "مدير" },
-  sales_rep: { gradient: "from-blue-500   to-cyan-600", label: "مسئول مبيعات" },
-  rep: { gradient: "from-blue-500   to-cyan-600", label: "مسئول مبيعات" },
-  store_keeper: {
-    gradient: "from-amber-500  to-yellow-600",
-    label: "أمين مخزن",
-  },
-  cash: { gradient: "from-emerald-500 to-green-600", label: "كاش" },
+  admin: { label: "مدير" },
+  sales_rep: { label: "مسئول مبيعات" },
+  rep: { label: "مسئول مبيعات" },
+  store_keeper: { label: "أمين مخزن" },
+  cash: { label: "كاش" },
 };
-const DEFAULT_ROLE = { gradient: "from-gray-500 to-gray-600", label: "—" };
+const DEFAULT_ROLE = { label: "—" };
 
-const INPUT =
-  "w-full px-3 py-2 rounded-xl bg-white border border-gray-200 text-gray-800 text-sm placeholder:text-gray-400 shadow-sm hover:border-gray-300 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-200/50 outline-none transition-all duration-200";
-const SELECT = INPUT + " appearance-none";
+const SELECT = modalInputClass + " appearance-none";
 
 function getInitials(name) {
   if (!name) return "?";
@@ -185,91 +185,115 @@ function UserDetailsModal({
   const isActive = [1, true, "1"].includes(user.users_status);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
-      dir="rtl"
-    >
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/55 backdrop-blur-[6px]"
-        onClick={mode === "view" ? onClose : undefined}
-      />
-
-      {/* Centered modal panel */}
-      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-[0_25px_60px_-10px_rgba(0,0,0,0.35)] flex flex-col max-h-[90vh] overflow-hidden animate-modal-in">
-        {/* ── Header ── */}
-        <div
-          className={`relative bg-gradient-to-l ${cfg.gradient} px-6 pt-5 pb-8 rounded-t-2xl`}
-        >
-          <div className="absolute top-4 left-4 flex items-center gap-2">
-            {mode === "edit" && (
-              <button
-                onClick={() => setMode("view")}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-white/20 hover:bg-white/40 text-white text-xs font-medium transition-colors"
-              >
-                <ArrowRightIcon className="w-3.5 h-3.5" />
-                رجوع
+    <AppModalShell
+      open={isOpen}
+      onClose={mode === "view" ? onClose : () => setMode("view")}
+      title={mode === "edit" ? (formData.users_name || user.users_name) : (user.users_name || "—")}
+      subtitle={user.users_email}
+      icon={UserCircleIcon}
+      size="md"
+      headerActions={
+        mode === "edit" ? (
+          <button
+            type="button"
+            onClick={() => setMode("view")}
+            className={modalHeaderActionClass}
+          >
+            <ArrowRightIcon className="w-3.5 h-3.5 inline ml-1" />
+            رجوع
+          </button>
+        ) : null
+      }
+      footer={
+        <div className="flex gap-3">
+          {mode === "view" ? (
+            <>
+              <button type="button" onClick={enterEditMode} className={`flex-1 flex items-center justify-center gap-2 ${modalPrimaryBtnClass}`}>
+                <PencilSquareIcon className="w-4 h-4" />
+                تعديل البيانات
               </button>
-            )}
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-full bg-white/20 hover:bg-white/40 text-white transition-colors"
-              aria-label="إغلاق"
-            >
-              <XMarkIcon className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="flex flex-col items-center text-center pt-4">
-            {previewImage || user.users_image ? (
-              <img
-                src={previewImage || user.users_image}
-                alt={user.users_name}
-                className="w-24 h-24 rounded-full object-cover ring-4 ring-white/40 shadow-lg mb-3"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
-              />
-            ) : (
-              <div className="w-24 h-24 rounded-full bg-white/25 ring-4 ring-white/40 shadow-lg mb-3 flex items-center justify-center">
-                <span className="text-3xl font-bold text-white">
-                  {getInitials(user.users_name)}
-                </span>
-              </div>
-            )}
-            <h2 className="text-xl font-bold text-white leading-tight">
-              {mode === "edit"
-                ? formData.users_name || user.users_name
-                : user.users_name || "—"}
-            </h2>
-            {user.users_email && (
-              <p className="text-white/70 text-sm mt-0.5 truncate max-w-[260px]">
-                {user.users_email}
-              </p>
-            )}
-            <div className="flex items-center gap-2 mt-3 flex-wrap justify-center">
-              <span className="text-xs px-2.5 py-1 rounded-full bg-white/20 text-white font-medium">
-                {cfg.label}
-              </span>
-              <span
-                className={`text-xs px-2.5 py-1 rounded-full font-medium ${isActive ? "bg-green-400/30 text-green-100" : "bg-red-400/30 text-red-200"}`}
-              >
-                {isActive ? "● نشط" : "○ غير نشط"}
-              </span>
-              {mode === "edit" && (
-                <span className="text-xs px-2.5 py-1 rounded-full bg-white/30 text-white font-semibold border border-white/40">
-                  ✎ وضع التعديل
-                </span>
+              {onDelete && user.users_role !== "admin" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onDelete(user);
+                  }}
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-sm font-semibold transition-colors border border-red-200"
+                  title="حذف المستخدم"
+                >
+                  <TrashIcon className="w-4 h-4" />
+                </button>
               )}
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setMode("view")}
+                disabled={isSubmitting}
+                className={`flex-1 ${modalSecondaryBtnClass}`}
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSubmitting}
+                className={`flex-1 flex items-center justify-center gap-2 ${modalPrimaryBtnClass}`}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader className="w-4 h-4" /> جاري الحفظ...
+                  </>
+                ) : (
+                  <>
+                    <CheckIcon className="w-4 h-4" /> حفظ التعديلات
+                  </>
+                )}
+              </button>
+            </>
+          )}
+        </div>
+      }
+    >
+        <div className="flex flex-col items-center text-center pb-4 border-b border-[#EDE7FF] mb-4">
+          {previewImage || user.users_image ? (
+            <img
+              src={previewImage || user.users_image}
+              alt={user.users_name}
+              className="w-20 h-20 rounded-full object-cover ring-4 ring-[#EDE7FF] shadow-lg mb-3"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+          ) : (
+            <div className="w-20 h-20 rounded-full bg-[#EDE7FF] ring-4 ring-[#EDE7FF] shadow-lg mb-3 flex items-center justify-center">
+              <span className="text-2xl font-bold text-[#8B5FD6]">
+                {getInitials(user.users_name)}
+              </span>
             </div>
+          )}
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            <span className="text-xs px-2.5 py-1 rounded-full bg-[#EDE7FF] text-[#7A52C2] font-medium">
+              {cfg.label}
+            </span>
+            <span
+              className={`text-xs px-2.5 py-1 rounded-full font-medium ${isActive ? "bg-[#EDE7FF] text-[#7A52C2]" : "bg-red-100 text-red-600"}`}
+            >
+              {isActive ? "● نشط" : "○ غير نشط"}
+            </span>
+            {mode === "edit" && (
+              <span className="text-xs px-2.5 py-1 rounded-full bg-[#8B5FD6]/10 text-[#8B5FD6] font-semibold border border-[#EDE7FF]">
+                ✎ وضع التعديل
+              </span>
+            )}
           </div>
         </div>
 
-        {/* ── Body ── */}
-        <div className="flex-1 overflow-y-auto">
-          {mode === "view" ? (
-            <div className="p-5 space-y-4">
-              <div className="bg-gray-50 rounded-2xl p-4">
+        {mode === "view" ? (
+            <div className="space-y-4">
+              <div className={`${modalSectionClass} p-4`}>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
                   بيانات التواصل
                 </p>
@@ -284,7 +308,7 @@ function UserDetailsModal({
                   value={user.users_email}
                 />
               </div>
-              <div className="bg-gray-50 rounded-2xl p-4">
+              <div className={`${modalSectionClass} p-4`}>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
                   بيانات الحساب
                 </p>
@@ -324,7 +348,7 @@ function UserDetailsModal({
                     value={formData.users_name}
                     onChange={handleChange}
                     required
-                    className={INPUT}
+                    className={modalInputClass}
                   />
                 </div>
                 <div className="space-y-1">
@@ -337,7 +361,7 @@ function UserDetailsModal({
                     value={formData.users_email}
                     onChange={handleChange}
                     required
-                    className={INPUT}
+                    className={modalInputClass}
                   />
                 </div>
               </div>
@@ -355,7 +379,7 @@ function UserDetailsModal({
                     name="users_password"
                     value={formData.users_password}
                     onChange={handleChange}
-                    className={INPUT}
+                    className={modalInputClass}
                   />
                 </div>
                 <div className="space-y-1">
@@ -386,7 +410,7 @@ function UserDetailsModal({
                     name="users_phone"
                     value={formData.users_phone}
                     onChange={handleChange}
-                    className={INPUT}
+                    className={modalInputClass}
                   />
                 </div>
                 <div className="space-y-1">
@@ -398,7 +422,7 @@ function UserDetailsModal({
                     name="users_national_id"
                     value={formData.users_national_id}
                     onChange={handleChange}
-                    className={INPUT}
+                    className={modalInputClass}
                   />
                 </div>
               </div>
@@ -427,7 +451,7 @@ function UserDetailsModal({
                     <img
                       src={previewImage}
                       alt="معاينة"
-                      className="h-14 w-14 rounded-full object-cover ring-4 ring-indigo-100 shadow"
+                      className="h-14 w-14 rounded-full object-cover ring-4 ring-[#C4A8F0]/30 shadow"
                     />
                     <span className="text-xs text-gray-500">
                       معاينة الصورة الجديدة
@@ -439,68 +463,12 @@ function UserDetailsModal({
                   name="users_image"
                   accept="image/*"
                   onChange={handleChange}
-                  className="block w-full text-sm text-gray-500 file:ml-3 file:px-4 file:py-1.5 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-[#7A52C2] hover:file:bg-indigo-100"
+                  className="block w-full text-sm text-gray-500 file:ml-3 file:px-4 file:py-1.5 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#f5f3ff] file:text-[#7A52C2] hover:file:bg-[#EDE7FF]"
                 />
               </div>
             </div>
           )}
-        </div>
-
-        {/* ── Footer ── */}
-        <div className="p-4 border-t border-gray-100 flex gap-3 flex-shrink-0">
-          {mode === "view" ? (
-            <>
-              <button
-                onClick={enterEditMode}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#8B5FD6] hover:bg-[#7A52C2] text-white rounded-xl text-sm font-semibold transition-colors shadow-sm"
-              >
-                <PencilSquareIcon className="w-4 h-4" />
-                تعديل البيانات
-              </button>
-              {onDelete && user.users_role !== "admin" && (
-                <button
-                  onClick={() => {
-                    onClose();
-                    onDelete(user);
-                  }}
-                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-sm font-semibold transition-colors border border-red-200"
-                  title="حذف المستخدم"
-                >
-                  <TrashIcon className="w-4 h-4" />
-                </button>
-              )}
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => setMode("view")}
-                disabled={isSubmitting}
-                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium transition-colors disabled:opacity-50"
-              >
-                إلغاء
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={isSubmitting}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#8B5FD6] hover:bg-[#7A52C2] text-white text-sm font-semibold transition-colors disabled:opacity-50 shadow-sm"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader className="w-4 h-4" /> جاري الحفظ...
-                  </>
-                ) : (
-                  <>
-                    <CheckIcon className="w-4 h-4" /> حفظ التعديلات
-                  </>
-                )}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
+    </AppModalShell>
   );
 }
 

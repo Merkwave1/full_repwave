@@ -183,7 +183,7 @@ const SalesOrdersTab = ({ onStatsUpdate }) => {
       sortable: true,
       align: 'center',
       render: (item) => item.odoo_invoice_id ? (
-        <span className="font-mono bg-indigo-100 text-[#7A52C2] px-2 py-1 rounded text-sm">{item.odoo_invoice_id}</span>
+        <span className="font-mono bg-[#EDE7FF] text-[#7A52C2] px-2 py-1 rounded text-sm">{item.odoo_invoice_id}</span>
       ) : (
         <span className="text-gray-400">-</span>
       )

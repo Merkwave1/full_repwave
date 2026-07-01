@@ -3,8 +3,8 @@
  * Seeds: ProductAttributes, AttributeValues, TransferRequests, Transfers,
  *        GoodsReceipts, SalesDeliveries (+ updates SOs to Invoiced first)
  *
- * Prerequisites: run existing seed_data.js first (products/variants/POs/SOs must exist)
- * Run: node seed_inventory.js
+ * Prerequisites: run scripts/test-data/seed_data.js first (products/variants/POs/SOs must exist)
+ * Run: node scripts/test-data/seed_inventory.js
  */
 
 const http = require('http');

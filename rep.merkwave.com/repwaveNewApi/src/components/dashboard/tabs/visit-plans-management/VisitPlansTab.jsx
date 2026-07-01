@@ -19,6 +19,13 @@ import { getAllUsers } from "../../../../apis/users.js";
 import NumberInput from "../../../common/NumberInput/NumberInput.jsx";
 import Modal from "../../../common/Modal/Modal.jsx";
 import Button from "../../../common/Button/Button.jsx";
+import AppModalShell, {
+  modalPrimaryBtnClass,
+  modalSecondaryBtnClass,
+  modalSectionClass,
+  modalSectionHeaderClass,
+  modalInputClass,
+} from "../../../common/AppModalShell.jsx";
 import CustomPageHeader from "../../../common/CustomPageHeader/CustomPageHeader.jsx";
 import FilterBar from "../../../common/FilterBar/FilterBar.jsx";
 import GlobalTable from "../../../common/GlobalTable/GlobalTable.jsx";
@@ -364,15 +371,9 @@ function VisitPlansTab() {
     setIsSubmitting(true);
     try {
       let message;
-      const submitData = {
-        ...formData,
-        visit_plan_selected_days: JSON.stringify(
-          formData.visit_plan_selected_days,
-        ),
-      };
 
       if (currentView === "add") {
-        message = await addVisitPlan(submitData);
+        message = await addVisitPlan(formData);
         setGlobalMessage({
           type: "success",
           message: message || "تم إضافة خطة الزيارة بنجاح!",
@@ -405,7 +406,7 @@ function VisitPlansTab() {
           throw new Error("Selected plan or plan ID is missing");
         }
 
-        message = await updateVisitPlan(selectedPlan.visit_plan_id, submitData);
+        message = await updateVisitPlan(selectedPlan.visit_plan_id, formData);
         setGlobalMessage({
           type: "success",
           message: message || "تم تحديث خطة الزيارة بنجاح!",
@@ -663,7 +664,7 @@ function VisitPlansTab() {
       align: "center",
       headerAlign: "center",
       render: (_, index) => (
-        <span className="bg-indigo-100 text-[#7A52C2] text-xs px-2 py-1 rounded-full font-semibold">
+        <span className="bg-[#EDE7FF] text-[#7A52C2] text-xs px-2 py-1 rounded-full font-semibold">
           {(currentPage - 1) * itemsPerPage + index + 1}
         </span>
       ),
@@ -808,69 +809,55 @@ function VisitPlansTab() {
   ];
 
   // Render list view
-  const addEditPortal =
-    currentView === "add" || currentView === "edit"
-      ? createPortal(
-          <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-[9999] p-3 sm:p-6 overflow-y-auto"
-            onClick={() => {
-              setCurrentView("list");
-              resetForm();
-            }}
-          >
-            <div
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="rounded-t-2xl px-4 py-4 sm:px-6" style={{ background: "linear-gradient(135deg, #8B5FD6 0%, #F97366 100%)" }}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="p-2 bg-white/20 rounded-xl shrink-0">
-                      <CalendarDaysIcon className="h-5 w-5 text-white" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="text-base sm:text-lg font-bold text-white truncate">
-                        {currentView === "add"
-                          ? "إضافة خطة زيارة جديدة"
-                          : "تعديل خطة الزيارة"}
-                      </h3>
-                      <p className="text-blue-100 text-xs mt-0.5 hidden sm:block">
-                        إدارة خطط الزيارات الأسبوعية للمندوبين
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCurrentView("list");
-                      resetForm();
-                    }}
-                    className="p-1.5 hover:bg-white/20 rounded-lg transition-colors shrink-0"
-                  >
-                    <svg
-                      className="h-5 w-5 text-white"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
+  const closeFormModal = () => {
+    setCurrentView("list");
+    resetForm();
+  };
 
-              {/* Form body */}
-              <form onSubmit={handleSubmit} dir="rtl">
-                <div className="p-3 sm:p-5 space-y-3">
-                  {/* Plan Name + Representative */}
-                  <div className="rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="bg-[#f5f3ff] px-4 py-2 flex items-center gap-2">
+  const addEditPortal =
+    currentView === "add" || currentView === "edit" ? (
+      <AppModalShell
+        open
+        portal
+        zIndex="z-[9999]"
+        onClose={closeFormModal}
+        title={
+          currentView === "add"
+            ? "إضافة خطة زيارة جديدة"
+            : "تعديل خطة الزيارة"
+        }
+        subtitle="إدارة خطط الزيارات الأسبوعية للمندوبين"
+        icon={CalendarDaysIcon}
+        size="lg"
+        gradient="brand"
+        footer={
+          <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end">
+            <button
+              type="button"
+              onClick={closeFormModal}
+              disabled={isSubmitting}
+              className={modalSecondaryBtnClass}
+            >
+              إلغاء
+            </button>
+            <button
+              type="submit"
+              form="visit-plan-form"
+              disabled={isSubmitting}
+              className={modalPrimaryBtnClass}
+            >
+              {isSubmitting
+                ? "جاري الحفظ..."
+                : currentView === "add"
+                  ? "إضافة الخطة"
+                  : "حفظ التغييرات"}
+            </button>
+          </div>
+        }
+      >
+        <form id="visit-plan-form" onSubmit={handleSubmit} className="space-y-4">
+                  <div className={modalSectionClass}>
+                    <div className={modalSectionHeaderClass}>
                       <CalendarDaysIcon className="h-4 w-4 text-[#8B5FD6]" />
                       <span className="text-xs font-semibold uppercase tracking-wide text-[#7A52C2]">
                         معلومات الخطة
@@ -887,10 +874,10 @@ function VisitPlansTab() {
                           name="visit_plan_name"
                           value={formData.visit_plan_name}
                           onChange={handleInputChange}
-                          className={`w-full px-3 py-2.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#8B5FD6] transition-all ${
+                          className={`${modalInputClass} ${
                             formErrors.visit_plan_name
                               ? "border-red-400 bg-red-50"
-                              : "border-gray-200"
+                              : ""
                           }`}
                           placeholder="أدخل اسم خطة الزيارة"
                           required
@@ -915,10 +902,10 @@ function VisitPlansTab() {
                               ? "لا يمكن تعديل اسم المندوب عند التعديل"
                               : ""
                           }
-                          className={`w-full px-3 py-2.5 border rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-[#8B5FD6] transition-all ${
+                          className={`${modalInputClass} ${
                             formErrors.user_id
                               ? "border-red-400 bg-red-50"
-                              : "border-gray-200"
+                              : ""
                           } ${currentView === "edit" ? "bg-gray-100 cursor-not-allowed" : ""}`}
                           required
                         >
@@ -945,7 +932,7 @@ function VisitPlansTab() {
                           name="visit_plan_description"
                           value={formData.visit_plan_description}
                           onChange={handleInputChange}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#8B5FD6] transition-all resize-none"
+                          className={`${modalInputClass} resize-none`}
                           rows={2}
                           placeholder="أدخل وصف خطة الزيارة"
                         />
@@ -953,10 +940,9 @@ function VisitPlansTab() {
                     </div>
                   </div>
 
-                  {/* Dates + Status */}
-                  <div className="rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="bg-green-50 px-4 py-2">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-green-700">
+                  <div className={modalSectionClass}>
+                    <div className={modalSectionHeaderClass}>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-[#7A52C2]">
                         التواريخ والحالة
                       </span>
                     </div>
@@ -969,7 +955,7 @@ function VisitPlansTab() {
                           name="visit_plan_status"
                           value={formData.visit_plan_status}
                           onChange={handleInputChange}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-[#8B5FD6] transition-all"
+                          className={modalInputClass}
                         >
                           <option value="Active">نشطة</option>
                           <option value="Paused">متوقفة</option>
@@ -984,7 +970,7 @@ function VisitPlansTab() {
                           name="visit_plan_start_date"
                           value={formData.visit_plan_start_date}
                           onChange={handleInputChange}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#8B5FD6] transition-all"
+                          className={modalInputClass}
                         />
                       </div>
                       <div>
@@ -996,16 +982,15 @@ function VisitPlansTab() {
                           name="visit_plan_end_date"
                           value={formData.visit_plan_end_date}
                           onChange={handleInputChange}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#8B5FD6] transition-all"
+                          className={modalInputClass}
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Recurrence */}
-                  <div className="rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="bg-purple-50 px-4 py-2">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-purple-700">
+                  <div className={modalSectionClass}>
+                    <div className={modalSectionHeaderClass}>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-[#7A52C2]">
                         إعدادات التكرار
                       </span>
                     </div>
@@ -1018,7 +1003,7 @@ function VisitPlansTab() {
                           name="visit_plan_recurrence_type"
                           value={formData.visit_plan_recurrence_type}
                           onChange={handleInputChange}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-[#8B5FD6] transition-all"
+                          className={modalInputClass}
                         >
                           <option value="Weekly">أسبوعي</option>
                         </select>
@@ -1038,10 +1023,10 @@ function VisitPlansTab() {
                               },
                             })
                           }
-                          className={`w-full px-3 py-2.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#8B5FD6] transition-all ${
+                          className={`${modalInputClass} ${
                             formErrors.visit_plan_repeat_every
                               ? "border-red-400 bg-red-50"
-                              : "border-gray-200"
+                              : ""
                           }`}
                         />
                         {formErrors.visit_plan_repeat_every && (
@@ -1053,10 +1038,9 @@ function VisitPlansTab() {
                     </div>
                   </div>
 
-                  {/* Selected Days */}
-                  <div className="rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="bg-amber-50 px-4 py-2">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                  <div className={modalSectionClass}>
+                    <div className={modalSectionHeaderClass}>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-[#7A52C2]">
                         الأيام المحددة <span className="text-red-500">*</span>
                       </span>
                     </div>
@@ -1073,7 +1057,7 @@ function VisitPlansTab() {
                               className={`flex flex-col items-center p-2 sm:p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
                                 selected
                                   ? "border-[#8B5FD6] bg-[#f5f3ff] text-[#7A52C2] shadow-sm"
-                                  : "border-gray-200 bg-white text-gray-600 hover:border-blue-300"
+                                  : "border-gray-200 bg-white text-gray-600 hover:border-[#C4A8F0]"
                               }`}
                             >
                               <input
@@ -1087,7 +1071,7 @@ function VisitPlansTab() {
                               <div
                                 className={`w-4 h-4 rounded-full border-2 mb-1.5 flex items-center justify-center ${
                                   selected
-                                    ? "border-[#8B5FD6] bg-[#f5f3ff]0"
+                                    ? "border-[#8B5FD6] bg-[#8B5FD6]"
                                     : "border-gray-300"
                                 }`}
                               >
@@ -1133,35 +1117,9 @@ function VisitPlansTab() {
                       )}
                     </div>
                   </div>
-                </div>
-
-                {/* Footer */}
-                <div className="border-t border-gray-100 px-3 sm:px-5 py-3 flex flex-col-reverse sm:flex-row gap-2 bg-gray-50 rounded-b-2xl">
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    isLoading={isSubmitting}
-                  >
-                    {currentView === "add" ? "إضافة الخطة" : "حفظ التغييرات"}
-                  </Button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCurrentView("list");
-                      resetForm();
-                    }}
-                    disabled={isSubmitting}
-                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50 transition-all"
-                  >
-                    إلغاء
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>,
-          document.body,
-        )
-      : null;
+        </form>
+      </AppModalShell>
+    ) : null;
 
   const detailsPortal =
     currentView === "details" && selectedPlan
@@ -1216,7 +1174,7 @@ function VisitPlansTab() {
               <div className="p-3 sm:p-5 space-y-3" dir="rtl">
                 {/* Main Info */}
                 <div className="rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                  <div className="bg-indigo-50 px-4 py-2">
+                  <div className="bg-[#f5f3ff] px-4 py-2">
                     <span className="text-xs font-semibold uppercase tracking-wide text-[#7A52C2]">
                       معلومات الخطة
                     </span>

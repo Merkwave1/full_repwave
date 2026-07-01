@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from "react";
+﻿import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   ArrowLeftIcon,
   PlusCircleIcon,
@@ -33,6 +33,15 @@ const toNumber = (value, fallback = 0) => {
   return Number.isFinite(numeric) ? numeric : fallback;
 };
 
+/** Max quantity still allowed to return for this line (ordered − already returned). */
+function getMaxReturnableQty(item = {}) {
+  const fromApi = toNumber(item.quantity_returnable, NaN);
+  if (Number.isFinite(fromApi) && fromApi >= 0) return fromApi;
+  const ordered = toNumber(item.ordered_quantity, 0);
+  const returned = toNumber(item.returned_quantity, 0);
+  return Math.max(0, ordered - returned);
+}
+
 export default function SalesReturnForm({
   onSubmit,
   onCancel,
@@ -66,6 +75,8 @@ export default function SalesReturnForm({
   });
 
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const submitLockRef = useRef(false);
   const [initialLoading, setInitialLoading] = useState(isEditMode);
   const [clientOrders, setClientOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
@@ -412,12 +423,24 @@ export default function SalesReturnForm({
           acc[soItemId] = {
             orderedQty: Number(orderItem.sales_order_items_quantity || 0) || 0,
             totalReturnedQty:
-              Number(
+              toNumber(
                 orderItem.returned_quantity ??
                   orderItem.sales_order_items_returned_quantity ??
-                  orderItem.total_returned ??
-                  0,
+                  orderItem.total_returned,
+                0,
               ) || 0,
+            returnableQty:
+              toNumber(orderItem.quantity_returnable, NaN) >= 0
+                ? toNumber(orderItem.quantity_returnable, 0)
+                : Math.max(
+                    0,
+                    toNumber(orderItem.sales_order_items_quantity, 0) -
+                      toNumber(
+                        orderItem.returned_quantity ??
+                          orderItem.sales_order_items_returned_quantity,
+                        0,
+                      ),
+                  ),
             originalUnitPrice:
               Number(orderItem.sales_order_items_unit_price || 0) || 0,
             discountAmount:
@@ -461,10 +484,13 @@ export default function SalesReturnForm({
             itemSummaries[item.sales_order_items_id || item.id || index] || {};
           const ordered_quantity = summary.orderedQty || 0;
           const returned_quantity = summary.totalReturnedQty || 0;
-          const remaining_quantity = Math.max(
-            0,
-            ordered_quantity - returned_quantity,
-          );
+          const remaining_quantity =
+            summary.returnableQty ??
+            Math.max(0, ordered_quantity - returned_quantity);
+
+          if (remaining_quantity <= 0) {
+            return null;
+          }
 
           return {
             return_items_sales_order_item_id:
@@ -478,6 +504,7 @@ export default function SalesReturnForm({
             ordered_quantity,
             returned_quantity,
             remaining_quantity,
+            quantity_returnable: remaining_quantity,
             _has_tax: summary.hasTax,
             _tax_rate: summary.taxRate || 0,
             _discount_amount: summary.discountAmount || 0,
@@ -488,7 +515,7 @@ export default function SalesReturnForm({
             _total_with_tax_and_discount:
               Number(item.sales_order_items_total_price || 0) || 0,
           };
-        });
+        }).filter(Boolean);
 
         setFormData((prev) => ({ ...prev, return_items: returnItems }));
       } catch (error) {
@@ -597,17 +624,12 @@ export default function SalesReturnForm({
   // Handle quantity change
   const handleQuantityChange = (index, newQuantity) => {
     const requested = Number(newQuantity) || 0;
+    setSubmitError("");
     setFormData((prev) => ({
       ...prev,
       return_items: prev.return_items.map((item, idx) => {
         if (idx === index) {
-          const maxQty = Number.isFinite(Number(item.remaining_quantity))
-            ? Number(item.remaining_quantity)
-            : Math.max(
-                0,
-                Number(item.ordered_quantity || 0) -
-                  Number(item.returned_quantity || 0),
-              );
+          const maxQty = getMaxReturnableQty(item);
           const quantity = Math.max(0, Math.min(requested, maxQty));
           const unitPrice = Number(item.return_items_unit_price || 0);
           const orderedQty = Number(item.ordered_quantity || 0) || 1;
@@ -678,6 +700,37 @@ export default function SalesReturnForm({
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitLockRef.current || loading) return;
+    submitLockRef.current = true;
+    setSubmitError("");
+
+    if (!isEditMode && !formData.returns_sales_order_id) {
+      setSubmitError("يجب اختيار أمر البيع المرتبط قبل إنشاء المرتجع.");
+      submitLockRef.current = false;
+      return;
+    }
+
+    const itemsToReturn = formData.return_items.filter(
+      (item) => Number(item.return_items_quantity || 0) > 0,
+    );
+
+    if (itemsToReturn.length === 0) {
+      setSubmitError("يرجى تحديد كمية واحدة على الأقل للإرجاع.");
+      submitLockRef.current = false;
+      return;
+    }
+
+    const overReturn = itemsToReturn.find(
+      (item) =>
+        Number(item.return_items_quantity || 0) > getMaxReturnableQty(item),
+    );
+    if (overReturn) {
+      setSubmitError(
+        `الكمية المطلوبة للمنتج "${overReturn.product_name || ""}" تتجاوز المتبقي المسموح (${getMaxReturnableQty(overReturn)}).`,
+      );
+      submitLockRef.current = false;
+      return;
+    }
 
     // Convert status from Arabic to English if necessary
     const arabicStatus =
@@ -686,16 +739,14 @@ export default function SalesReturnForm({
       statusMapping[arabicStatus] || formData.returns_status;
 
     const payload = {
-      client_id: formData.returns_client_id,
-      sales_order_id: formData.returns_sales_order_id || null,
+      client_id: Number(formData.returns_client_id) || null,
+      sales_order_id: Number(formData.returns_sales_order_id) || null,
       return_date: localDateTimeToISOString(formData.returns_date),
       status: englishStatus, // Ensure English status for database
       reason: formData.returns_reason,
       notes: formData.returns_notes,
       total_amount: totals.total,
-      items: formData.return_items
-        .filter((item) => Number(item.return_items_quantity || 0) > 0)
-        .map((item) => ({
+      items: itemsToReturn.map((item) => ({
           sales_order_item_id: item.return_items_sales_order_item_id,
           quantity: item.return_items_quantity,
           unit_price: item.return_items_unit_price,
@@ -714,6 +765,7 @@ export default function SalesReturnForm({
       console.error("Error submitting sales return:", error);
     } finally {
       setLoading(false);
+      submitLockRef.current = false;
     }
   };
 
@@ -772,6 +824,12 @@ export default function SalesReturnForm({
       </div>
 
       <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5">
+        {submitError && (
+          <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <ExclamationTriangleIcon className="h-5 w-5 shrink-0 mt-0.5" />
+            <span>{submitError}</span>
+          </div>
+        )}
         {/* ── Section: Client & Date ── */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50">
@@ -996,14 +1054,14 @@ export default function SalesReturnForm({
               </div>
               <div className="p-4">
                 {!manualDiscountEnabled && orderLevelDiscount > 0 && (
-                  <div className="p-3 bg-[#f5f3ff] rounded-lg border border-blue-100 text-sm">
+                  <div className="p-3 bg-[#f5f3ff] rounded-lg border border-[#EDE7FF] text-sm">
                     <span className="font-semibold text-[#7A52C2]">
                       خصم الطلب الأصلي:
                     </span>
                     <span className="text-[#8B5FD6] mr-1">
                       {formatCurrency(orderLevelDiscount)}
                     </span>
-                    <p className="text-xs text-blue-500 mt-1">
+                    <p className="text-xs text-[#8B5FD6] mt-1">
                       سيُوزَّع الخصم تناسبياً حسب الكمية المرتجعة
                     </p>
                   </div>
@@ -1119,15 +1177,11 @@ export default function SalesReturnForm({
                             : 0;
                         const discountForCurrentQty =
                           originalDiscountPerUnit * currentQty;
-                        const calculatedRemaining = Math.max(
+                        const maxReturnable = getMaxReturnableQty(item);
+                        const remainingAfterThis = Math.max(
                           0,
-                          orderedQty - previouslyReturnedQty - currentQty,
+                          maxReturnable - currentQty,
                         );
-                        const remainingQty = Number.isFinite(
-                          Number(item.remaining_quantity),
-                        )
-                          ? Number(item.remaining_quantity)
-                          : calculatedRemaining;
                         const computedLineTotal = Number.isFinite(
                           Number(item.computed_total_with_tax),
                         )
@@ -1170,8 +1224,14 @@ export default function SalesReturnForm({
                                     <strong>{previouslyReturnedQty}</strong>
                                   </span>
                                   <span className="text-green-600">
-                                    متبقي: <strong>{remainingQty}</strong>
+                                    مسموح: <strong>{maxReturnable}</strong>
                                   </span>
+                                  {currentQty > 0 && (
+                                    <span className="text-gray-500">
+                                      بعد الإرجاع:{" "}
+                                      <strong>{remainingAfterThis}</strong>
+                                    </span>
+                                  )}
                                 </div>
                                 <NumberInput
                                   value={String(
@@ -1183,7 +1243,8 @@ export default function SalesReturnForm({
                                   className="w-20 text-center text-sm"
                                   placeholder="0"
                                   min="0"
-                                  max={remainingQty}
+                                  max={maxReturnable}
+                                  disabled={maxReturnable <= 0}
                                 />
                               </div>
                             </td>
@@ -1204,7 +1265,7 @@ export default function SalesReturnForm({
                                   </span>
                                 )}
                                 {taxPerUnit > 0 && (
-                                  <span className="text-xs text-blue-500">
+                                  <span className="text-xs text-[#8B5FD6]">
                                     ض.{item._tax_rate || 0}%:{" "}
                                     {formatCurrency(taxPerUnit)}
                                   </span>
@@ -1318,10 +1379,10 @@ export default function SalesReturnForm({
             <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-amber-200 rounded-xl bg-amber-50 text-amber-600 gap-3">
               <ExclamationTriangleIcon className="w-10 h-10 text-amber-400" />
               <p className="font-semibold text-sm">
-                لم يتم العثور على أصناف لهذا الطلب
+                لا توجد كميات متاحة للإرجاع
               </p>
-              <p className="text-xs text-amber-500">
-                قد يكون الطلب فارغاً أو تم حذف أصنافه
+              <p className="text-xs text-amber-500 text-center max-w-sm">
+                قد يكون الطلب فارغاً، أو تم إرجاع جميع الكميات المطلوبة مسبقاً
               </p>
             </div>
           )}
@@ -1333,9 +1394,11 @@ export default function SalesReturnForm({
               <PlusCircleIcon className="w-8 h-8 text-gray-300" />
             </div>
             <p className="font-semibold text-sm text-gray-500">
-              اختر عميلاً ثم طلباً لتحميل الأصناف
+              اختر عميلاً ثم طلباً فاتورةً لتحميل الأصناف القابلة للإرجاع
             </p>
-            <p className="text-xs">أو يمكنك الحفظ بدون طلب محدد</p>
+            <p className="text-xs text-gray-400">
+              لا يمكن إرجاع كمية أكبر من المطلوب في أمر البيع
+            </p>
           </div>
         )}
 
@@ -1351,7 +1414,12 @@ export default function SalesReturnForm({
           <button
             type="submit"
             disabled={
-              loading || !formData.returns_client_id || !formData.returns_date
+              loading ||
+              !formData.returns_client_id ||
+              !formData.returns_date ||
+              (!isEditMode &&
+                (!formData.returns_sales_order_id ||
+                  formData.return_items.length === 0))
             }
             className="w-full sm:w-auto px-6 py-2.5 border border-transparent rounded-xl text-sm font-bold text-white bg-gradient-to-l from-rose-600 to-red-500 hover:from-rose-700 hover:to-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm flex items-center justify-center gap-2"
           >

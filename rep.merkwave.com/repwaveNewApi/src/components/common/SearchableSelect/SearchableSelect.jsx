@@ -102,7 +102,7 @@ const SearchableSelect = ({ options = [], value, onChange, placeholder, classNam
     // Determine the label for the currently selected value
     const selectedOptionLabel = normalizedValue === ''
         ? placeholder // Always show placeholder (filter name) when no selection (even if an 'all' option exists)
-        : (options.find(opt => opt.value === normalizedValue)?.label || placeholder);
+        : (options.find(opt => String(opt.value) === String(normalizedValue))?.label || placeholder);
 
     // Handle button click to toggle dropdown
     const handleButtonClick = () => {
@@ -143,10 +143,10 @@ const SearchableSelect = ({ options = [], value, onChange, placeholder, classNam
             {/* Button to toggle dropdown visibility */}
             <button
                 type="button"
-                className={`w-full px-4 py-3 border-2 border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-100 sm:text-sm text-right flex justify-between items-center transition-all duration-200 ${
+                className={`w-full px-4 py-3 border-2 border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-[#8B5FD6]/20 sm:text-sm text-right flex justify-between items-center transition-all duration-200 ${
                     disabled 
                         ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
-                        : 'bg-white hover:border-blue-300 hover:shadow-md'
+                        : 'bg-white hover:border-[#C4A8F0] hover:shadow-md'
                 }`}
                 onClick={handleButtonClick}
                 aria-haspopup="listbox"
@@ -169,7 +169,7 @@ const SearchableSelect = ({ options = [], value, onChange, placeholder, classNam
                         <input
                             type="text"
                             placeholder="بحث..."
-                            className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200"
+                            className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8B5FD6]/20 focus:border-[#8B5FD6]/50 transition-all duration-200"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             onClick={(e) => e.stopPropagation()} // Prevent closing dropdown when clicking search input
@@ -184,7 +184,7 @@ const SearchableSelect = ({ options = [], value, onChange, placeholder, classNam
                                     className="px-4 py-3 text-sm text-gray-700 hover:bg-[#f5f3ff] hover:text-[#2D1B69] cursor-pointer border-b border-gray-100 last:border-b-0 transition-all duration-200"
                                     onClick={() => handleOptionClick(option.value)}
                                     role="option"
-                                    aria-selected={option.value === normalizedValue}
+                                    aria-selected={String(option.value) === String(normalizedValue)}
                                 >
                                     {renderOption ? renderOption(option) : option.label}
                                 </li>

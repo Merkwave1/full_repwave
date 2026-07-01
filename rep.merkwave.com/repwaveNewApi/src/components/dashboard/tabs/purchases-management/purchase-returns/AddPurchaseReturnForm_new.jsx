@@ -125,7 +125,6 @@ export default function AddPurchaseReturnForm({ onAdd, onCancel, suppliers }) {
 
           // Auto-populate items from the returnable quantities (which accounts for previous returns)
           if (returnableData.items && returnableData.items.length > 0) {
-            console.log("Raw returnable data:", returnableData.items[0]); // Debug log
             const returnItems = returnableData.items.map((item) => {
               const quantityOrdered =
                 parseFloat(item.purchase_order_items_quantity_ordered) || 0;
@@ -301,9 +300,14 @@ export default function AddPurchaseReturnForm({ onAdd, onCancel, suppliers }) {
       purchase_order_id: formData.purchase_return_purchase_order_id
         ? parseInt(formData.purchase_return_purchase_order_id)
         : null,
-      warehouse_id: selectedOrderWarehouse?.warehouse_id
-        ? parseInt(selectedOrderWarehouse.warehouse_id)
-        : null,
+      warehouse_id:
+        selectedOrderWarehouse?.purchase_orders_warehouse_id ??
+        selectedOrderWarehouse?.warehouse_id
+          ? parseInt(
+              selectedOrderWarehouse.purchase_orders_warehouse_id ??
+                selectedOrderWarehouse.warehouse_id,
+            )
+          : null,
       date: formData.purchase_return_date || null,
       reason: formData.purchase_return_reason || null,
       notes: ((formData.purchase_return_notes || "") + discountNote) || null,
@@ -446,6 +450,11 @@ export default function AddPurchaseReturnForm({ onAdd, onCancel, suppliers }) {
                 options={purchaseOrderOptions}
                 value={formData.purchase_return_purchase_order_id}
                 onChange={(value) => {
+                  const selectedOrder = availablePurchaseOrders.find(
+                    (order) =>
+                      String(order.purchase_orders_id) === String(value),
+                  );
+                  setSelectedOrderWarehouse(selectedOrder || null);
                   setFormData((prev) => ({
                     ...prev,
                     purchase_return_purchase_order_id: value,
@@ -471,7 +480,9 @@ export default function AddPurchaseReturnForm({ onAdd, onCancel, suppliers }) {
               {selectedOrderWarehouse && (
                 <div className="mt-2 p-2 bg-[#f5f3ff] border border-[#C4A8F0] rounded-xl flex items-center gap-2 text-sm text-[#2D1B69]">
                   <span className="font-bold">المخزن:</span>{" "}
-                  {selectedOrderWarehouse.warehouse_name || "غير محدد"}
+                  {selectedOrderWarehouse.warehouse_name ||
+                    selectedOrderWarehouse.purchase_orders_warehouse_name ||
+                    "غير محدد"}
                 </div>
               )}
             </div>
@@ -663,7 +674,7 @@ export default function AddPurchaseReturnForm({ onAdd, onCancel, suppliers }) {
                           <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm font-bold text-red-700 text-center">
                             {formatMoney(calculateItemTotals(item).total)}
                           </div>
-                          <p className="text-[10px] text-blue-500 mt-0.5 text-center">
+                          <p className="text-[10px] text-[#8B5FD6] mt-0.5 text-center">
                             سعر الوحدة: {formatMoney(item.unit_cost)}
                           </p>
                         </div>
@@ -740,7 +751,7 @@ export default function AddPurchaseReturnForm({ onAdd, onCancel, suppliers }) {
                         تخصيص يدوي
                       </label>
                       {!manualDiscountEnabled && orderLevelDiscount > 0 && (
-                        <span className="text-[10px] text-blue-500">
+                        <span className="text-[10px] text-[#8B5FD6]">
                           (تلقائي: {formatMoney(returnTotals.discount)})
                         </span>
                       )}

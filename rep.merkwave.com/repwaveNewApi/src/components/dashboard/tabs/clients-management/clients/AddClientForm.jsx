@@ -1,14 +1,32 @@
 ﻿// src/components/dashboard/tabs/clients/AddClientForm.js
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  UserGroupIcon,
+  PhoneIcon,
+  MapPinIcon,
+  DocumentTextIcon,
+} from "@heroicons/react/24/outline";
 import {
   countries,
   getCitiesByCountryCode,
 } from "../../../../../data/countries.js";
 import Alert from "../../../../common/Alert/Alert";
+import AppModalShell, {
+  modalPrimaryBtnClass,
+  modalSecondaryBtnClass,
+  modalSectionClass,
+} from "../../../../common/AppModalShell.jsx";
 import { getAppClientTypes } from "../../../../../apis/auth.js";
-import MapPicker from "../../../../common/MapPicker/MapPicker";
+import GoogleMapsLocationField from "../../../../common/GoogleMapsLocationField/GoogleMapsLocationField.jsx";
 import NumberInput from "../../../../common/NumberInput/NumberInput.jsx";
 import { CLIENT_STATUS_OPTIONS } from "../../../../../constants/clientStatus";
+
+const CLIENT_TABS = [
+  { id: "general", label: "المعلومات الأساسية", icon: UserGroupIcon },
+  { id: "contact", label: "معلومات الاتصال", icon: PhoneIcon },
+  { id: "address", label: "العنوان والخريطة", icon: MapPinIcon },
+  { id: "other", label: "تفاصيل أخرى", icon: DocumentTextIcon },
+];
 
 function AddClientForm({
   onAdd,
@@ -195,51 +213,7 @@ function AddClientForm({
   const [_LOADING_CLIENT_TYPES, setLoadingClientTypes] = useState(true);
   const [formError, setFormError] = useState("");
   const [activeTab, setActiveTab] = useState("general"); // 'general', 'contact', 'address', 'other'
-  const [isMapSectionVisible, setIsMapSectionVisible] = useState(false);
-  const lastKnownLocationRef = useRef({ lat: "", lng: "" });
 
-  useEffect(() => {
-    if (
-      !lastKnownLocationRef.current.lat &&
-      formData.clients_latitude &&
-      formData.clients_longitude
-    ) {
-      lastKnownLocationRef.current = {
-        lat: formData.clients_latitude,
-        lng: formData.clients_longitude,
-      };
-    }
-  }, [formData.clients_latitude, formData.clients_longitude]);
-
-  const handleMapSectionToggle = (checked) => {
-    setIsMapSectionVisible(checked);
-    if (checked) {
-      setFormData((prev) => {
-        const nextLatitude =
-          prev.clients_latitude || lastKnownLocationRef.current.lat || "";
-        const nextLongitude =
-          prev.clients_longitude || lastKnownLocationRef.current.lng || "";
-        lastKnownLocationRef.current = {
-          lat: nextLatitude,
-          lng: nextLongitude,
-        };
-        return {
-          ...prev,
-          clients_latitude: nextLatitude,
-          clients_longitude: nextLongitude,
-        };
-      });
-    } else {
-      lastKnownLocationRef.current = {
-        lat:
-          formData.clients_latitude || lastKnownLocationRef.current.lat || "",
-        lng:
-          formData.clients_longitude || lastKnownLocationRef.current.lng || "",
-      };
-    }
-  };
-
-  // Load client types list and set default sales rep
   useEffect(() => {
     let isMounted = true;
 
@@ -410,18 +384,12 @@ function AddClientForm({
     }
   };
 
-  const handleMapChange = (lat, lng) => {
+  const handleLocationChange = (lat, lng) => {
     setFormData((prev) => ({
       ...prev,
-      clients_latitude: lat ? lat.toString() : "",
-      clients_longitude: lng ? lng.toString() : "",
+      clients_latitude: lat || "",
+      clients_longitude: lng || "",
     }));
-    if (lat && lng) {
-      lastKnownLocationRef.current = {
-        lat: lat.toString(),
-        lng: lng.toString(),
-      };
-    }
   };
 
   const handleSubmit = (e) => {
@@ -486,18 +454,14 @@ function AddClientForm({
       isRepMissing
     ) {
       setFormError(
-        "يرجى ملء جميع الحقول الإلزامية: اسم الشركة، البريد الإلكتروني، نوع العميل، صناعة العميل، اسم جهة الاتصال، الهاتف 1، الدولة، المدينة، منطقة العميل، الإحداثيات الجغرافية، والمندوب المسئول.",
+        "يرجى ملء جميع الحقول الإلزامية: اسم الشركة، البريد الإلكتروني، نوع العميل، صناعة العميل، اسم جهة الاتصال، الهاتف 1، الدولة، المدينة، منطقة العميل، رابط Google Maps، والمندوب المسئول.",
       );
       if (isCompanyInfoMissing) {
         setActiveTab("general");
       } else if (isContactInfoMissing) {
         setActiveTab("contact");
-      } else if (isAddressInfoMissing) {
+      } else if (isAddressInfoMissing || isLocationMissing) {
         setActiveTab("address");
-        setIsMapSectionVisible(true);
-      } else if (isLocationMissing) {
-        setActiveTab("address");
-        setIsMapSectionVisible(true);
       } else if (isRepMissing) {
         setActiveTab("other");
       }
@@ -1143,75 +1107,14 @@ function AddClientForm({
             </div>
 
             <div className="md:col-span-2">
-              <label className="inline-flex items-center gap-3 text-sm font-semibold text-gray-700 mb-3 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-gray-300 text-[#8B5FD6] focus:ring-[#8B5FD6]"
-                  checked={isMapSectionVisible}
-                  onChange={(e) => handleMapSectionToggle(e.target.checked)}
-                />
-                <span>
-                  تحديد الموقع على الخريطة{" "}
-                  <span className="text-red-500">*</span>
-                </span>
-              </label>
-              {isMapSectionVisible && (
-                <>
-                  <div className="rounded-lg overflow-hidden shadow-md border border-gray-200">
-                    <MapPicker
-                      initialLatitude={
-                        formData.clients_latitude
-                          ? parseFloat(formData.clients_latitude)
-                          : undefined
-                      }
-                      initialLongitude={
-                        formData.clients_longitude
-                          ? parseFloat(formData.clients_longitude)
-                          : undefined
-                      }
-                      onLocationChange={handleMapChange}
-                    />
-                  </div>
-                  <div className="flex gap-4 mt-4">
-                    <div className="flex-1">
-                      <label
-                        htmlFor="clients_latitude"
-                        className="block text-xs font-medium text-gray-600 mb-1"
-                      >
-                        خط العرض
-                      </label>
-                      <input
-                        type="text"
-                        id="clients_latitude"
-                        name="clients_latitude"
-                        value={formData.clients_latitude}
-                        onChange={handleChange}
-                        maxLength={20}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] focus:border-[#8B5FD6] text-sm transition-all duration-200 hover:border-gray-400"
-                        placeholder="30.0444"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <label
-                        htmlFor="clients_longitude"
-                        className="block text-xs font-medium text-gray-600 mb-1"
-                      >
-                        خط الطول
-                      </label>
-                      <input
-                        type="text"
-                        id="clients_longitude"
-                        name="clients_longitude"
-                        value={formData.clients_longitude}
-                        onChange={handleChange}
-                        maxLength={20}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] focus:border-[#8B5FD6] text-sm transition-all duration-200 hover:border-gray-400"
-                        placeholder="31.2357"
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
+              <GoogleMapsLocationField
+                label="موقع العميل على الخريطة"
+                hint="من Google Maps: مشاركة → نسخ الرابط → الصقه هنا. سيتم استخراج الإحداثيات تلقائياً."
+                required
+                latitude={formData.clients_latitude}
+                longitude={formData.clients_longitude}
+                onLocationChange={handleLocationChange}
+              />
             </div>
           </div>
         );
@@ -1287,95 +1190,75 @@ function AddClientForm({
   };
 
   return (
-    <div
-      className="bg-white p-8 rounded-xl shadow-lg max-w-5xl mx-auto border border-gray-100"
-      dir="rtl"
+    <AppModalShell
+      open
+      onClose={onCancel}
+      title="إضافة عميل جديد"
+      subtitle="تسجيل بيانات عميل جديد في النظام"
+      icon={UserGroupIcon}
+      size="3xl"
+      portal
+      footer={
+        <div className="flex flex-col sm:flex-row gap-3 justify-end">
+          <button type="button" onClick={onCancel} className={modalSecondaryBtnClass}>
+            إلغاء
+          </button>
+          <button type="submit" form="add-client-form" className={modalPrimaryBtnClass}>
+            إضافة عميل
+          </button>
+        </div>
+      }
     >
-      <h3 className="text-3xl font-bold text-gray-800 mb-8 text-center pb-4 border-b-2 border-gray-200">
-        إضافة عميل جديد
-      </h3>
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form id="add-client-form" onSubmit={handleSubmit} className="space-y-4">
         {formError && (
           <Alert
             message={formError}
             type="error"
-            className="mb-4"
+            className="mb-2"
             onClose={() => setFormError("")}
           />
         )}
 
-        {/* Tabs Navigation */}
-        <div className="border-b border-gray-200 mb-6">
+        <div className="flex flex-col lg:flex-row gap-4 min-h-[420px]">
+          {/* Vertical shaped tabs */}
           <nav
-            className="-mb-px flex space-x-8 space-x-reverse"
+            className="lg:w-56 shrink-0 flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-1 lg:pb-0"
             aria-label="Tabs"
           >
-            <button
-              type="button"
-              onClick={() => setActiveTab("general")}
-              className={`whitespace-nowrap py-3 px-5 border-b-2 font-semibold text-sm rounded-t-lg transition-all duration-200 ease-in-out ${
-                activeTab === "general"
-                  ? "border-[#8B5FD6] text-[#8B5FD6] bg-indigo-50"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-              }`}
-            >
-              المعلومات الأساسية
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("contact")}
-              className={`whitespace-nowrap py-3 px-5 border-b-2 font-semibold text-sm rounded-t-lg transition-all duration-200 ease-in-out ${
-                activeTab === "contact"
-                  ? "border-[#8B5FD6] text-[#8B5FD6] bg-indigo-50"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-              }`}
-            >
-              معلومات الاتصال
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("address")}
-              className={`whitespace-nowrap py-3 px-5 border-b-2 font-semibold text-sm rounded-t-lg transition-all duration-200 ease-in-out ${
-                activeTab === "address"
-                  ? "border-[#8B5FD6] text-[#8B5FD6] bg-indigo-50"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-              }`}
-            >
-              العنوان والخريطة
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("other")}
-              className={`whitespace-nowrap py-3 px-5 border-b-2 font-semibold text-sm rounded-t-lg transition-all duration-200 ease-in-out ${
-                activeTab === "other"
-                  ? "border-[#8B5FD6] text-[#8B5FD6] bg-indigo-50"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-              }`}
-            >
-              تفاصيل أخرى
-            </button>
+            {CLIENT_TABS.map(({ id, label, icon: TabIcon }) => {
+              const isActive = activeTab === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setActiveTab(id)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 font-semibold text-sm transition-all duration-200 whitespace-nowrap lg:whitespace-normal text-right ${
+                    isActive
+                      ? "border-[#8B5FD6] bg-gradient-to-l from-[#8B5FD6] to-[#6B45B0] text-white shadow-lg shadow-[#8B5FD6]/25 scale-[1.02]"
+                      : "border-gray-200 bg-white text-gray-600 hover:border-[#C4A8F0] hover:bg-[#FAFAFE] hover:text-[#2D1B69]"
+                  }`}
+                >
+                  <span
+                    className={`p-2 rounded-xl shrink-0 ${
+                      isActive
+                        ? "bg-white/20 ring-1 ring-white/30"
+                        : "bg-[#EDE7FF] text-[#6B45B0]"
+                    }`}
+                  >
+                    <TabIcon className="h-5 w-5" />
+                  </span>
+                  <span>{label}</span>
+                </button>
+              );
+            })}
           </nav>
-        </div>
 
-        <div className="mt-4">{renderTabContent()}</div>
-
-        <div className="flex justify-end space-x-4 space-x-reverse mt-8 pt-6 border-t border-gray-200">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-6 py-2.5 border-2 border-gray-300 rounded-lg shadow-sm text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200 ease-in-out"
-          >
-            إلغاء
-          </button>
-          <button
-            type="submit"
-            className="px-6 py-2.5 border-2 border-transparent rounded-lg shadow-sm text-sm font-semibold text-white  hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8B5FD6] transition-all duration-200 ease-in-out transform hover:scale-105" style={{ background: "linear-gradient(135deg, #8B5FD6 0%, #F97366 100%)" }}
-          >
-            إضافة عميل
-          </button>
+          <div className={`flex-1 min-w-0 ${modalSectionClass} p-5 sm:p-7 md:p-8`}>
+            {renderTabContent()}
+          </div>
         </div>
       </form>
-    </div>
+    </AppModalShell>
   );
 }
 

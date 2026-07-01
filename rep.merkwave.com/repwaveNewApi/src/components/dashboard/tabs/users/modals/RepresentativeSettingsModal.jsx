@@ -1,18 +1,21 @@
 ﻿// src/components/dashboard/tabs/users/modals/RepresentativeSettingsModal.jsx
 import React, { useState, useEffect } from "react";
 import {
-  XMarkIcon,
   MapPinIcon,
   SignalIcon,
   CheckCircleIcon,
   BuildingStorefrontIcon,
   WalletIcon,
+  Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
+import AppModalShell, {
+  modalPrimaryBtnClass,
+  modalSecondaryBtnClass,
+} from "../../../../common/AppModalShell.jsx";
 import {
   getRepresentativeSettings,
   upsertRepresentativeSettings,
 } from "../../../../../apis/representativeSettings.js";
-import { getCachedEntityData } from "../../../../../utils/entityCache.js";
 import {
   getUserWarehouses,
   updateUserWarehouses,
@@ -23,7 +26,7 @@ import {
   updateUserSafes,
 } from "../../../../../apis/userSafes.js";
 import { getSafes } from "../../../../../apis/safes.js";
-import LocationMapModal from "../../../../common/LocationMapModal/LocationMapModal.jsx";
+import GoogleMapsLocationField from "../../../../common/GoogleMapsLocationField/GoogleMapsLocationField.jsx";
 import toast from "react-hot-toast";
 
 const toBooleanFlag = (value, fallback = false) => {
@@ -42,8 +45,6 @@ function RepresentativeSettingsModal({ isOpen, onClose, user }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("permissions");
-  const [mapModalOpen, setMapModalOpen] = useState(false);
-  const [mapModalType, setMapModalType] = useState("start"); // 'start' or 'end'
 
   // Warehouse states for store_keeper
   const [allWarehouses, setAllWarehouses] = useState([]);
@@ -71,49 +72,20 @@ function RepresentativeSettingsModal({ isOpen, onClose, user }) {
     allow_end_visit_from_anywhere: true,
   });
 
-  // Get company location from settings in localStorage
-  const getCompanyLocation = () => {
-    try {
-      const cachedSettings = getCachedEntityData("settings");
-      if (cachedSettings && Array.isArray(cachedSettings)) {
-        const latSetting = cachedSettings.find(
-          (s) => s.settings_key === "company_lat",
-        );
-        const lngSetting = cachedSettings.find(
-          (s) => s.settings_key === "company_lng",
-        );
-
-        return {
-          lat: latSetting ? parseFloat(latSetting.settings_value) : 30.0444,
-          lng: lngSetting ? parseFloat(lngSetting.settings_value) : 31.2357,
-        };
-      }
-    } catch (error) {
-      console.error("Error getting company location:", error);
-    }
-    // Default to Cairo coordinates
-    return { lat: 30.0444, lng: 31.2357 };
+  const handleWorkStartLocationChange = (lat, lng) => {
+    setSettings((prev) => ({
+      ...prev,
+      work_start_latitude: lat || "",
+      work_start_longitude: lng || "",
+    }));
   };
 
-  const openMapModal = (type) => {
-    setMapModalType(type);
-    setMapModalOpen(true);
-  };
-
-  const handleLocationSelect = (lat, lng) => {
-    if (mapModalType === "start") {
-      setSettings((prev) => ({
-        ...prev,
-        work_start_latitude: lat,
-        work_start_longitude: lng,
-      }));
-    } else {
-      setSettings((prev) => ({
-        ...prev,
-        work_end_latitude: lat,
-        work_end_longitude: lng,
-      }));
-    }
+  const handleWorkEndLocationChange = (lat, lng) => {
+    setSettings((prev) => ({
+      ...prev,
+      work_end_latitude: lat || "",
+      work_end_longitude: lng || "",
+    }));
   };
 
   // Toggle component used across rows
@@ -312,67 +284,25 @@ function RepresentativeSettingsModal({ isOpen, onClose, user }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" dir="rtl">
-      <div className="flex flex-col md:flex-row items-center justify-center min-h-screen px-2 sm:px-0 pt-2 sm:pt-4 pb-10 sm:pb-20 text-center sm:block sm:p-0">
-        {/* Background overlay */}
-        <div
-          className="fixed inset-0 transition-opacity backdrop-blur-sm bg-black/40"
-          onClick={onClose}
-        ></div>
-
-        {/* Modal panel */}
-        <div className="inline-block w-full max-w-3xl my-2 sm:my-1 overflow-hidden text-right align-middle transition-all transform bg-white shadow-xl rounded-2xl">
-          {/* Header */}
-          {/* Header */}
-          <div className="border-b border-[#C4A8F0]/40">
-            {/* Strong accent bar */}
-            <div className="h-1.5 bg-[#C4A8F0]" />
-
-            {/* Main header body */}
-            <div className="px-4 py-3 sm:px-6 sm:py-5 bg-white flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div
-                  className="
-        w-11 h-11
-        rounded-xl
-        bg-[#C4A8F0]/20
-        flex items-center justify-center
-        text-[#C4A8F0]
-      "
-                >
-                  <MapPinIcon className="h-6 w-6" />
-                </div>
-
-                <div>
-                  <h3 className="text-base sm:text-xl font-extrabold text-[#1A0F35]">
-                    إعدادات المستخدم
-                  </h3>
-                  {user && (
-                    <p className="text-sm text-[#1A0F35]/60 mt-0.5">
-                      المستخدم:{" "}
-                      <span className="font-semibold">{user.users_name}</span>
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <button
-                onClick={onClose}
-                className="
-        p-2 rounded-lg
-        text-[#1A0F35]/70
-        hover:bg-[#C4A8F0]/15
-        hover:text-[#1A0F35]
-        transition
-      "
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="px-4 py-4 sm:px-6 sm:py-6 max-h-[70vh] overflow-y-auto">
+    <AppModalShell
+      open={isOpen}
+      onClose={onClose}
+      title="إعدادات المستخدم"
+      subtitle={user ? `المستخدم: ${user.users_name}` : undefined}
+      icon={Cog6ToothIcon}
+      size="2xl"
+      footer={
+        <div className="flex items-center justify-center gap-3">
+          <button type="button" onClick={onClose} disabled={saving} className={modalSecondaryBtnClass}>
+            إلغاء
+          </button>
+          <button type="button" onClick={handleSave} disabled={saving || loading} className={modalPrimaryBtnClass}>
+            {saving ? "جاري الحفظ..." : "حفظ الإعدادات"}
+          </button>
+        </div>
+      }
+    >
+          <div className="max-h-[70vh] overflow-y-auto overflow-x-hidden">
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <div
@@ -415,7 +345,7 @@ function RepresentativeSettingsModal({ isOpen, onClose, user }) {
                     tabs.push({ key: "gps", label: "GPS", icon: SignalIcon });
                   }
                   return (
-                    <div className="flex border-b border-gray-200 mb-2 overflow-x-auto gap-0 -mx-1">
+                    <div className="flex flex-wrap border-b border-gray-200 mb-2 gap-0">
                       {tabs.map((tab) => (
                         <button
                           key={tab.key}
@@ -673,8 +603,8 @@ function RepresentativeSettingsModal({ isOpen, onClose, user }) {
                 {activeTab === "locations" && (
                   <div>
                     {/* Toggle and Header Row */}
-                    <div className="flex items-center justify-between mb-4 p-4 bg-[#C4A8F0]/10 rounded-2xl border border-[#C4A8F0]/30 pb-6">
-                      <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between gap-3 mb-4 p-4 bg-[#C4A8F0]/10 rounded-2xl border border-[#C4A8F0]/30 pb-6">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <MapPinIcon className="h-5 w-5 text-[#C4A8F0]" />
                         <div>
                           <h4 className="text-lg font-semibold text-[#1A0F35]">
@@ -688,6 +618,7 @@ function RepresentativeSettingsModal({ isOpen, onClose, user }) {
                           </p>
                         </div>
                       </div>
+                      <div className="shrink-0">
                       <ToggleSwitch
                         checked={!settings.allow_start_work_from_anywhere}
                         onClick={handleToggleClick(
@@ -695,59 +626,18 @@ function RepresentativeSettingsModal({ isOpen, onClose, user }) {
                         )}
                         ariaLabel="تحديد موقع بداية العمل"
                       />
+                      </div>
                     </div>
 
                     {/* Location Inputs - show when toggle is ON (false = enabled) */}
                     {!settings.allow_start_work_from_anywhere && (
                       <div className="mt-4">
-                        <div className="flex items-center justify-end mb-3">
-                          <button
-                            onClick={() => openMapModal("start")}
-                            className="flex items-center md:gap-2 gap-1 px-1 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors"
-                            style={{ background: "#8DD8F5", color: "#1F2937" }}
-                          >
-                            <MapPinIcon className="h-4 w-4" />
-                            اختر من الخريطة
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-[#1A0F35] mb-2">
-                              خط العرض (Latitude)
-                            </label>
-                            <input
-                              type="number"
-                              step="0.0000001"
-                              value={settings.work_start_latitude}
-                              onChange={(e) =>
-                                handleInputChange(
-                                  "work_start_latitude",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="30.0444"
-                              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-[#C4A8F0] focus:ring-4 focus:ring-[#C4A8F0]/25 outline-none shadow-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-[#1A0F35] mb-2">
-                              خط الطول (Longitude)
-                            </label>
-                            <input
-                              type="number"
-                              step="0.0000001"
-                              value={settings.work_start_longitude}
-                              onChange={(e) =>
-                                handleInputChange(
-                                  "work_start_longitude",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="31.2357"
-                              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-[#C4A8F0] focus:ring-4 focus:ring-[#C4A8F0]/25 outline-none shadow-sm"
-                            />
-                          </div>
-                        </div>
+                        <GoogleMapsLocationField
+                          label="رابط موقع بداية العمل"
+                          latitude={settings.work_start_latitude}
+                          longitude={settings.work_start_longitude}
+                          onLocationChange={handleWorkStartLocationChange}
+                        />
                       </div>
                     )}
                   </div>
@@ -757,8 +647,8 @@ function RepresentativeSettingsModal({ isOpen, onClose, user }) {
                 {activeTab === "locations" && (
                   <div>
                     {/* Toggle and Header Row */}
-                    <div className="flex items-center justify-between mb-4 p-4 bg-[#C4A8F0]/10 rounded-2xl border border-[#C4A8F0]/30 pb-6">
-                      <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between gap-3 mb-4 p-4 bg-[#C4A8F0]/10 rounded-2xl border border-[#C4A8F0]/30 pb-6">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <MapPinIcon className="h-5 w-5 text-[#C4A8F0]" />
                         <div>
                           <h4 className="text-lg font-semibold text-[#1A0F35]">
@@ -773,6 +663,7 @@ function RepresentativeSettingsModal({ isOpen, onClose, user }) {
                           </p>
                         </div>
                       </div>
+                      <div className="shrink-0">
                       <ToggleSwitch
                         checked={!settings.allow_end_work_from_anywhere}
                         onClick={handleToggleClick(
@@ -780,59 +671,18 @@ function RepresentativeSettingsModal({ isOpen, onClose, user }) {
                         )}
                         ariaLabel="تحديد موقع نهاية العمل"
                       />
+                      </div>
                     </div>
 
                     {/* Location Inputs - Only show if toggle is ON (false = enabled) */}
                     {!settings.allow_end_work_from_anywhere && (
                       <div className="mt-4">
-                        <div className="flex items-center justify-end mb-3">
-                          <button
-                            onClick={() => openMapModal("end")}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors"
-                            style={{ background: "#8DD8F5", color: "#1F2937" }}
-                          >
-                            <MapPinIcon className="h-4 w-4" />
-                            اختر من الخريطة
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-[#1A0F35] mb-2">
-                              خط العرض (Latitude)
-                            </label>
-                            <input
-                              type="number"
-                              step="0.0000001"
-                              value={settings.work_end_latitude}
-                              onChange={(e) =>
-                                handleInputChange(
-                                  "work_end_latitude",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="30.0444"
-                              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-[#C4A8F0] focus:ring-4 focus:ring-[#C4A8F0]/25 outline-none shadow-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-[#1A0F35] mb-2">
-                              خط الطول (Longitude)
-                            </label>
-                            <input
-                              type="number"
-                              step="0.0000001"
-                              value={settings.work_end_longitude}
-                              onChange={(e) =>
-                                handleInputChange(
-                                  "work_end_longitude",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="31.2357"
-                              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:border-[#C4A8F0] focus:ring-4 focus:ring-[#C4A8F0]/25 outline-none shadow-sm"
-                            />
-                          </div>
-                        </div>
+                        <GoogleMapsLocationField
+                          label="رابط موقع نهاية العمل"
+                          latitude={settings.work_end_latitude}
+                          longitude={settings.work_end_longitude}
+                          onLocationChange={handleWorkEndLocationChange}
+                        />
                       </div>
                     )}
                   </div>
@@ -846,8 +696,8 @@ function RepresentativeSettingsModal({ isOpen, onClose, user }) {
                       {/* Allow Out of Plan Visits - Hidden for store_keeper and cash */}
                       {user?.users_role !== "store_keeper" &&
                         user?.users_role !== "cash" && (
-                          <div className="flex items-center justify-between p-4 bg-[#C4A8F0]/10 rounded-2xl border border-[#C4A8F0]/30 pb-6">
-                            <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-between gap-3 p-4 bg-[#C4A8F0]/10 rounded-2xl border border-[#C4A8F0]/30 pb-6">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
                               <CheckCircleIcon className="h-5 w-5 text-[#C4A8F0]" />
                               <div>
                                 <h4 className="text-lg font-semibold text-[#1A0F35]">
@@ -858,6 +708,7 @@ function RepresentativeSettingsModal({ isOpen, onClose, user }) {
                                 </p>
                               </div>
                             </div>
+                            <div className="shrink-0">
                             <ToggleSwitch
                               checked={settings.allow_out_of_plan_visits}
                               onClick={handleToggleClick(
@@ -865,14 +716,15 @@ function RepresentativeSettingsModal({ isOpen, onClose, user }) {
                               )}
                               ariaLabel="السماح بزيارات خارج الخطة"
                             />
+                            </div>
                           </div>
                         )}
 
                       {/* Allow Start Visit from Anywhere - Hidden for store_keeper and cash */}
                       {user?.users_role !== "store_keeper" &&
                         user?.users_role !== "cash" && (
-                          <div className="flex items-center justify-between p-4 bg-[#C4A8F0]/10 rounded-2xl border border-[#C4A8F0]/30 pb-6">
-                            <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-between gap-3 p-4 bg-[#C4A8F0]/10 rounded-2xl border border-[#C4A8F0]/30 pb-6">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
                               <MapPinIcon className="h-5 w-5 text-[#C4A8F0]" />
                               <div>
                                 <h4 className="text-lg font-semibold text-[#1A0F35]">
@@ -883,6 +735,7 @@ function RepresentativeSettingsModal({ isOpen, onClose, user }) {
                                 </p>
                               </div>
                             </div>
+                            <div className="shrink-0">
                             <ToggleSwitch
                               checked={settings.allow_start_visit_from_anywhere}
                               onClick={handleToggleClick(
@@ -890,14 +743,15 @@ function RepresentativeSettingsModal({ isOpen, onClose, user }) {
                               )}
                               ariaLabel="السماح ببدء الزيارة من أي مكان"
                             />
+                            </div>
                           </div>
                         )}
 
                       {/* Allow End Visit from Anywhere - Hidden for store_keeper and cash */}
                       {user?.users_role !== "store_keeper" &&
                         user?.users_role !== "cash" && (
-                          <div className="flex items-center justify-between p-4 bg-[#C4A8F0]/10 rounded-2xl border border-[#C4A8F0]/30 pb-6">
-                            <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-between gap-3 p-4 bg-[#C4A8F0]/10 rounded-2xl border border-[#C4A8F0]/30 pb-6">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
                               <MapPinIcon className="h-5 w-5 text-[#C4A8F0]" />
                               <div>
                                 <h4 className="text-lg font-semibold text-[#1A0F35]">
@@ -908,6 +762,7 @@ function RepresentativeSettingsModal({ isOpen, onClose, user }) {
                                 </p>
                               </div>
                             </div>
+                            <div className="shrink-0">
                             <ToggleSwitch
                               checked={settings.allow_end_visit_from_anywhere}
                               onClick={handleToggleClick(
@@ -915,6 +770,7 @@ function RepresentativeSettingsModal({ isOpen, onClose, user }) {
                               )}
                               ariaLabel="السماح بإنهاء الزيارة من أي مكان"
                             />
+                            </div>
                           </div>
                         )}
 
@@ -988,78 +844,7 @@ function RepresentativeSettingsModal({ isOpen, onClose, user }) {
               </div>
             )}
           </div>
-
-          {/* Footer */}
-          <div className="px-2 md:px-6 py-4 bg-gray-50 flex items-center justify-center gap-3 border-t border-gray-200">
-            <button
-              onClick={onClose}
-              disabled={saving}
-              className="
-      px-6 py-2
-      rounded-xl
-      bg-gray-100
-      border border-gray-200
-      text-[#1A0F35]
-      hover:bg-gray-200
-      transition
-      disabled:opacity-50
-    "
-            >
-              إلغاء
-            </button>
-
-            <button
-              onClick={handleSave}
-              disabled={saving || loading}
-              className=" px-1
-      md:px-3 py-2
-      rounded-xl
-      bg-[#C4A8F0]
-      hover:bg-[#7ccfee]
-      text-[#1A0F35]
-      font-semibold
-      shadow-md
-      transition
-      disabled:opacity-50
-      disabled:cursor-not-allowed
-      flex items-center gap-2
-    "
-            >
-              {saving ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#1A0F35]"></div>
-                  جاري الحفظ...
-                </>
-              ) : (
-                "حفظ الإعدادات"
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Location Map Modal */}
-      <LocationMapModal
-        isOpen={mapModalOpen}
-        onClose={() => setMapModalOpen(false)}
-        onSelectLocation={handleLocationSelect}
-        title={
-          mapModalType === "start"
-            ? "اختر موقع بداية العمل"
-            : "اختر موقع نهاية العمل"
-        }
-        initialLat={
-          mapModalType === "start"
-            ? settings.work_start_latitude || getCompanyLocation().lat
-            : settings.work_end_latitude || getCompanyLocation().lat
-        }
-        initialLng={
-          mapModalType === "start"
-            ? settings.work_start_longitude || getCompanyLocation().lng
-            : settings.work_end_longitude || getCompanyLocation().lng
-        }
-      />
-    </div>
+    </AppModalShell>
   );
 }
 

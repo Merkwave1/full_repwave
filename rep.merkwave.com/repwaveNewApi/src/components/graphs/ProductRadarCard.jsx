@@ -9,7 +9,9 @@ import {
 
 const safeLog = (v) => Math.log10(Number(v || 0) + 1);
 
-const ProductRadarCard = ({ title, subtitle, metrics, color = "#22c55e" }) => {
+import { BRAND, DASHBOARD } from "../../constants/brandColors.js";
+
+const ProductRadarCard = ({ title, subtitle, metrics, color = "#8B5FD6" }) => {
   const rawValues = metrics.map((m) => Number(m.value || 0));
   const maxLog = Math.max(...rawValues.map(safeLog)) || 1;
 
@@ -20,15 +22,23 @@ const ProductRadarCard = ({ title, subtitle, metrics, color = "#22c55e" }) => {
   }));
 
   return (
-    <div className="bg-[#f7f8fb] rounded-2xl p-3 md:p-6 flex flex-col sm:flex-row w-full gap-4 sm:gap-6 items-center">
-      {/* Info panel */}
-      <div className="bg-gray-100 rounded-2xl px-4 py-4 w-full sm:w-1/2 text-center shrink-0">
-        <h3 className="text-sm sm:text-base font-bold mb-1">{title}</h3>
-        <p className="text-gray-500 text-xs sm:text-sm mb-2 sm:mb-3">
+    <div
+      className="rounded-2xl p-3 md:p-6 flex flex-col sm:flex-row w-full gap-4 sm:gap-6 items-center border"
+      style={{
+        background: `linear-gradient(135deg, ${color}08 0%, #FAFAFE 55%, white 100%)`,
+        borderColor: `${color}30`,
+      }}
+    >
+      <div
+        className="rounded-2xl px-4 py-4 w-full sm:w-1/2 text-center shrink-0"
+        style={{ backgroundColor: `${color}12` }}
+      >
+        <h3 className="text-sm sm:text-base font-bold mb-1 text-[#2D1B69]">{title}</h3>
+        <p className="text-xs sm:text-sm mb-2 sm:mb-3" style={{ color }}>
           {subtitle}
         </p>
         {metrics.map((m) => (
-          <p key={m.label} className="text-xs sm:text-sm font-medium">
+          <p key={m.label} className="text-xs sm:text-sm font-medium text-[#2D1B69]">
             {m.label}: {Number(m.value).toLocaleString("ar-EG")}
           </p>
         ))}
@@ -48,11 +58,11 @@ const ProductRadarCard = ({ title, subtitle, metrics, color = "#22c55e" }) => {
               </filter>
             </defs>
 
-            <PolarGrid stroke="#e5e7eb" />
+            <PolarGrid stroke={`${color}25`} />
 
             <PolarAngleAxis
               dataKey="metric"
-              tick={{ fill: "#374151", fontSize: 10 }}
+              tick={{ fill: color, fontSize: 10 }}
             />
 
             <PolarRadiusAxis domain={[0, 100]} tick={false} />
@@ -74,7 +84,7 @@ const ProductRadarCard = ({ title, subtitle, metrics, color = "#22c55e" }) => {
                       x={cx}
                       y={cy - 10}
                       textAnchor="middle"
-                      fill="#0f172a"
+                      fill={BRAND.primaryDark}
                       fontSize={10}
                       fontWeight="600"
                     >

@@ -6,7 +6,7 @@ import Alert from "../../../../common/Alert/Alert.jsx";
 import { XMarkIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
 
 const INPUT =
-  "w-full px-3 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-800 text-sm placeholder:text-gray-400 shadow-sm hover:border-gray-300 focus:border-[#5BC7F2] focus:ring-4 focus:ring-[#5BC7F2]/25 outline-none transition-all duration-200";
+  "w-full px-3 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-800 text-sm placeholder:text-gray-400 shadow-sm hover:border-[#C4A8F0] focus:border-[#8B5FD6] focus:ring-4 focus:ring-[#C4A8F0]/30 outline-none transition-all duration-200";
 const SELECT = INPUT + " appearance-none pr-10";
 const ChevronDown = () => (
   <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400">
@@ -170,7 +170,7 @@ function UpdateUserForm({
         onClick={onClose}
       />
       <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-[0_25px_60px_-10px_rgba(0,0,0,0.35)] flex flex-col max-h-[90vh] overflow-hidden animate-modal-in">
-        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-l from-[#8B5FD6] to-[#F97366] flex-shrink-0 rounded-t-2xl">
+        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0 rounded-t-2xl" style={{ background: "linear-gradient(135deg, #8B5FD6 0%, #7A52C2 100%)" }}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
               <PencilSquareIcon className="w-5 h-5 text-white" />

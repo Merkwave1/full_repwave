@@ -23,11 +23,14 @@ import {
   getPurchaseOrdersPaginated,
   getPurchaseOrderDetails,
 } from "../../../../../apis/purchase_orders";
-import { getAllSuppliers } from "../../../../../apis/suppliers";
-import { getAllPackagingTypes } from "../../../../../apis/packaging_types";
-import { getAllWarehouses } from "../../../../../apis/warehouses";
-import { getAllBaseUnits } from "../../../../../apis/base_units";
 import { getAllProducts } from "../../../../../apis/products";
+import {
+  getAppSuppliers,
+  getAppBaseUnits,
+  getAppPackagingTypes,
+  getAppWarehouses,
+} from "../../../../../apis/auth";
+import { unwrapList } from "../../../../../utils/unwrapList";
 
 // Sub-components for Purchase Orders
 import PurchaseOrderListView from "./PurchaseOrderListView";
@@ -115,43 +118,13 @@ export default function PurchaseOrdersTab() {
           search: searchToUse || undefined,
         });
 
-        // Helper: safe read from localStorage and parse JSON
-        const readCache = (key) => {
-          try {
-            const raw = localStorage.getItem(key);
-            if (!raw) return null;
-            return JSON.parse(raw);
-          } catch {
-            return null;
-          }
-        };
-
-        // Helper: fetch from API and cache in localStorage
-        const fetchAndCache = async (key, fetchFn) => {
-          const cached = readCache(key);
-          const arr = Array.isArray(cached)
-            ? cached
-            : cached?.data || [];
-          if (arr.length > 0 && !forceApiRefresh) return cached;
-          try {
-            const fresh = await fetchFn();
-            const freshArr = Array.isArray(fresh) ? fresh : fresh?.data || [];
-            if (freshArr.length > 0) {
-              localStorage.setItem(key, JSON.stringify(freshArr));
-            }
-            return freshArr;
-          } catch {
-            return [];
-          }
-        };
-
         const [suppliersData, productsDataRaw, unitsData, packagingTypesData, warehousesData] =
           await Promise.all([
-            fetchAndCache("appSuppliers", getAllSuppliers),
-            fetchAndCache("appProducts", () => getAllProducts({ page_size: 500 })),
-            fetchAndCache("appBaseUnits", getAllBaseUnits),
-            fetchAndCache("appPackagingTypes", getAllPackagingTypes),
-            fetchAndCache("appWarehouses", getAllWarehouses),
+            getAppSuppliers(),
+            getAllProducts({ pageSize: 500 }),
+            getAppBaseUnits(),
+            getAppPackagingTypes(),
+            getAppWarehouses(),
           ]);
 
         // Normalize incoming response { data, pagination }
@@ -160,33 +133,23 @@ export default function PurchaseOrdersTab() {
           : ordersDataRaw?.data || ordersDataRaw?.purchase_orders || [];
         const incomingPagination = ordersDataRaw?.pagination || null;
 
-        // Debug logging for all data
-
         setPurchaseOrders(extractedOrders);
         setPagination(incomingPagination);
-        setSuppliers(
-          Array.isArray(suppliersData)
-            ? suppliersData
-            : suppliersData?.data || [],
-        );
-        setProducts(
-          Array.isArray(productsDataRaw)
-            ? productsDataRaw
-            : productsDataRaw?.products || productsDataRaw?.data || [],
-        );
-        setBaseUnits(
-          Array.isArray(unitsData) ? unitsData : unitsData?.data || [],
-        );
-        setPackagingTypes(
-          Array.isArray(packagingTypesData)
-            ? packagingTypesData
-            : packagingTypesData?.data || [],
-        );
-        setWarehouses(
-          Array.isArray(warehousesData)
-            ? warehousesData
-            : warehousesData?.data || [],
-        );
+        setSuppliers(unwrapList(suppliersData));
+        setProducts(unwrapList(productsDataRaw));
+        setBaseUnits(unwrapList(unitsData));
+        setPackagingTypes(unwrapList(packagingTypesData));
+        setWarehouses(unwrapList(warehousesData));
+
+        try {
+          localStorage.setItem("appProducts", JSON.stringify(unwrapList(productsDataRaw)));
+          localStorage.setItem("appSuppliers", JSON.stringify(unwrapList(suppliersData)));
+          localStorage.setItem("appWarehouses", JSON.stringify(unwrapList(warehousesData)));
+          localStorage.setItem("appPackagingTypes", JSON.stringify(unwrapList(packagingTypesData)));
+          localStorage.setItem("appBaseUnits", JSON.stringify(unwrapList(unitsData)));
+        } catch {
+          /* ignore cache write errors */
+        }
 
         if (forceApiRefresh) {
           // Removed global success notification for refresh
@@ -214,80 +177,10 @@ export default function PurchaseOrdersTab() {
   );
 
   // Function to handle viewing order details
-  const handleViewDetails = useCallback(
-    async (order) => {
-      try {
-        setLoading(true);
-        setSelectedOrder(null); // Clear previous data
-
-        // Fetch detailed order data including items
-        const detailedOrder = await getPurchaseOrderDetails(
-          order.purchase_orders_id,
-        );
-
-        // Transform the data to match what the modal expects
-        const transformedOrder = {
-          // Map the main order fields
-          purchase_order_id: detailedOrder.purchase_orders_id,
-          purchase_order_supplier_id: detailedOrder.purchase_orders_supplier_id,
-          purchase_order_warehouse_id:
-            detailedOrder.purchase_orders_warehouse_id,
-          purchase_order_date: detailedOrder.purchase_orders_order_date,
-          purchase_order_expected_delivery_date:
-            detailedOrder.purchase_orders_expected_delivery_date,
-          purchase_order_actual_delivery_date:
-            detailedOrder.purchase_orders_actual_delivery_date,
-          purchase_order_total_amount:
-            detailedOrder.purchase_orders_total_amount,
-          purchase_orders_order_discount:
-            detailedOrder.purchase_orders_order_discount,
-          purchase_order_status: detailedOrder.purchase_orders_status,
-          purchase_order_notes: detailedOrder.purchase_orders_notes,
-
-          // Map the items and transform field names to match what the modal expects
-          items:
-            detailedOrder.items?.map((item) => {
-              return {
-                purchase_order_items_id: item.purchase_order_items_id,
-                purchase_order_items_product_id:
-                  item.purchase_order_items_variant_id, // Map variant to product for the modal
-                purchase_order_items_quantity:
-                  item.purchase_order_items_quantity_ordered,
-                purchase_order_items_unit_price:
-                  item.purchase_order_items_unit_cost,
-                purchase_order_items_discount_amount:
-                  item.purchase_order_items_discount_amount,
-                purchase_order_items_tax_rate:
-                  item.purchase_order_items_tax_rate,
-                purchase_order_items_has_tax: item.purchase_order_items_has_tax,
-                purchase_order_items_total_cost:
-                  item.purchase_order_items_total_cost,
-                purchase_order_items_packaging_type_id:
-                  item.purchase_order_items_packaging_type_id,
-                purchase_order_items_notes: item.purchase_order_items_notes,
-                // Additional fields for display
-                product_name: item.product_name,
-                product_variant_name: item.product_variant_name,
-                packaging_type_name: item.packaging_type_name,
-                base_unit_name: item.base_unit_name,
-              };
-            }) || [],
-        };
-
-        setSelectedOrder(transformedOrder);
-        setCurrentView("details"); // Only show modal after data is ready
-      } catch (error) {
-        setGlobalMessage({
-          type: "error",
-          message: `فشل في تحميل تفاصيل أمر الشراء: ${error.message}`,
-        });
-        setCurrentView("list");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [setGlobalMessage],
-  );
+  const handleViewDetails = useCallback((order) => {
+    setSelectedOrder(order);
+    setCurrentView("details");
+  }, []);
 
   // Function to handle editing an order: fetch full details then open the edit form
   const handleEdit = useCallback(
@@ -506,10 +399,10 @@ export default function PurchaseOrdersTab() {
   const handleAdd = async (newData) => {
     setLoading(true);
     try {
-      const message = await addPurchaseOrder(newData);
+      await addPurchaseOrder(newData);
       setGlobalMessage({
         type: "success",
-        message: message || "تم إضافة أمر الشراء بنجاح!",
+        message: "تم إضافة أمر الشراء بنجاح!",
       });
       setCurrentView("list");
       await loadAllPurchaseOrderData(true);
@@ -983,20 +876,16 @@ export default function PurchaseOrdersTab() {
 
       {/* Add modal */}
       {currentView === "add" && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm overflow-y-auto flex items-start justify-center p-2 sm:p-6">
-          <div className="relative w-full max-w-6xl my-4 sm:my-8">
-            <AddPurchaseOrderForm
-              onAdd={handleAdd}
-              onCancel={() => setCurrentView("list")}
-              suppliers={suppliers || []}
-              products={products || []}
-              baseUnits={baseUnits || []}
-              packagingTypes={packagingTypes || []}
-              warehouses={warehouses || []}
-              dataLoaded={isSupportingDataLoaded}
-            />
-          </div>
-        </div>
+        <AddPurchaseOrderForm
+          onAdd={handleAdd}
+          onCancel={() => setCurrentView("list")}
+          suppliers={suppliers || []}
+          products={products || []}
+          baseUnits={baseUnits || []}
+          packagingTypes={packagingTypes || []}
+          warehouses={warehouses || []}
+          dataLoaded={isSupportingDataLoaded && products.length > 0}
+        />
       )}
 
       {/* Edit modal */}
@@ -1024,13 +913,13 @@ export default function PurchaseOrdersTab() {
       )}
 
       {/* Details modal */}
-      {currentView === "details" && isSupportingDataLoaded && selectedOrder && (
+      {currentView === "details" && selectedOrder && (
         <PurchaseOrderDetailsModal
           isOpen
           purchaseOrder={selectedOrder}
           onClose={() => setCurrentView("list")}
+          onEdit={handleEdit}
           suppliers={suppliers}
-          products={products}
           warehouses={warehouses}
         />
       )}

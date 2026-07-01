@@ -648,7 +648,7 @@ export default function ClientCashTab() {
         sortable: true,
         sortAccessor: (item) => Number(item.id ?? 0),
         render: (item) => (
-          <span className="inline-flex items-center justify-center gap-1 px-3 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-[#7A52C2]">
+          <span className="inline-flex items-center justify-center gap-1 px-3 py-1 text-xs font-semibold rounded-full bg-[#EDE7FF] text-[#7A52C2]">
             <HashtagIcon className="h-3.5 w-3.5" />
             {item.id ?? item.original?.id ?? "—"}
           </span>
@@ -702,7 +702,7 @@ export default function ClientCashTab() {
         sortable: true,
         render: (item) => (
           <div className="flex items-start gap-2">
-            <UserCircleIcon className="h-5 w-5 text-blue-500" />
+            <UserCircleIcon className="h-5 w-5 text-[#8B5FD6]" />
             <div className="text-sm font-medium text-gray-900 leading-5">
               {item.client_name || "غير محدد"}
             </div>

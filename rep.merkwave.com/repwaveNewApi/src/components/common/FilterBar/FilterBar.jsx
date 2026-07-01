@@ -15,11 +15,11 @@ import SearchableSelect from "../SearchableSelect/SearchableSelect";
 const chipToneClasses = {
   blue: "bg-[#EDE7FF] text-[#2D1B69]",
   green: "bg-green-100 text-green-800",
-  indigo: "bg-indigo-100 text-indigo-800",
+  indigo: "bg-[#EDE7FF] text-[#2D1B69]",
   orange: "bg-orange-100 text-orange-800",
   purple: "bg-purple-100 text-purple-800",
   yellow: "bg-yellow-100 text-yellow-800",
-  teal: "bg-teal-100 text-teal-800",
+  teal: "bg-[#EDE7FF] text-[#2D1B69]",
   red: "bg-red-100 text-red-800",
   gray: "bg-gray-100 text-gray-800",
 };

@@ -24,7 +24,7 @@ const PaymentMethodSelector = ({
     try {
       setLoading(true);
       const response = await getPaymentMethods();
-      setPaymentMethods(response.payment_methods || []);
+      setPaymentMethods(response?.payment_methods || []);
     } catch (error) {
       console.error('Error fetching payment methods:', error);
       setPaymentMethods([]);
@@ -33,7 +33,9 @@ const PaymentMethodSelector = ({
     }
   };
 
-  const selectedMethod = paymentMethods.find(method => method.payment_methods_id === value);
+  const selectedMethod = paymentMethods.find(
+    (method) => String(method.payment_methods_id) === String(value ?? ''),
+  );
 
   const handleSelect = (methodId) => {
     onChange(methodId);
@@ -96,7 +98,8 @@ const PaymentMethodSelector = ({
                 type="button"
                 onClick={() => handleSelect(method.payment_methods_id)}
                 className={`w-full text-right p-3 hover:bg-gray-50 focus:bg-gray-50 focus:outline-none transition-colors ${
-                  selectedMethod?.payment_methods_id === method.payment_methods_id 
+                  String(selectedMethod?.payment_methods_id) ===
+                  String(method.payment_methods_id)
                     ? 'bg-[#f5f3ff] border-l-4 border-[#8B5FD6]' 
                     : ''
                 }`}

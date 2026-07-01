@@ -166,7 +166,7 @@ const ProductsTab = ({ onStatsUpdate }) => {
       sortable: true,
       align: 'center',
       render: (item) => item.odoo_product_id ? (
-        <span className="font-mono bg-teal-100 text-teal-700 px-2 py-1 rounded text-sm">{item.odoo_product_id}</span>
+        <span className="font-mono bg-[#EDE7FF] text-[#7A52C2] px-2 py-1 rounded text-sm">{item.odoo_product_id}</span>
       ) : (
         <span className="text-gray-400">-</span>
       )

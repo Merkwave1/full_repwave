@@ -1,11 +1,15 @@
 ﻿// src/components/common/LocationMapModal/LocationMapModal.jsx
 import React, { useState, useEffect } from "react";
 import {
-  XMarkIcon,
   MapPinIcon,
   InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import MapPicker from "../MapPicker/MapPicker.jsx";
+import AppModalShell, {
+  modalPrimaryBtnClass,
+  modalSecondaryBtnClass,
+  modalSectionClass,
+} from "../AppModalShell.jsx";
 
 function LocationMapModal({
   isOpen,
@@ -49,41 +53,29 @@ function LocationMapModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] overflow-y-auto" dir="rtl">
-      <div className="flex items-center justify-center min-h-screen px-2 sm:px-4 pt-2 sm:pt-4 pb-10 sm:pb-20 text-center sm:block sm:p-0">
-        {/* Background overlay */}
-        <div
-          className="fixed inset-0 backdrop-blur-sm bg-black/40 transition-opacity"
-          onClick={onClose}
-        />
-
-        {/* Modal panel */}
-        <div className="inline-block w-full max-w-4xl my-2 sm:my-8 overflow-hidden text-right align-middle transform bg-white shadow-2xl rounded-2xl border border-[#C4A8F0]/30 max-h-[95vh] sm:max-h-[90vh]">
-          {/* Header */}
-          <div className="border-b border-[#C4A8F0]/40">
-            <div className="h-1.5 bg-[#C4A8F0]" />
-            <div className="px-4 py-3 sm:px-6 sm:py-5 flex items-center justify-between bg-white">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-[#C4A8F0]/20 flex items-center justify-center text-[#C4A8F0]">
-                  <MapPinIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-                </div>
-                <h3 className="text-base sm:text-xl font-extrabold text-[#1A0F35] truncate">
-                  {title || (derivedReadOnly ? "عرض الموقع" : "اختر الموقع")}
-                </h3>
-              </div>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-lg text-[#1A0F35]/70 hover:bg-[#C4A8F0]/20 transition"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="px-3 sm:px-6 py-3 sm:py-6 space-y-3 sm:space-y-4">
-            {/* Map Container */}
-            <div className="rounded-2xl overflow-hidden border border-[#C4A8F0]/30 shadow-sm">
+    <AppModalShell
+      open={isOpen}
+      onClose={onClose}
+      title={title || (derivedReadOnly ? "عرض الموقع" : "اختر الموقع")}
+      icon={MapPinIcon}
+      size="2xl"
+      zIndex="z-[60]"
+      footer={
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3">
+          <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+            {derivedReadOnly ? "إغلاق" : "إلغاء"}
+          </button>
+          {!derivedReadOnly && (
+            <button type="button" onClick={handleConfirm} className={modalPrimaryBtnClass}>
+              <MapPinIcon className="h-4 w-4 inline ml-1" />
+              تأكيد الموقع
+            </button>
+          )}
+        </div>
+      }
+    >
+          <div className="space-y-3 sm:space-y-4">
+            <div className="rounded-2xl overflow-hidden border border-[#EDE7FF] shadow-sm">
               <MapPicker
                 key={`map-${initialLat ?? latitude}-${initialLng ?? longitude}-${derivedReadOnly}`}
                 initialLatitude={selectedLat}
@@ -95,14 +87,13 @@ function LocationMapModal({
               />
             </div>
 
-            {/* Selected Coordinates */}
-            <div className="bg-[#C4A8F0]/10 rounded-2xl border border-[#C4A8F0]/30 p-3 sm:p-4">
+            <div className={`${modalSectionClass} p-3 sm:p-4 bg-[#FAFAFE]`}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-[#1A0F35] mb-1">
                     خط العرض (Latitude)
                   </label>
-                  <div className="bg-white border border-gray-200 rounded-xl px-3 sm:px-4 py-2 font-mono text-xs sm:text-sm text-[#1A0F35] shadow-sm truncate">
+                  <div className="bg-white border border-[#EDE7FF] rounded-xl px-3 sm:px-4 py-2 font-mono text-xs sm:text-sm text-[#1A0F35] shadow-sm truncate">
                     {(parseFloat(selectedLat) || 0).toFixed(7)}
                   </div>
                 </div>
@@ -111,7 +102,7 @@ function LocationMapModal({
                   <label className="block text-xs sm:text-sm font-medium text-[#1A0F35] mb-1">
                     خط الطول (Longitude)
                   </label>
-                  <div className="bg-white border border-gray-200 rounded-xl px-3 sm:px-4 py-2 font-mono text-xs sm:text-sm text-[#1A0F35] shadow-sm truncate">
+                  <div className="bg-white border border-[#EDE7FF] rounded-xl px-3 sm:px-4 py-2 font-mono text-xs sm:text-sm text-[#1A0F35] shadow-sm truncate">
                     {(parseFloat(selectedLng) || 0).toFixed(7)}
                   </div>
                 </div>
@@ -125,35 +116,13 @@ function LocationMapModal({
 
               {derivedReadOnly && description && (
                 <div className="mt-3 text-xs text-[#1A0F35]/70 flex items-start gap-2">
-                  <InformationCircleIcon className="h-4 w-4 text-[#C4A8F0] mt-0.5 shrink-0" />
+                  <InformationCircleIcon className="h-4 w-4 text-[#8B5FD6] mt-0.5 shrink-0" />
                   <span>{description}</span>
                 </div>
               )}
             </div>
           </div>
-
-          {/* Footer */}
-          <div className="px-3 sm:px-6 py-3 sm:py-4 bg-gray-50 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 border-t border-gray-200">
-            <button
-              onClick={onClose}
-              className="px-4 sm:px-6 py-2 rounded-xl bg-gray-100 border border-gray-200 text-[#1A0F35] hover:bg-gray-200 transition text-sm font-medium"
-            >
-              {derivedReadOnly ? "إغلاق" : "إلغاء"}
-            </button>
-
-            {!derivedReadOnly && (
-              <button
-                onClick={handleConfirm}
-                className="px-4 sm:px-6 py-2 rounded-xl bg-[#C4A8F0] hover:bg-[#7ccfee] text-[#1A0F35] font-semibold shadow-md transition flex items-center justify-center gap-2 text-sm"
-              >
-                <MapPinIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                تأكيد الموقع
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+    </AppModalShell>
   );
 }
 

@@ -21,7 +21,7 @@ const IndustriesTab = ({ data, loading }) => {
       {/* Industries Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-lg shadow-sm border p-6 text-center">
-          <div className="p-2 rounded-lg bg-indigo-100 text-[#8B5FD6] inline-block mb-3">
+          <div className="p-2 rounded-lg bg-[#EDE7FF] text-[#8B5FD6] inline-block mb-3">
             <BuildingOfficeIcon className="w-6 h-6" />
           </div>
           <p className="text-2xl font-bold text-[#8B5FD6] mb-2">{industries.total_industries?.toLocaleString() || 0}</p>
@@ -49,7 +49,7 @@ const IndustriesTab = ({ data, loading }) => {
       {industries.industry_distribution && industries.industry_distribution.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex items-center space-x-3 space-x-reverse mb-6">
-            <div className="p-2 rounded-lg bg-indigo-100 text-[#8B5FD6]">
+            <div className="p-2 rounded-lg bg-[#EDE7FF] text-[#8B5FD6]">
               <BuildingOfficeIcon className="w-5 h-5" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900">توزيع العملاء حسب الصناعات</h3>

@@ -18,7 +18,8 @@ import {
   getSalesDeliveryDetails,
   getSalesDeliveriesPaginated,
 } from "../../../../../apis/sales_deliveries";
-import { getAppWarehouses, getAppClients } from "../../../../../apis/auth";
+import { getAppWarehouses } from "../../../../../apis/auth";
+import { getAllClients } from "../../../../../apis/clients.js";
 import FilterBar from "../../../../common/FilterBar/FilterBar";
 import Loader from "../../../../common/Loader/Loader";
 import Alert from "../../../../common/Alert/Alert";
@@ -75,29 +76,15 @@ export default function DeliveryHistoryTab() {
 
   // Load static data (clients, warehouses) once or on explicit refresh
   const loadStaticData = useCallback(
-    async (forceRefresh = false) => {
+    async (_forceRefresh = false) => {
       try {
         setError(null);
-        // Try to read clients from localStorage first (developer may cache these)
-        let localClients = null;
-        try {
-          const raw = localStorage.getItem("app_clients");
-          if (raw) localClients = JSON.parse(raw);
-        } catch {
-          // ignore parse errors
-          localClients = null;
-        }
-
-        const warehousesData = await getAppWarehouses(forceRefresh);
+        const [warehousesData, clientsData] = await Promise.all([
+          getAppWarehouses(),
+          getAllClients(),
+        ]);
         setWarehouses(normalizeApiList(warehousesData, ["warehouses"]));
-
-        const localClientsList = normalizeApiList(localClients, ["clients"]);
-        if (localClientsList.length > 0) {
-          setClients(localClientsList);
-        } else {
-          const clientsData = await getAppClients(forceRefresh);
-          setClients(normalizeApiList(clientsData, ["clients"]));
-        }
+        setClients(normalizeApiList(clientsData, ["clients"]));
       } catch (err) {
         console.error("Error loading static data:", err);
         setError(err.message || "فشل في تحميل البيانات.");
@@ -196,7 +183,7 @@ export default function DeliveryHistoryTab() {
         clients.find((c) => c.client_id === clientId)?.client_name ||
         delivery.clients_company_name ||
         "غير محدد";
-      const dateTime = formatDateTime(delivery.sales_deliveries_delivery_date);
+      const dateTime = formatDateTime(getDeliveryDate(delivery));
 
       const html = `
         <html dir="rtl">
@@ -417,7 +404,7 @@ export default function DeliveryHistoryTab() {
         clients.find((c) => c.client_id === clientId2)?.client_name ||
         delivery.clients_company_name ||
         "غير محدد";
-      const dateTime = formatDateTime(delivery.sales_deliveries_delivery_date);
+      const dateTime = formatDateTime(getDeliveryDate(delivery));
 
       const html2 = `
         <html dir="rtl">
@@ -450,16 +437,24 @@ export default function DeliveryHistoryTab() {
     }
   };
 
+  const getDeliveryDate = (delivery) =>
+    delivery?.sales_deliveries_delivery_date ??
+    delivery?.sales_deliveries_date ??
+    delivery?.delivery_date ??
+    null;
+
   const formatDateTime = (dateString) => {
-    if (!dateString) return "-";
+    const empty = { date: "-", time: "-", full: "-" };
+    if (!dateString) return empty;
     const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return empty;
     return {
-      date: date.toLocaleDateString("en-GB"), // DD/MM/YYYY format
+      date: date.toLocaleDateString("en-GB"),
       time: date.toLocaleTimeString("en-GB", {
         hour: "2-digit",
         minute: "2-digit",
-      }), // 24-hour format
-      full: date.toLocaleString("en-GB"), // Full date and time
+      }),
+      full: date.toLocaleString("en-GB"),
     };
   };
 
@@ -857,7 +852,7 @@ export default function DeliveryHistoryTab() {
                 cellClassName: "border-r border-gray-200",
                 sortable: true,
                 render: (d) => {
-                  const dt = formatDateTime(d.sales_deliveries_delivery_date);
+                  const dt = formatDateTime(getDeliveryDate(d));
                   return (
                     <div className="flex items-center gap-1">
                       <CalendarIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
@@ -900,9 +895,7 @@ export default function DeliveryHistoryTab() {
             initialSort={{ key: "sales_deliveries_id", direction: "desc" }}
             showSummary={false}
             renderRow={(delivery) => {
-              const dateTime = formatDateTime(
-                delivery.sales_deliveries_delivery_date,
-              );
+              const dateTime = formatDateTime(getDeliveryDate(delivery));
               return (
                 <>
                   <td className="px-6 py-4 text-sm font-medium text-[#8B5FD6] ">
@@ -1097,7 +1090,7 @@ transition-all duration-200 hover:scale-110"
                           <p className="font-medium text-[#1A0F35]">
                             {
                               formatDateTime(
-                                selectedDelivery.sales_deliveries_delivery_date,
+                                getDeliveryDate(selectedDelivery),
                               ).full
                             }
                           </p>
@@ -1107,7 +1100,7 @@ transition-all duration-200 hover:scale-110"
                               التاريخ:{" "}
                               {
                                 formatDateTime(
-                                  selectedDelivery.sales_deliveries_delivery_date,
+                                  getDeliveryDate(selectedDelivery),
                                 ).date
                               }
                             </span>
@@ -1116,7 +1109,7 @@ transition-all duration-200 hover:scale-110"
                               الوقت:{" "}
                               {
                                 formatDateTime(
-                                  selectedDelivery.sales_deliveries_delivery_date,
+                                  getDeliveryDate(selectedDelivery),
                                 ).time
                               }
                             </span>

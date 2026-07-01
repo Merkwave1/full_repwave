@@ -1,6 +1,10 @@
 ﻿import React, { useState, useMemo } from "react";
 import * as XLSX from "xlsx";
-import { XMarkIcon, ArrowDownTrayIcon } from "@heroicons/react/24/outline";
+import { ArrowDownTrayIcon, ArrowUpTrayIcon } from "@heroicons/react/24/outline";
+import AppModalShell, {
+  modalPrimaryBtnClass,
+  modalSecondaryBtnClass,
+} from "../../../../common/AppModalShell.jsx";
 import { addClient } from "../../../../../apis/clients";
 import {
   CLIENT_STATUS_OPTIONS,
@@ -196,18 +200,29 @@ export default function ClientImportModal({ open, onClose, onDone }) {
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/40 p-4"
-      dir="rtl"
-    >
-      <div className="bg-white w-full max-w-3xl rounded-xl shadow-lg overflow-hidden">
-        <div className="px-5 py-4 border-b flex items-center justify-between">
-          <h3 className="text-lg font-semibold">استيراد العملاء من Excel</h3>
-          <button onClick={onClose} className="p-2 rounded hover:bg-gray-100">
-            <XMarkIcon className="w-5 h-5" />
+    <AppModalShell
+      open={open}
+      onClose={onClose}
+      title="استيراد العملاء من Excel"
+      icon={ArrowUpTrayIcon}
+      size="2xl"
+      footer={
+        <div className="flex items-center justify-end gap-2">
+          <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+            إلغاء
+          </button>
+          <button
+            type="button"
+            disabled={!rows.length || importing}
+            onClick={handleImport}
+            className={modalPrimaryBtnClass}
+          >
+            {importing ? "جارٍ الاستيراد..." : "استيراد"}
           </button>
         </div>
-        <div className="p-5 space-y-4">
+      }
+    >
+        <div className="space-y-4">
           <div className="flex items-center gap-3">
             <input
               type="file"
@@ -290,22 +305,6 @@ export default function ClientImportModal({ open, onClose, onDone }) {
             </div>
           )}
         </div>
-        <div className="px-5 py-4 border-t flex items-center justify-end gap-2 bg-gray-50">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
-          >
-            إلغاء
-          </button>
-          <button
-            disabled={!rows.length || importing}
-            onClick={handleImport}
-            className="px-4 py-2 rounded bg-[#8B5FD6] text-white hover:bg-[#7A52C2] disabled:opacity-50"
-          >
-            {importing ? "جارٍ الاستيراد..." : "استيراد"}
-          </button>
-        </div>
-      </div>
-    </div>
+    </AppModalShell>
   );
 }

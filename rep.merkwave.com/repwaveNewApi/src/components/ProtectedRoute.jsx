@@ -29,7 +29,7 @@ function ProtectedRoute() {
               localStorage.clear();
               window.location.href = '/login';
             }}
-            className="bg-[#f5f3ff]0 hover:bg-[#8B5FD6] text-white font-bold py-2 px-4 rounded transition-colors"
+            className="bg-[#8B5FD6] hover:bg-[#8B5FD6] text-white font-bold py-2 px-4 rounded transition-colors"
           >
             العودة لتسجيل الدخول
           </button>

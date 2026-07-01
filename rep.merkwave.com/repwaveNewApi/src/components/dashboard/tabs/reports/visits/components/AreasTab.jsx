@@ -194,7 +194,7 @@ const AreasTab = ({ data }) => {
                     
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <ChartBarIcon className="h-4 w-4 text-blue-500 ml-2" />
+                        <ChartBarIcon className="h-4 w-4 text-[#8B5FD6] ml-2" />
                         <span className="text-sm font-medium text-gray-900">
                           {(area.total_visits || 0).toLocaleString('en-US')}
                         </span>

@@ -12,6 +12,17 @@ export const getInterestedProductClients = (productId) => api.get('/clients', { 
 
 // ── Product Reports Aggregator ────────────────────────────────────────────────
 // Fetches real data from existing endpoints and builds per-tab report shapes.
+
+function getInvQty(item) {
+  return Number(item?.inventory_quantity ?? item?.quantity ?? 0) || 0;
+}
+
+function getStockLevel(qty) {
+  if (qty > 10) return 'In Stock';
+  if (qty > 0) return 'Low Stock';
+  return 'Out of Stock';
+}
+
 export async function getProductReports(tab) {
   const [products, inventory, suppliers, warehouses] = await Promise.all([
     api.get('/products', { page: 1, pageSize: 200 }),
@@ -37,8 +48,18 @@ export async function getProductReports(tab) {
   // Overwrite with known Arabic names for demo data
   Object.assign(catNameMap, { 1: 'مياه ومشروبات', 2: 'زيوت طهي', 3: 'ألبان وأجبان', 4: 'منظفات', 5: 'حلويات وبسكويت' });
 
+  const prodNameMap = {};
+  prods.forEach((p) => {
+    prodNameMap[p.products_id] = p.products_name;
+  });
+
+  const whNameMap = {};
+  whs.forEach((w) => {
+    whNameMap[w.warehouse_id] = w.warehouse_name;
+  });
+
   if (tab === 'overview') {
-    const productsWithStock = new Set(inv.filter(i => i.quantity > 0).map(i => i.products_id)).size;
+    const productsWithStock = new Set(inv.filter(i => getInvQty(i) > 0).map(i => i.products_id)).size;
     return {
       total_products: prods.length,
       active_products: activeProds.length,
@@ -71,10 +92,11 @@ export async function getProductReports(tab) {
           out_of_stock_count: 0,
         };
       }
+      const qty = getInvQty(item);
       whStats[wid]._uniqueProds.add(item.products_id);
-      whStats[wid].total_quantity += item.quantity;
-      if (item.quantity > 10) whStats[wid].in_stock_count++;
-      else if (item.quantity > 0) whStats[wid].low_stock_count++;
+      whStats[wid].total_quantity += qty;
+      if (qty > 10) whStats[wid].in_stock_count++;
+      else if (qty > 0) whStats[wid].low_stock_count++;
       else whStats[wid].out_of_stock_count++;
     });
 
@@ -86,9 +108,9 @@ export async function getProductReports(tab) {
     return {
       warehouses: warehousesArr,
       status_summary: {
-        'In Stock':      { count: inv.filter(i => i.quantity > 10).length,                       quantity: inv.filter(i => i.quantity > 10).reduce((s, i) => s + i.quantity, 0) },
-        'Low Stock':     { count: inv.filter(i => i.quantity > 0 && i.quantity <= 10).length,    quantity: inv.filter(i => i.quantity > 0 && i.quantity <= 10).reduce((s, i) => s + i.quantity, 0) },
-        'Out of Stock':  { count: inv.filter(i => i.quantity === 0).length,                      quantity: 0 },
+        'In Stock':      { count: inv.filter(i => getInvQty(i) > 10).length,                       quantity: inv.filter(i => getInvQty(i) > 10).reduce((s, i) => s + getInvQty(i), 0) },
+        'Low Stock':     { count: inv.filter(i => { const q = getInvQty(i); return q > 0 && q <= 10; }).length,    quantity: inv.filter(i => { const q = getInvQty(i); return q > 0 && q <= 10; }).reduce((s, i) => s + getInvQty(i), 0) },
+        'Out of Stock':  { count: inv.filter(i => getInvQty(i) === 0).length,                      quantity: 0 },
       },
       total_items: inv.length,
     };
@@ -108,7 +130,7 @@ export async function getProductReports(tab) {
     const catInv = {};
     inv.forEach(i => {
       const cid = productCatMap[i.products_id];
-      if (cid) catInv[cid] = (catInv[cid] || 0) + i.quantity;
+      if (cid) catInv[cid] = (catInv[cid] || 0) + getInvQty(i);
     });
 
     const categories = Object.values(catMap).map(({ _prods, ...c }) => ({
@@ -139,7 +161,7 @@ export async function getProductReports(tab) {
   }
 
   if (tab === 'analytics') {
-    const totalQty = inv.reduce((s, i) => s + i.quantity, 0);
+    const totalQty = inv.reduce((s, i) => s + getInvQty(i), 0);
     return {
       total_products: prods.length,
       status_analysis: {
@@ -157,16 +179,46 @@ export async function getProductReports(tab) {
   }
 
   if (tab === 'stock_levels') {
+    const stockSummary = {
+      'In Stock': inv.filter((i) => getInvQty(i) > 10).length,
+      'Low Stock': inv.filter((i) => {
+        const q = getInvQty(i);
+        return q > 0 && q <= 10;
+      }).length,
+      'Out of Stock': inv.filter((i) => getInvQty(i) === 0).length,
+    };
+
+    const lowStockItems = inv
+      .map((i) => {
+        const qty = getInvQty(i);
+        const inventoryStatus = getStockLevel(qty);
+        return {
+          products_name:
+            i.product_name ||
+            i.products_name ||
+            prodNameMap[i.products_id] ||
+            `منتج ${i.products_id}`,
+          variant_name: i.variant_name || null,
+          warehouse_name:
+            i.warehouse_name ||
+            whNameMap[i.warehouse_id] ||
+            `مستودع ${i.warehouse_id}`,
+          inventory_quantity: qty,
+          inventory_status: inventoryStatus,
+          inventory_last_movement_at:
+            i.inventory_last_movement_at || i.updated_at || null,
+        };
+      })
+      .filter(
+        (item) =>
+          item.inventory_status === 'Low Stock' ||
+          item.inventory_status === 'Out of Stock',
+      );
+
     return {
-      stock_summary: {
-        'In Stock':     inv.filter(i => i.quantity > 10).length,
-        'Low Stock':    inv.filter(i => i.quantity > 0 && i.quantity <= 10).length,
-        'Out of Stock': inv.filter(i => i.quantity === 0).length,
-      },
-      items: inv.map(i => ({
-        ...i,
-        stock_level: i.quantity > 10 ? 'In Stock' : i.quantity > 0 ? 'Low Stock' : 'Out of Stock',
-      })),
+      stock_summary: stockSummary,
+      low_stock_items: lowStockItems,
+      total_low_stock: lowStockItems.length,
     };
   }
 

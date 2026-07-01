@@ -1,7 +1,6 @@
 ﻿// src/components/dashboard/tabs/inventory-management/Transfers/RequestDetailsModal.jsx
 import React, { useMemo, useState, useEffect } from "react";
 import {
-  XMarkIcon,
   BuildingOffice2Icon,
   CalendarDaysIcon,
   InformationCircleIcon,
@@ -10,41 +9,14 @@ import {
   TrashIcon,
   PencilSquareIcon,
   PlusCircleIcon,
+  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 import SearchableSelect from "../../../../common/SearchableSelect/SearchableSelect";
-
-// Theme tokens
-const THEME_DARK = "#1F2937";
-const THEME_ACCENT = "#8DD8F5";
-
-/* Minimal glass/modal wrapper with premium styling */
-const Modal = ({
-  isOpen,
-  onClose,
-  dir = "rtl",
-  modalWidthClass = "max-w-6xl",
-  children,
-}) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-2 sm:px-4">
-      {/* backdrop */}
-      <div
-        onClick={onClose}
-        className="absolute inset-0"
-        style={{ background: `${THEME_DARK}B3`, backdropFilter: "blur(6px)" }}
-      />
-
-      <div
-        dir={dir}
-        className={`${modalWidthClass} w-full relative bg-white rounded-3xl overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.28)] border border-white/30`}
-        style={{ maxHeight: "92vh" }}
-      >
-        {children}
-      </div>
-    </div>
-  );
-};
+import AppModalShell, {
+  modalPrimaryBtnClass,
+  modalSectionClass,
+  modalSectionHeaderClass,
+} from "../../../../common/AppModalShell.jsx";
 
 export default function RequestDetailsModal({
   isOpen,
@@ -71,6 +43,7 @@ export default function RequestDetailsModal({
   const [selectedSourceWarehouseId, setSelectedSourceWarehouseId] =
     useState(null);
   const [allocInventoryByItem, setAllocInventoryByItem] = useState({}); // { request_item_id: inventory_id }
+  const [actionLoading, setActionLoading] = useState(false);
 
   // Dropdown styles for SearchableSelect (kept, for layering)
   const dropdownStyles = {
@@ -364,48 +337,109 @@ export default function RequestDetailsModal({
 
   if (!isOpen || !request) return null;
 
+  const insufficientItems = items.filter((item) => {
+    const available = getAvailableForRow(item);
+    return available < Number(item.requested_quantity || 0);
+  });
+  const canApprove =
+    items.length > 0 &&
+    insufficientItems.length === 0 &&
+    items.every((it) => allocInventoryByItem[it.request_item_id]);
+
+  const handleApproveClick = async () => {
+    if (!canApprove || actionLoading) return;
+    const allocations = items
+      .filter((it) => allocInventoryByItem[it.request_item_id])
+      .map((it) => ({
+        request_item_id: it.request_item_id,
+        inventory_id: allocInventoryByItem[it.request_item_id],
+        quantity: it.requested_quantity,
+      }));
+    setActionLoading(true);
+    try {
+      await onApproveAllocate?.(request.request_id, allocations, adminNote);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRejectClick = async () => {
+    if (actionLoading) return;
+    setActionLoading(true);
+    try {
+      await onReject?.(request.request_id, adminNote);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const requestDate =
+    request.request_created_at || request.request_date || null;
+
   // UI: premium header + info grid + cards (editable) + add form + actions
   return (
-    <Modal
-      isOpen={isOpen}
+    <AppModalShell
+      open={isOpen}
       onClose={onClose}
-      dir="rtl"
-      modalWidthClass="max-w-6xl flex flex-col"
-    >
-      {/* Header */}
-      <div
-        className="relative px-6 py-5 bg-gradient-to-r from-[#C4A8F0]/35 to-white border-b"
-        style={{ borderBottomColor: "rgba(0,0,0,0.04)" }}
-      >
-        <div className="absolute inset-0 blur-xl bg-[#C4A8F0]/30 -z-10" />
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-2xl font-extrabold text-[#1A0F35]">
-              تفاصيل الطلب رقم REQ-{request.request_id}
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">
-              مراجعة الطلب، تخصيص دفعات وإنشاء التحويل
-            </p>
+      portal
+      zIndex="z-[9999]"
+      title={`تفاصيل الطلب رقم REQ-${request.request_id}`}
+      subtitle="مراجعة الطلب، تخصيص دفعات وإنشاء التحويل"
+      icon={ClipboardDocumentListIcon}
+      size="3xl"
+      bodyClassName="p-3 sm:p-6 overflow-y-auto flex-1 min-h-0 bg-[#FAFAFE] space-y-5"
+      footer={
+        <>
+          {insufficientItems.length > 0 && (
+            <div className="mb-3">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-red-700 text-sm font-medium mb-2">
+                  ⚠️ لا يمكن إنشاء التحويل - الكميات المطلوبة تتجاوز المتاح:
+                </p>
+                <ul className="text-red-600 text-xs space-y-1">
+                  {insufficientItems.map((item) => (
+                    <li key={item.request_item_id}>
+                      •{" "}
+                      {item.products_name
+                        ? `${item.products_name} - ${item.variant_name}`
+                        : item.variant_name}
+                      ({item.packaging_types_name}): مطلوب{" "}
+                      {item.requested_quantity} - متاح{" "}
+                      {getAvailableForRow(item)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+          <div className="flex justify-center gap-4">
+            <button
+              type="button"
+              disabled={!canApprove || actionLoading}
+              onClick={handleApproveClick}
+              className={`${modalPrimaryBtnClass} disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {actionLoading ? "جاري التنفيذ..." : "إنشاء التحويل"}
+            </button>
+            <button
+              type="button"
+              disabled={actionLoading}
+              onClick={handleRejectClick}
+              className="px-8 py-2.5 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 shadow transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              رفض الطلب
+            </button>
           </div>
-
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-full bg-white shadow hover:scale-105 transition flex items-center justify-center"
-          >
-            <XMarkIcon className="h-6 w-6 text-[#1A0F35]" />
-          </button>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div
-        className="p-3 sm:p-6 bg-[#F8FAFC] space-y-5"
-        style={{ maxHeight: "calc(95vh - 120px)", overflowY: "auto" }}
-      >
+        </>
+      }
+    >
         {/* Info Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white rounded-2xl p-5 shadow border">
-          <div>
-            <p className="text-xs text-gray-500 mb-1">المخزن المصدر</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className={`${modalSectionClass} flex flex-col gap-1`}>
+            <div className="flex items-center gap-2 text-[#6B45B0]">
+              <BuildingOffice2Icon className="h-4 w-4 shrink-0" />
+              <p className="text-xs font-semibold text-gray-500">المخزن المصدر</p>
+            </div>
             {sourceWarehouse ? (
               <p className="font-bold text-[#1A0F35]">{sourceWarehouse.warehouse_name}</p>
             ) : (
@@ -417,35 +451,46 @@ export default function RequestDetailsModal({
               />
             )}
           </div>
-          <div>
-            <p className="text-xs text-gray-500">المخزن الوجهة</p>
+          <div className={`${modalSectionClass} flex flex-col gap-1`}>
+            <div className="flex items-center gap-2 text-[#6B45B0]">
+              <BuildingOffice2Icon className="h-4 w-4 shrink-0" />
+              <p className="text-xs font-semibold text-gray-500">المخزن الوجهة</p>
+            </div>
             <p className="font-bold text-[#1A0F35]">
               {destWarehouse?.warehouse_name || "—"}
             </p>
           </div>
-          <div>
-            <p className="text-xs text-gray-500">الحالة</p>
-            <p className="font-bold text-[#1A0F35]">{request.request_status}</p>
+          <div className={`${modalSectionClass} flex flex-col gap-1`}>
+            <div className="flex items-center gap-2 text-[#6B45B0]">
+              <InformationCircleIcon className="h-4 w-4 shrink-0" />
+              <p className="text-xs font-semibold text-gray-500">الحالة</p>
+            </div>
+            <span className="inline-flex w-fit px-3 py-1 rounded-full text-sm font-bold bg-[#EDE7FF] text-[#2D1B69] ring-1 ring-[#C4A8F0]/50">
+              {request.request_status}
+            </span>
           </div>
-          <div>
-            <p className="text-xs text-gray-500">التاريخ</p>
+          <div className={`${modalSectionClass} flex flex-col gap-1`}>
+            <div className="flex items-center gap-2 text-[#6B45B0]">
+              <CalendarDaysIcon className="h-4 w-4 shrink-0" />
+              <p className="text-xs font-semibold text-gray-500">التاريخ</p>
+            </div>
             <p className="font-bold text-[#1A0F35]">
-              {request.request_created_at}
+              {requestDate
+                ? new Date(requestDate).toLocaleString("en-GB")
+                : "—"}
             </p>
           </div>
         </div>
 
         {/* Notes */}
-        <div className="bg-white rounded-2xl p-4 shadow border">
-          <div className="flex items-start gap-3">
-            <ChatBubbleBottomCenterTextIcon className="h-5 w-5 text-[#C4A8F0] mt-1" />
-            <div>
-              <p className="text-sm font-medium">ملاحظات</p>
-              <p className="text-gray-700 mt-1">
-                {request.request_notes || "لا يوجد"}
-              </p>
-            </div>
+        <div className={modalSectionClass}>
+          <div className={modalSectionHeaderClass}>
+            <ChatBubbleBottomCenterTextIcon className="h-4 w-4 inline-block ml-1" />
+            ملاحظات
           </div>
+          <p className="text-gray-700 leading-relaxed">
+            {request.request_notes || "لا يوجد"}
+          </p>
         </div>
 
         {/* Items list - premium card layout while preserving edit capabilities */}
@@ -972,70 +1017,6 @@ export default function RequestDetailsModal({
             placeholder="أضف ملاحظة..."
           />
         </div>
-      {/* Validation warnings  */}
-      {(() => {
-        const insufficientItems = items.filter((item) => {
-          const available = getAvailableForRow(item);
-          return available < Number(item.requested_quantity || 0);
-        });
-        if (insufficientItems.length > 0) {
-          return (
-            <div className="px-6 pb-4">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-red-700 text-sm font-medium mb-2">
-                  ⚠️ لا يمكن إنشاء التحويل - الكميات المطلوبة تتجاوز المتاح:
-                </p>
-                <ul className="text-red-600 text-xs space-y-1">
-                  {insufficientItems.map((item) => (
-                    <li key={item.request_item_id}>
-                      •{" "}
-                      {item.products_name
-                        ? `${item.products_name} - ${item.variant_name}`
-                        : item.variant_name}
-                      ({item.packaging_types_name}): مطلوب{" "}
-                      {item.requested_quantity} - متاح{" "}
-                      {getAvailableForRow(item)}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          );
-        }
-        return null;
-      })()}
-
-      {/* Action bar */}
-      <div className=" bg-white/95 backdrop-blur-md border-t px-6 py-4 flex justify-center gap-4 shadow-[0_-10px_40px_rgba(0,0,0,0.06)]">
-        <button
-          onClick={() => {
-            const allocations = items
-              .filter((it) => allocInventoryByItem[it.request_item_id])
-              .map((it) => ({
-                request_item_id: it.request_item_id,
-                inventory_id: allocInventoryByItem[it.request_item_id],
-                quantity: it.requested_quantity,
-              }));
-            onApproveAllocate(request.request_id, allocations, adminNote);
-          }}
-          className="px-2 py-2 text-xs md:text-base md:px-8 md:py-3 rounded-xl font-bold text-white"
-          style={{
-            background: THEME_DARK,
-            boxShadow: `0 8px 30px ${THEME_ACCENT}33`,
-          }}
-        >
-          إنشاء التحويل
-        </button>
-
-        <button
-          onClick={() => onReject?.(request.request_id, adminNote)}
-          className="px-2 py-2 text-xs md:text-base md:px-8 md:py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 shadow"
-        >
-          رفض الطلب
-        </button>
-      </div>
-      </div>
-
-    </Modal>
+    </AppModalShell>
   );
 }

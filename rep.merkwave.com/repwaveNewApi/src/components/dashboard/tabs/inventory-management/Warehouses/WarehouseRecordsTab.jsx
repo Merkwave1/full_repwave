@@ -282,7 +282,7 @@ export default function WarehouseRecordsTab({
                       <div className="flex space-x-2 rtl:space-x-reverse">
                         <button
                           onClick={() => handleViewDetails(receipt)}
-                          className="text-[#8B5FD6] hover:text-blue-900 transition-colors"
+                          className="text-[#8B5FD6] hover:text-[#1A0F35] transition-colors"
                           title="عرض التفاصيل"
                         >
                           <EyeIcon className="h-5 w-5" />

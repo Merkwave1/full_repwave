@@ -32,7 +32,12 @@ public record ProductAttributeDto(int AttributeId, string AttributeName, string?
 
 public record ProductAttributeValueDto(int AttributeValueId, int AttributeValueAttributeId, string? AttributeName, string ValueText);
 
-public record PackagingTypeDto(int PackagingTypesId, string PackagingTypesName, string? PackagingTypesDescription, decimal PackagingTypesDefaultConversionFactor);
+public record PackagingTypeDto(
+    int PackagingTypesId,
+    string PackagingTypesName,
+    string? PackagingTypesDescription,
+    decimal PackagingTypesDefaultConversionFactor,
+    int? PackagingTypesCompatibleBaseUnitId);
 
 public record UpsertProductVariantRequest(
     int ProductId,
@@ -347,7 +352,12 @@ public class GetPackagingTypesQueryHandler(IApplicationDbContext db)
     public async Task<ApiResponse<List<PackagingTypeDto>>> Handle(GetPackagingTypesQuery request, CancellationToken ct)
     {
         var list = await db.PackagingTypes.AsNoTracking()
-            .Select(p => new PackagingTypeDto(p.PackagingTypesId, p.PackagingTypesName, p.PackagingTypesDescription, p.PackagingTypesDefaultConversionFactor))
+            .Select(p => new PackagingTypeDto(
+                p.PackagingTypesId,
+                p.PackagingTypesName,
+                p.PackagingTypesDescription,
+                p.PackagingTypesDefaultConversionFactor,
+                p.PackagingTypesCompatibleBaseUnitId))
             .ToListAsync(ct);
         return ApiResponse<List<PackagingTypeDto>>.Success(list);
     }
@@ -369,7 +379,12 @@ public class CreatePackagingTypeCommandHandler(IApplicationDbContext db)
         db.PackagingTypes.Add(pt);
         await db.SaveChangesAsync(ct);
         return ApiResponse<PackagingTypeDto>.Success(
-            new PackagingTypeDto(pt.PackagingTypesId, pt.PackagingTypesName, pt.PackagingTypesDescription, pt.PackagingTypesDefaultConversionFactor));
+            new PackagingTypeDto(
+                pt.PackagingTypesId,
+                pt.PackagingTypesName,
+                pt.PackagingTypesDescription,
+                pt.PackagingTypesDefaultConversionFactor,
+                pt.PackagingTypesCompatibleBaseUnitId));
     }
 }
 
@@ -387,7 +402,12 @@ public class UpdatePackagingTypeCommandHandler(IApplicationDbContext db)
         pt.PackagingTypesDefaultConversionFactor = request.Req.PackagingTypesDefaultConversionFactor;
         await db.SaveChangesAsync(ct);
         return ApiResponse<PackagingTypeDto>.Success(
-            new PackagingTypeDto(pt.PackagingTypesId, pt.PackagingTypesName, pt.PackagingTypesDescription, pt.PackagingTypesDefaultConversionFactor));
+            new PackagingTypeDto(
+                pt.PackagingTypesId,
+                pt.PackagingTypesName,
+                pt.PackagingTypesDescription,
+                pt.PackagingTypesDefaultConversionFactor,
+                pt.PackagingTypesCompatibleBaseUnitId));
     }
 }
 

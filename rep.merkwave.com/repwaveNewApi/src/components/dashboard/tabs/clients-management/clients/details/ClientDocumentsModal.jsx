@@ -1,10 +1,17 @@
 ﻿// src/components/dashboard/tabs/clients-management/clients/details/ClientDocumentsModal.jsx
 import React, { useEffect, useState } from "react";
 import SharedDetailModalBase from "./SharedDetailModalBase.jsx";
+import AppModalShell, {
+  modalPrimaryBtnClass,
+  modalSecondaryBtnClass,
+  modalSectionClass,
+  modalInputClass,
+} from "../../../../../common/AppModalShell.jsx";
 import {
   getClientDocuments,
   deleteClientDocument,
   addClientDocument,
+  getClientDocumentTypes,
 } from "../../../../../../apis/client_documents.js";
 import {
   DocumentTextIcon,
@@ -33,10 +40,10 @@ export default function ClientDocumentsModal({ client, open, onClose }) {
       try {
         const resp = await getClientDocuments(client.clients_id);
         if (!cancelled) {
-          const docs = Array.isArray(resp)
+          const raw = Array.isArray(resp)
             ? resp
             : resp?.data?.documents || resp?.documents || [];
-          setDocuments(docs);
+          setDocuments(raw.map(normalizeDocument));
         }
       } catch (e) {
         if (!cancelled) {
@@ -75,19 +82,14 @@ export default function ClientDocumentsModal({ client, open, onClose }) {
   };
 
   const handleAddDocument = async (formData) => {
-    try {
-      await addClientDocument(formData);
-      // Refresh documents list
-      const resp = await getClientDocuments(client.clients_id);
-      const docs = Array.isArray(resp)
-        ? resp
-        : resp?.data?.documents || resp?.documents || [];
-      setDocuments(docs);
-      setShowAddForm(false);
-      alert("تم إضافة المستند بنجاح");
-    } catch (e) {
-      alert("فشل إضافة المستند: " + (e.message || "خطأ غير معروف"));
-    }
+    await addClientDocument(formData);
+    const resp = await getClientDocuments(client.clients_id);
+    const raw = Array.isArray(resp)
+      ? resp
+      : resp?.data?.documents || resp?.documents || [];
+    setDocuments(raw.map(normalizeDocument));
+    setShowAddForm(false);
+    alert("تم إضافة المستند بنجاح");
   };
 
   const getFileIcon = (mimeType) => {
@@ -126,6 +128,7 @@ export default function ClientDocumentsModal({ client, open, onClose }) {
         onClose={onClose}
         customHeaderButton={
           <button
+            type="button"
             onClick={() => setShowAddForm(true)}
             className="no-print px-3 py-1.5 text-[11px] font-semibold rounded-md bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
           >
@@ -142,12 +145,12 @@ export default function ClientDocumentsModal({ client, open, onClose }) {
         {error && <div className="text-red-600 font-semibold">{error}</div>}
         {!loading && !error && (
           <>
-            <div className="p-2 rounded-md bg-indigo-50 text-[#7A52C2] text-xs font-bold flex justify-between">
+            <div className="p-2 rounded-md bg-[#f5f3ff] text-[#7A52C2] text-xs font-bold flex justify-between">
               <span>إجمالي المستندات:</span>
               <span>{documents.length}</span>
             </div>
             {documents.length === 0 ? (
-              <Empty />
+              <Empty onAdd={() => setShowAddForm(true)} />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
                 {documents.map((doc) => (
@@ -197,8 +200,10 @@ function DocumentCard({
           {doc.client_document_file_path && (
             <>
               <a
-                href={doc.client_document_file_path}
+                href={resolveDocumentFileUrl(doc.client_document_file_path)}
                 download
+                target="_blank"
+                rel="noreferrer"
                 className="p-1.5 text-green-600 hover:bg-green-50 rounded-full transition-colors"
                 title="تحميل"
               >
@@ -259,12 +264,41 @@ function DocumentCard({
 function AddDocumentFormModal({ client, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
     title: "",
-    type: "1", // Default document type ID
+    type: "",
     notes: "",
     file: null,
   });
+  const [documentTypes, setDocumentTypes] = useState([]);
+  const [typesLoading, setTypesLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [dragActive, setDragActive] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const types = await getClientDocumentTypes();
+        if (!cancelled) {
+          const list = Array.isArray(types) ? types : [];
+          setDocumentTypes(list);
+          if (list.length > 0) {
+            setFormData((prev) => ({
+              ...prev,
+              type: String(list[0].document_type_id ?? list[0].documentTypeId ?? ""),
+            }));
+          }
+        }
+      } catch {
+        if (!cancelled) setDocumentTypes([]);
+      } finally {
+        if (!cancelled) setTypesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -296,21 +330,30 @@ function AddDocumentFormModal({ client, onClose, onSubmit }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError("");
 
     if (!formData.title.trim()) {
-      alert("الرجاء إدخال عنوان المستند");
+      setSubmitError("الرجاء إدخال عنوان المستند");
       return;
     }
 
     if (!formData.file) {
-      alert("الرجاء اختيار ملف");
+      setSubmitError("الرجاء اختيار ملف");
       return;
     }
 
     setUploading(true);
     try {
+      const clientId =
+        client?.clients_id ?? client?.clientsId ?? client?.client_id;
+      if (!clientId) {
+        setSubmitError("معرّف العميل غير متوفر");
+        return;
+      }
+
       const data = new FormData();
-      data.append("client_document_client_id", client.clients_id);
+      data.append("client_id", String(clientId));
+      data.append("client_document_client_id", String(clientId));
       data.append("client_document_type_id", formData.type);
       data.append("client_document_title", formData.title);
       data.append("client_document_notes", formData.notes);
@@ -318,7 +361,7 @@ function AddDocumentFormModal({ client, onClose, onSubmit }) {
 
       await onSubmit(data);
     } catch (error) {
-      console.error("Upload error:", error);
+      setSubmitError(error.message || "فشل رفع المستند");
     } finally {
       setUploading(false);
     }
@@ -332,33 +375,44 @@ function AddDocumentFormModal({ client, onClose, onSubmit }) {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center backdrop-blur-sm bg-black/40 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-        dir="rtl"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-[#f5f3ff] to-[#EDE7FF]">
-          <h3 className="text-lg font-bold text-gray-800">إضافة مستند جديد</h3>
+    <AppModalShell
+      open
+      onClose={onClose}
+      title="إضافة مستند جديد"
+      subtitle={client?.clients_company_name}
+      icon={CloudArrowUpIcon}
+      size="2xl"
+      zIndex="z-[60]"
+      closeOnBackdrop={!uploading}
+      footer={
+        <div className="flex justify-end gap-3">
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 text-gray-600 hover:bg-gray-200 rounded-full transition-colors"
+            className={modalSecondaryBtnClass}
             disabled={uploading}
           >
-            <XMarkIcon className="h-6 w-6" />
+            إلغاء
+          </button>
+          <button
+            type="submit"
+            form="add-document-form"
+            disabled={uploading || !formData.file || !formData.title.trim()}
+            className={modalPrimaryBtnClass}
+          >
+            {uploading ? "جاري الرفع..." : "رفع المستند"}
           </button>
         </div>
+      }
+    >
+        <form id="add-document-form" onSubmit={handleSubmit} className="space-y-4">
+          {submitError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              {submitError}
+            </div>
+          )}
 
-        {/* Form */}
-        <form
-          onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto p-6 space-y-4"
-        >
-          {/* Title */}
+          <div className={`${modalSectionClass} p-4 space-y-4`}>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               عنوان المستند <span className="text-red-500">*</span>
@@ -369,7 +423,7 @@ function AddDocumentFormModal({ client, onClose, onSubmit }) {
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, title: e.target.value }))
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              className={modalInputClass}
               placeholder="أدخل عنوان المستند..."
               disabled={uploading}
               required
@@ -386,14 +440,22 @@ function AddDocumentFormModal({ client, onClose, onSubmit }) {
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, type: e.target.value }))
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-              disabled={uploading}
+              className={modalInputClass}
+              disabled={uploading || typesLoading}
             >
-              <option value="1">عام</option>
-              <option value="2">عقد</option>
-              <option value="3">فاتورة</option>
-              <option value="4">شهادة</option>
-              <option value="5">أخرى</option>
+              {typesLoading && <option value="">جاري التحميل...</option>}
+              {!typesLoading && documentTypes.length === 0 && (
+                <option value="">عام</option>
+              )}
+              {documentTypes.map((t) => {
+                const id = t.document_type_id ?? t.documentTypeId;
+                const name = t.document_type_name ?? t.documentTypeName ?? "—";
+                return (
+                  <option key={id} value={String(id)}>
+                    {name}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -405,8 +467,8 @@ function AddDocumentFormModal({ client, onClose, onSubmit }) {
             <div
               className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
                 dragActive
-                  ? "border-green-500 bg-green-50"
-                  : "border-gray-300 hover:border-green-400 bg-gray-50"
+                  ? "border-[#8B5FD6] bg-[#EDE7FF]/30"
+                  : "border-[#EDE7FF] hover:border-[#8B5FD6]/50 bg-[#FAFAFE]"
               }`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
@@ -415,7 +477,7 @@ function AddDocumentFormModal({ client, onClose, onSubmit }) {
             >
               {formData.file ? (
                 <div className="space-y-2">
-                  <DocumentTextIcon className="h-12 w-12 mx-auto text-green-600" />
+                  <DocumentTextIcon className="h-12 w-12 mx-auto text-[#8B5FD6]" />
                   <p className="text-sm font-semibold text-gray-800">
                     {formData.file.name}
                   </p>
@@ -439,7 +501,7 @@ function AddDocumentFormModal({ client, onClose, onSubmit }) {
                   <p className="text-sm text-gray-600">
                     اسحب وأفلت الملف هنا أو
                   </p>
-                  <label className="inline-block px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 cursor-pointer transition-colors">
+                  <label className={`inline-block px-4 py-2 ${modalPrimaryBtnClass} cursor-pointer`}>
                     <input
                       type="file"
                       onChange={handleFileChange}
@@ -473,46 +535,50 @@ function AddDocumentFormModal({ client, onClose, onSubmit }) {
               disabled={uploading}
             />
           </div>
+          </div>
         </form>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
-            disabled={uploading}
-          >
-            إلغاء
-          </button>
-          <button
-            type="submit"
-            onClick={handleSubmit}
-            disabled={uploading || !formData.file || !formData.title.trim()}
-            className="px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {uploading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                جاري الرفع...
-              </>
-            ) : (
-              <>
-                <CloudArrowUpIcon className="h-5 w-5" />
-                رفع المستند
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
+    </AppModalShell>
   );
 }
 
-const Empty = () => (
+const Empty = ({ onAdd }) => (
   <div className="text-center py-12 text-gray-500">
     <DocumentTextIcon className="h-16 w-16 mx-auto mb-4 text-gray-300" />
     <p className="text-lg font-semibold">لا توجد مستندات</p>
     <p className="text-sm mt-2">لم يتم رفع أي مستندات لهذا العميل بعد</p>
+    {onAdd && (
+      <button
+        type="button"
+        onClick={onAdd}
+        className={`mt-4 inline-flex items-center gap-2 ${modalPrimaryBtnClass}`}
+      >
+        <PlusIcon className="h-4 w-4" />
+        إضافة أول مستند
+      </button>
+    )}
   </div>
 );
+
+function resolveDocumentFileUrl(path) {
+  if (!path) return "#";
+  if (path.startsWith("http") || path.startsWith("data:")) return path;
+  return path.startsWith("/") ? path : `/${path}`;
+}
+
+function normalizeDocument(doc) {
+  return {
+    ...doc,
+    client_document_id: doc.client_document_id ?? doc.clientDocumentId,
+    client_document_title: doc.client_document_title ?? doc.clientDocumentTitle,
+    document_type_name: doc.document_type_name ?? doc.documentTypeName,
+    client_document_file_path: doc.client_document_file_path ?? doc.clientDocumentFilePath,
+    client_document_file_mime_type:
+      doc.client_document_file_mime_type ?? doc.clientDocumentFileMimeType,
+    client_document_file_size_kb:
+      doc.client_document_file_size_kb ?? doc.clientDocumentFileSizeKb,
+    client_document_created_at:
+      doc.client_document_created_at ?? doc.clientDocumentCreatedAt,
+    uploaded_by_user_name: doc.uploaded_by_user_name ?? doc.uploadedByUserName,
+    client_document_notes: doc.client_document_notes ?? doc.clientDocumentNotes,
+  };
+}

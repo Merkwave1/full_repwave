@@ -1,6 +1,8 @@
 ﻿// src/components/dashboard/tabs/purchases-management/purchase-returns/PurchaseReturnDetailsModal.jsx
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { FaTimes, FaPrint } from "react-icons/fa";
+import { FaPrint } from "react-icons/fa";
+import { ArrowUturnLeftIcon } from "@heroicons/react/24/outline";
+import AppModalShell, { modalPrimaryBtnClass, modalSecondaryBtnClass } from "../../../../common/AppModalShell.jsx";
 import Loader from "../../../../common/Loader/Loader";
 import { getPurchaseReturnDetails } from "../../../../../apis/purchase_returns";
 import useCurrency from "../../../../../hooks/useCurrency";
@@ -115,87 +117,55 @@ export default function PurchaseReturnDetailsModal({
 
   if (loading) {
     return (
-      <div
-        className="fixed inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center z-50 p-2 sm:p-4"
-        onClick={onClose}
-      >
-        <div
-          className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden mx-2 sm:mx-4"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Loader className="mt-8" />
-        </div>
-      </div>
+      <AppModalShell open onClose={onClose} title="تفاصيل مرتجع الشراء" icon={ArrowUturnLeftIcon} size="3xl" gradient="amber">
+        <Loader className="mt-8" />
+      </AppModalShell>
     );
   }
 
   if (error) {
     return (
-      <div
-        className="fixed inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center z-50 p-2 sm:p-4"
-        onClick={onClose}
-      >
-        <div
-          className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden mx-2 sm:mx-4"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="p-4 sm:p-6">
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          </div>
-        </div>
-      </div>
+      <AppModalShell open onClose={onClose} title="تفاصيل مرتجع الشراء" icon={ArrowUturnLeftIcon} size="md" gradient="amber">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">{error}</div>
+      </AppModalShell>
     );
   }
 
   if (!formattedReturnData) return null;
 
   return (
-    <div
-      className="fixed inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center z-50 p-2 sm:p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden mx-2 sm:mx-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 sm:p-6 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center space-x-4 rtl:space-x-reverse">
-            <h2 className="text-xl font-semibold text-gray-900">
-              تفاصيل مرتجع الشراء #{formattedReturnData.purchase_returns_id}
-            </h2>
-            <span
-              className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[formattedReturnData.purchase_returns_status] || "bg-gray-100 text-gray-800"}`}
-            >
-              {formattedReturnData.purchase_returns_status || "غير محدد"}
-            </span>
-          </div>
-          <div className="flex items-center space-x-2 rtl:space-x-reverse">
-            <button
-              onClick={() => onPrint?.(details)}
-              className="p-1.5 rounded-full 
-           text-purple-700 bg-purple-100
-           hover:bg-purple-500 hover:text-white
-           hover:shadow-[0_0_12px_rgba(168,85,247,0.45)]
-           transition-all duration-200 hover:scale-110"
-              title="طباعة"
-            >
-              <FaPrint size={18} />
+    <AppModalShell
+      open
+      onClose={onClose}
+      title={`تفاصيل مرتجع الشراء #${formattedReturnData.purchase_returns_id}`}
+      subtitle={formattedReturnData.purchase_returns_status || "غير محدد"}
+      icon={ArrowUturnLeftIcon}
+      size="3xl"
+      gradient="amber"
+      headerActions={
+        <button
+          type="button"
+          onClick={() => onPrint?.(details)}
+          className="no-print p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white transition"
+          title="طباعة"
+        >
+          <FaPrint size={16} />
+        </button>
+      }
+      footer={
+        <div className="flex items-center justify-end gap-3 print:hidden">
+          {onEdit && (
+            <button type="button" onClick={() => onEdit(purchaseReturn)} className={modalPrimaryBtnClass}>
+              تعديل
             </button>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors print:hidden"
-            >
-              <FaTimes size={20} />
-            </button>
-          </div>
+          )}
+          <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+            إغلاق
+          </button>
         </div>
-
-        {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(95vh-130px)] sm:max-h-[calc(90vh-200px)]">
-          <div className="p-3 sm:p-6 space-y-6">
+      }
+    >
+        <div className="space-y-6">
             {/* Return Information Card */}
             <div className="bg-gray-50 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -375,26 +345,6 @@ export default function PurchaseReturnDetailsModal({
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end space-x-4 rtl:space-x-reverse p-6 border-t border-gray-200 bg-gray-50 print:hidden">
-          {onEdit && (
-            <button
-              onClick={() => onEdit(purchaseReturn)}
-              className="px-4 py-2 text-white bg-[#8B5FD6] border border-transparent rounded-md hover:bg-[#7A52C2] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-            >
-              تعديل
-            </button>
-          )}
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8B5FD6]"
-          >
-            إغلاق
-          </button>
-        </div>
-      </div>
-    </div>
+    </AppModalShell>
   );
 }

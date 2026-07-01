@@ -69,7 +69,7 @@ export default function WarehouseListView({
     <>
       {!loading && !error && warehouses.length === 0 && (
         <div className="bg-white rounded-xl shadow border border-gray-200 p-12 text-center animate-fadeIn">
-          <div className="text-4xl mb-4 text-blue-300">📂</div>
+          <div className="text-4xl mb-4 text-[#C4A8F0]">📂</div>
           <p className="text-gray-700 text-lg font-semibold">لا توجد مخازن لعرضها</p>
           <p className="text-gray-500 text-sm mt-2">جرب البحث بكلمات مختلفة أو أضف مخزنًا جديدًا</p>
         </div>
@@ -109,7 +109,7 @@ export default function WarehouseListView({
                 {sortedWarehouses.map((warehouse, idx) => (
                   <tr key={warehouse.warehouse_id} className="hover:bg-gray-50 transition-all duration-150">
                     <td className="text-center px-4 py-3 border-r border-gray-200">
-                      <span className="bg-indigo-100 text-[#7A52C2] text-xs px-2 py-1 rounded-full font-semibold">
+                      <span className="bg-[#EDE7FF] text-[#7A52C2] text-xs px-2 py-1 rounded-full font-semibold">
                         {warehouse.warehouse_id}
                       </span>
                     </td>

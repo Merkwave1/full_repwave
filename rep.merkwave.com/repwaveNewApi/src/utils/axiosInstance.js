@@ -18,6 +18,10 @@ axiosInstance.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // Let axios set multipart boundary — a manual Content-Type breaks uploads (415)
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  }
   return config;
 });
 
@@ -101,6 +105,10 @@ export const api = {
   },
   async delete(url) {
     const res = await axiosInstance.delete(url);
+    return res.data?.data ?? res.data;
+  },
+  async postForm(url, formData) {
+    const res = await axiosInstance.post(url, formData);
     return res.data?.data ?? res.data;
   },
   // Returns the full ApiResponse (status + message + data) — used when caller needs message

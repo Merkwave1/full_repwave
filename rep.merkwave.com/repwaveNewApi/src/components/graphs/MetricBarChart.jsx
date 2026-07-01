@@ -14,14 +14,14 @@ import {
 /* -------------------- Helpers -------------------- */
 
 const defaultTheme = {
-  cardBg: "bg-white",
-  titleColor: "text-[#0f172a]",
-  gridColor: "#e2e8f0",
-  axisColor: "#64748b",
-  tooltipBg: "#020617",
+  cardBg: "bg-white border border-[#EDE7FF]",
+  titleColor: "text-[#2D1B69]",
+  gridColor: "#EDE7FF",
+  axisColor: "#7A52C2",
+  tooltipBg: "#2D1B69",
   tooltipText: "#ffffff",
-  countColor: "#0a2fbf",
-  valueColor: "#38bdf8",
+  countColor: "#8B5FD6",
+  valueColor: "#C4A8F0",
 };
 
 const formatK = (v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}K` : v);
@@ -93,7 +93,7 @@ const MetricBarChart = ({
 
   return (
     <div
-      className={`${mergedTheme.cardBg} rounded-xl shadow-lg p-3 md:p-6 flex flex-col`}
+      className={`${mergedTheme.cardBg} rounded-xl shadow-[0_4px_20px_-6px_rgba(139,95,214,0.2)] p-3 md:p-6 flex flex-col`}
     >
       {/* Header */}
       <div className="flex items-center mb-4">

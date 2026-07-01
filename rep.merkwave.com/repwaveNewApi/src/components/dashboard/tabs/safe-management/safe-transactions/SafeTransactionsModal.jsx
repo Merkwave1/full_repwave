@@ -1,14 +1,12 @@
 ﻿// src/components/dashboard/tabs/safe-management/safe-transactions/SafeTransactionsModal.jsx
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { createPortal } from "react-dom";
 import {
-  XMarkIcon,
-  ArrowRightIcon,
   BanknotesIcon,
   ArrowUpIcon,
   ArrowDownIcon,
   CalendarIcon,
 } from "@heroicons/react/24/outline";
+import AppModalShell, { modalSecondaryBtnClass } from "../../../../common/AppModalShell.jsx";
 import Loader from "../../../../common/Loader/Loader";
 import FilterBar from "../../../../common/FilterBar/FilterBar";
 import GlobalTable from "../../../../common/GlobalTable/GlobalTable";
@@ -602,7 +600,7 @@ const SafeTransactionsModal = ({ safeId, safeName, onClose }) => {
         <button
           type="button"
           onClick={() => handleViewDetails(row.safe_transactions_id)}
-          className="text-[#8B5FD6] hover:text-indigo-900 text-sm font-semibold"
+          className="text-[#8B5FD6] hover:text-[#6B45B0] text-sm font-semibold"
         >
           عرض التفاصيل
         </button>
@@ -613,80 +611,47 @@ const SafeTransactionsModal = ({ safeId, safeName, onClose }) => {
   const modalContent = (() => {
     if (loading) {
       return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-[9999] p-3 sm:p-6 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl p-6 my-auto">
-            <Loader />
-            <p className="text-center mt-4 text-gray-600">
-              جاري تحميل معاملات الخزنة...
-            </p>
-          </div>
-        </div>
+        <AppModalShell open onClose={onClose} title="معاملات الخزنة" subtitle={safeName} icon={BanknotesIcon} size="md" gradient="purple" zIndex="z-[9999]" portal>
+          <Loader />
+          <p className="text-center mt-4 text-gray-600">جاري تحميل معاملات الخزنة...</p>
+        </AppModalShell>
       );
     }
 
     if (error) {
       return (
-        <div
-          className="fixed inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center z-[9999] p-2 sm:p-4"
-          onClick={onClose}
-        >
-          <div
-            className="bg-white rounded-xl shadow-xl max-w-md w-full mx-2 sm:mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-4 sm:p-6">
-              <div className="text-center">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                  <XMarkIcon className="h-6 w-6 text-red-600" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  خطأ في تحميل البيانات
-                </h3>
-                <p className="text-sm text-gray-500 mb-4">{error}</p>
-                <button
-                  onClick={onClose}
-                  className="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
-                >
-                  إغلاق
-                </button>
-              </div>
-            </div>
+        <AppModalShell open onClose={onClose} title="خطأ في تحميل البيانات" icon={BanknotesIcon} size="sm" gradient="danger" zIndex="z-[9999]" portal>
+          <div className="text-center">
+            <p className="text-sm text-gray-500 mb-4">{error}</p>
+            <button type="button" onClick={onClose} className={`${modalSecondaryBtnClass} w-full`}>
+              إغلاق
+            </button>
           </div>
-        </div>
+        </AppModalShell>
       );
     }
 
     return (
-      <div
-        className="fixed inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center z-[9999] p-2 sm:p-4"
-        onClick={onClose}
-      >
-        <div
-          className="bg-white rounded-xl shadow-xl max-w-7xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden mx-2 sm:mx-4"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="bg-gradient-to-r from-purple-100 to-indigo-100 px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-300">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base sm:text-xl font-bold text-gray-800 flex items-center gap-2 truncate">
-                <ArrowRightIcon className="h-6 w-6 text-purple-600" />
-                معاملات خزنة: {safeName}
-              </h3>
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-all"
-              >
-                <XMarkIcon className="h-5 w-5 text-gray-600" />
-              </button>
-            </div>
+      <>
+      <AppModalShell
+        open
+        onClose={onClose}
+        title="معاملات الخزنة"
+        subtitle={safeName}
+        icon={BanknotesIcon}
+        size="3xl"
+        gradient="purple"
+        zIndex="z-[9999]"
+        portal
+        footer={
+          <div className="flex justify-end">
+            <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+              إغلاق
+            </button>
           </div>
-
-          {/* Content */}
-          <div
-            className="overflow-y-auto max-h-[calc(95vh-110px)] sm:max-h-[calc(90vh-140px)]"
-            dir="rtl"
-          >
-            <div className="p-3 sm:p-6 space-y-6">
+        }
+      >
+            <div className="space-y-6">
               {/* Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-gradient-to-r from-green-100 to-green-50 p-4 rounded-lg border border-[#C4A8F0]">
@@ -727,7 +692,7 @@ const SafeTransactionsModal = ({ safeId, safeName, onClose }) => {
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-r from-blue-100 to-blue-50 p-4 rounded-lg border border-[#C4A8F0]">
+                <div className="bg-gradient-to-r from-[#EDE7FF] to-[#f5f3ff] p-4 rounded-lg border border-[#C4A8F0]">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-[#8B5FD6] text-sm font-medium">
@@ -835,22 +800,8 @@ const SafeTransactionsModal = ({ safeId, safeName, onClose }) => {
                 هذه الصفحة
               </div>
             </div>
-          </div>
+      </AppModalShell>
 
-          {/* Footer */}
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-            <div className="flex justify-end">
-              <button
-                onClick={onClose}
-                className="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
-              >
-                إغلاق
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Transaction Details Modal */}
         {showTransactionDetails && selectedTransactionId && (
           <TransactionDetailsModal
             transactionId={selectedTransactionId}
@@ -861,11 +812,11 @@ const SafeTransactionsModal = ({ safeId, safeName, onClose }) => {
             onStatusUpdate={fetchTransactions}
           />
         )}
-      </div>
+      </>
     );
   })();
 
-  return createPortal(modalContent, document.body);
+  return modalContent;
 };
 
 export default SafeTransactionsModal;

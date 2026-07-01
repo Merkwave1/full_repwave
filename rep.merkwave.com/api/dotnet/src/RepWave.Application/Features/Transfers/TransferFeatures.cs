@@ -6,13 +6,30 @@ using RepWave.Domain.Entities;
 
 namespace RepWave.Application.Features.Transfers;
 
+public record TransferRequestItemDto(
+    int RequestItemId,
+    int RequestId,
+    int? VariantId,
+    int? PackagingTypeId,
+    decimal RequestedQuantity,
+    string? RequestItemNote,
+    string? ProductsName,
+    string? VariantName,
+    string? PackagingTypesName);
+
 public record TransferRequestDto(
     int RequestId,
     string RequestStatus,
     DateTime? RequestDate,
     string? RequestNotes,
     int? RequestSourceWarehouseId,
-    int? RequestDestinationWarehouseId);
+    int? RequestDestinationWarehouseId,
+    int? RequestCreatedByUserId,
+    string? SourceWarehouseName,
+    string? DestinationWarehouseName,
+    string? CreatedByName,
+    DateTime? RequestCreatedAt,
+    List<TransferRequestItemDto> Items);
 
 public record TransferDto(
     int TransferId,
@@ -50,10 +67,40 @@ public class GetAllTransferRequestsQueryHandler(IApplicationDbContext db)
         if (!string.IsNullOrEmpty(request.Status))
             query = query.Where(r => r.RequestStatus == request.Status);
 
-        var list = await query
+        var rows = await query
+            .Include(r => r.SourceWarehouse)
+            .Include(r => r.DestinationWarehouse)
+            .Include(r => r.CreatedByUser)
+            .Include(r => r.Items)
+                .ThenInclude(i => i.Variant!)
+                    .ThenInclude(v => v.Product!)
+            .Include(r => r.Items)
+                .ThenInclude(i => i.PackagingType)
             .OrderByDescending(r => r.RequestDate)
-            .Select(r => new TransferRequestDto(r.RequestId, r.RequestStatus, r.RequestDate, r.RequestNotes, r.RequestSourceWarehouseId, r.RequestDestinationWarehouseId))
             .ToListAsync(ct);
+
+        var list = rows.Select(r => new TransferRequestDto(
+            r.RequestId,
+            r.RequestStatus,
+            r.RequestDate,
+            r.RequestNotes,
+            r.RequestSourceWarehouseId,
+            r.RequestDestinationWarehouseId,
+            r.RequestCreatedByUserId,
+            r.SourceWarehouse?.WarehouseName,
+            r.DestinationWarehouse?.WarehouseName,
+            r.CreatedByUser?.UsersName,
+            r.RequestDate,
+            r.Items.Select(i => new TransferRequestItemDto(
+                i.RequestItemId,
+                i.RequestId,
+                i.VariantId,
+                i.PackagingTypeId,
+                i.RequestedQuantity,
+                i.RequestItemNote,
+                i.Variant?.Product?.ProductsName,
+                i.Variant?.VariantName,
+                i.PackagingType?.PackagingTypesName)).ToList())).ToList();
 
         return ApiResponse<List<TransferRequestDto>>.Success(list);
     }
@@ -77,7 +124,19 @@ public class CreateTransferRequestCommandHandler(IApplicationDbContext db)
         db.TransferRequests.Add(r);
         await db.SaveChangesAsync(ct);
         return ApiResponse<TransferRequestDto>.Success(
-            new TransferRequestDto(r.RequestId, r.RequestStatus, r.RequestDate, r.RequestNotes, r.RequestSourceWarehouseId, r.RequestDestinationWarehouseId));
+            new TransferRequestDto(
+                r.RequestId,
+                r.RequestStatus,
+                r.RequestDate,
+                r.RequestNotes,
+                r.RequestSourceWarehouseId,
+                r.RequestDestinationWarehouseId,
+                r.RequestCreatedByUserId,
+                null,
+                null,
+                null,
+                r.RequestDate,
+                []));
     }
 }
 

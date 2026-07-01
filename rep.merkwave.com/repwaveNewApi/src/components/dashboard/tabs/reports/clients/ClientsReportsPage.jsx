@@ -7,6 +7,8 @@ import {
   ChartBarIcon,
   FolderOpenIcon,
   PresentationChartLineIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
 } from "@heroicons/react/24/outline";
 
 import { getAllClients } from "../../../../../apis/clients.js";
@@ -195,13 +197,67 @@ const ClientsReportsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const tabs = [
-    { key: "overview", label: "نظرة عامة", icon: ChartBarIcon },
-    { key: "details", label: "التفاصيل", icon: DocumentTextIcon },
-    { key: "documents", label: "الوثائق", icon: FolderOpenIcon },
-    { key: "areas", label: "المناطق", icon: MapPinIcon },
-    { key: "industries", label: "الصناعات", icon: BuildingOfficeIcon },
-    { key: "analytics", label: "التحليلات", icon: PresentationChartLineIcon },
+  const SUB_TABS = [
+    {
+      key: "overview",
+      label: "نظرة عامة",
+      desc: "الإحصائيات الكلية",
+      icon: ChartBarIcon,
+      gradientFrom: "#8B5FD6",
+      gradientTo: "#6B45B0",
+      iconBg: "#EDE7FF",
+      iconColor: "#8B5FD6",
+    },
+    {
+      key: "analytics",
+      label: "التحليلات",
+      desc: "تحليل مفصل للبيانات",
+      icon: PresentationChartLineIcon,
+      gradientFrom: "#F97366",
+      gradientTo: "#d45a4e",
+      iconBg: "#FFF0EE",
+      iconColor: "#F97366",
+    },
+    {
+      key: "details",
+      label: "التفاصيل",
+      desc: "بيانات الاتصال والملفات",
+      icon: DocumentTextIcon,
+      gradientFrom: "#10b981",
+      gradientTo: "#059669",
+      iconBg: "#ecfdf5",
+      iconColor: "#10b981",
+    },
+    {
+      key: "areas",
+      label: "المناطق",
+      desc: "التوزيع الجغرافي",
+      icon: MapPinIcon,
+      gradientFrom: "#f59e0b",
+      gradientTo: "#d97706",
+      iconBg: "#fffbeb",
+      iconColor: "#f59e0b",
+    },
+    {
+      key: "industries",
+      label: "الصناعات",
+      desc: "تصنيف حسب القطاع",
+      icon: BuildingOfficeIcon,
+      gradientFrom: "#64748b",
+      gradientTo: "#475569",
+      iconBg: "#f1f5f9",
+      iconColor: "#64748b",
+    },
+    {
+      key: "documents",
+      label: "الوثائق",
+      desc: "ملفات ووثائق العملاء",
+      icon: FolderOpenIcon,
+      gradientFrom: "#7A52C2",
+      gradientTo: "#5A3AA0",
+      iconBg: "#f3e8ff",
+      iconColor: "#7A52C2",
+    },
   ];
 
   useEffect(() => {
@@ -213,7 +269,6 @@ const ClientsReportsPage = () => {
         setClients(list);
       })
       .catch((err) => {
-        console.error("❌ Error loading clients for reports:", err);
         setError(err.message || "فشل تحميل بيانات العملاء");
       })
       .finally(() => setLoading(false));
@@ -221,21 +276,56 @@ const ClientsReportsPage = () => {
 
   const reportData = useMemo(() => computeReportData(clients), [clients]);
 
+  const kpis = reportData
+    ? [
+        {
+          label: "إجمالي العملاء",
+          value: reportData.overview.total_clients,
+          sub: null,
+          from: "#8B5FD6",
+          to: "#6B45B0",
+          icon: UserGroupIcon,
+        },
+        {
+          label: "العملاء النشطون",
+          value: reportData.overview.active_clients,
+          sub: `${reportData.overview.active_percentage}%`,
+          from: "#10b981",
+          to: "#059669",
+          icon: UserGroupIcon,
+        },
+        {
+          label: "جدد هذا الشهر",
+          value: reportData.overview.new_this_month,
+          sub: null,
+          from: "#F97366",
+          to: "#d45a4e",
+          icon: ChartBarIcon,
+        },
+        {
+          label: "معدل النمو",
+          value: `${reportData.overview.growth_rate > 0 ? "+" : ""}${reportData.overview.growth_rate}%`,
+          sub: null,
+          from: reportData.overview.growth_rate >= 0 ? "#10b981" : "#ef4444",
+          to: reportData.overview.growth_rate >= 0 ? "#059669" : "#dc2626",
+          icon: reportData.overview.growth_rate >= 0 ? ArrowUpIcon : ArrowDownIcon,
+        },
+      ]
+    : [];
+
   const renderTabContent = () => {
     if (loading) {
       return (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#C4A8F0]"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#EDE7FF] border-t-[#8B5FD6]"></div>
         </div>
       );
     }
     if (error) {
       return (
         <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <p className="text-red-600 font-semibold mb-2">
-              خطأ في تحميل البيانات
-            </p>
+          <div className="text-center p-6 rounded-2xl bg-red-50 border border-red-100">
+            <p className="text-red-600 font-semibold mb-1">خطأ في تحميل البيانات</p>
             <p className="text-gray-500 text-sm">{error}</p>
           </div>
         </div>
@@ -244,7 +334,7 @@ const ClientsReportsPage = () => {
     if (!reportData) {
       return (
         <div className="flex justify-center items-center h-64">
-          <p className="text-gray-500">لا توجد بيانات عملاء لعرضها</p>
+          <p className="text-gray-400">لا توجد بيانات عملاء لعرضها</p>
         </div>
       );
     }
@@ -267,51 +357,110 @@ const ClientsReportsPage = () => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-50" dir="rtl">
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center">
-          <div className="p-2 rounded-lg bg-[#C4A8F0] text-[#1A0F35] ml-3">
-            <UserGroupIcon className="w-6 h-6" />
+    <div className="h-full flex flex-col" dir="rtl">
+      {/* KPI Summary Strip */}
+      <div className="flex-shrink-0 bg-white border-b border-gray-100 px-5 py-4">
+        {loading ? (
+          <div className="flex gap-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex-1 h-20 rounded-2xl bg-gray-100 animate-pulse" />
+            ))}
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">تقارير العملاء</h1>
-            <p className="text-gray-600 mt-1">
-              تقارير شاملة ومفصلة لجميع بيانات العملاء وتحليلاتهم
-            </p>
-            {error && (
-              <p className="text-red-600 text-sm mt-1">تحذير: {error}</p>
-            )}
+        ) : kpis.length > 0 ? (
+          <div className="flex gap-3">
+            {kpis.map((kpi, i) => {
+              const Icon = kpi.icon;
+              return (
+                <div
+                  key={i}
+                  className="flex-1 rounded-2xl p-4 text-white min-w-0"
+                  style={{
+                    background: `linear-gradient(135deg, ${kpi.from} 0%, ${kpi.to} 100%)`,
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <Icon className="h-4 w-4 opacity-80" />
+                    {kpi.sub && (
+                      <span className="text-xs bg-white/20 rounded-full px-2 py-0.5">
+                        {kpi.sub}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xl font-bold mt-1 leading-tight">
+                    {typeof kpi.value === "number"
+                      ? kpi.value.toLocaleString()
+                      : kpi.value}
+                  </p>
+                  <p className="text-xs opacity-75 mt-0.5">{kpi.label}</p>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        ) : null}
+        {error && <p className="text-red-500 text-xs mt-2">⚠ {error}</p>}
       </div>
 
-      <div className="bg-white border-b border-gray-200">
-        <nav className="flex px-6 overflow-x-auto" aria-label="Tabs">
-          {tabs.map((tab) => {
-            const IconComponent = tab.icon;
+      {/* Body: vertical sidebar + content panel */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Vertical tab sidebar */}
+        <aside className="w-52 flex-shrink-0 bg-white border-l border-gray-100 flex flex-col py-3 px-2 gap-1 overflow-y-auto">
+          {SUB_TABS.map((tab) => {
+            const Icon = tab.icon;
             const isActive = activeTab === tab.key;
             return (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`${
+                className={`w-full text-right px-3 py-3 flex items-center gap-3 rounded-xl transition-all duration-200 ${
+                  !isActive ? "hover:bg-gray-50" : ""
+                }`}
+                style={
                   isActive
-                    ? "border-[#C4A8F0] text-[#1A0F35] bg-[#E0F7FF]"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-                } whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm flex items-center space-x-2 space-x-reverse transition-colors`}
+                    ? {
+                        background: `linear-gradient(135deg, ${tab.gradientFrom} 0%, ${tab.gradientTo} 100%)`,
+                        boxShadow: "0 4px 14px rgba(0,0,0,0.18)",
+                      }
+                    : {}
+                }
               >
-                <IconComponent className="w-4 h-4" />
-                <span>{tab.label}</span>
+                <div
+                  className="p-1.5 rounded-lg flex-shrink-0"
+                  style={{
+                    backgroundColor: isActive
+                      ? "rgba(255,255,255,0.2)"
+                      : tab.iconBg,
+                  }}
+                >
+                  <Icon
+                    className="h-4 w-4"
+                    style={{ color: isActive ? "#fff" : tab.iconColor }}
+                  />
+                </div>
+                <div className="min-w-0 text-right">
+                  <p
+                    className="text-sm font-semibold leading-tight"
+                    style={{ color: isActive ? "#fff" : "#1f2937" }}
+                  >
+                    {tab.label}
+                  </p>
+                  <p
+                    className="text-xs leading-tight mt-0.5 truncate"
+                    style={{
+                      color: isActive ? "rgba(255,255,255,0.7)" : "#9ca3af",
+                    }}
+                  >
+                    {tab.desc}
+                  </p>
+                </div>
               </button>
             );
           })}
-        </nav>
-      </div>
+        </aside>
 
-      <div className="flex-1 bg-gray-50 overflow-hidden">
-        <div className="h-full overflow-y-auto px-6 py-6">
-          {renderTabContent()}
-        </div>
+        {/* Content panel */}
+        <main className="flex-1 overflow-y-auto bg-gray-50">
+          <div className="p-5">{renderTabContent()}</div>
+        </main>
       </div>
     </div>
   );

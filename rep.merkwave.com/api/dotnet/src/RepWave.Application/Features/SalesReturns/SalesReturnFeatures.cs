@@ -100,6 +100,55 @@ public class CreateSalesReturnCommandHandler(IApplicationDbContext db)
     public async Task<ApiResponse<SalesReturnDto>> Handle(CreateSalesReturnCommand request, CancellationToken ct)
     {
         var r = request.Req;
+
+        if (r.ClientId <= 0)
+            return ApiResponse<SalesReturnDto>.Failure("يجب اختيار العميل.");
+
+        if (!r.SalesOrderId.HasValue)
+            return ApiResponse<SalesReturnDto>.Failure("يجب اختيار أمر البيع المرتبط بالمرتجع.");
+
+        if (r.Items is null || r.Items.Count == 0)
+            return ApiResponse<SalesReturnDto>.Failure("يجب إضافة منتج واحد على الأقل للمرتجع.");
+
+        var client = await db.Clients.FirstOrDefaultAsync(c => c.ClientsId == r.ClientId, ct);
+        if (client is null)
+            return ApiResponse<SalesReturnDto>.Failure("العميل المحدد غير موجود.");
+
+        var salesOrder = await db.SalesOrders
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.SalesOrdersId == r.SalesOrderId.Value, ct);
+        if (salesOrder is null)
+            return ApiResponse<SalesReturnDto>.Failure("أمر البيع المحدد غير موجود.");
+        if (salesOrder.SalesOrdersClientId != r.ClientId)
+            return ApiResponse<SalesReturnDto>.Failure("أمر البيع لا يتبع العميل المحدد.");
+
+        var orderItemIds = salesOrder.Items.Select(i => i.SalesOrderItemsId).ToList();
+        var returnedByItem = await db.SalesReturnItems.AsNoTracking()
+            .Where(ri => ri.ReturnItemsSalesOrderItemId != null
+                && orderItemIds.Contains(ri.ReturnItemsSalesOrderItemId!.Value))
+            .GroupBy(ri => ri.ReturnItemsSalesOrderItemId!.Value)
+            .Select(g => new { ItemId = g.Key, Total = g.Sum(x => x.ReturnItemsQuantity) })
+            .ToDictionaryAsync(x => x.ItemId, x => x.Total, ct);
+
+        foreach (var item in r.Items)
+        {
+            if (!item.SalesOrderItemId.HasValue || item.Quantity <= 0)
+                return ApiResponse<SalesReturnDto>.Failure("بيانات منتج المرتجع غير صالحة.");
+
+            var soItem = salesOrder.Items.FirstOrDefault(i =>
+                i.SalesOrderItemsId == item.SalesOrderItemId.Value);
+            if (soItem is null)
+                return ApiResponse<SalesReturnDto>.Failure("أحد منتجات المرتجع لا يتبع أمر البيع المحدد.");
+
+            returnedByItem.TryGetValue(item.SalesOrderItemId.Value, out var alreadyReturned);
+            var maxReturnable = Math.Max(0, soItem.SalesOrderItemsQuantity - alreadyReturned);
+            if (item.Quantity > maxReturnable)
+                return ApiResponse<SalesReturnDto>.Failure(
+                    maxReturnable <= 0
+                        ? "تم إرجاع الكمية الكاملة لهذا المنتج مسبقاً."
+                        : $"الكمية المراد إرجاعها تتجاوز المتبقي ({maxReturnable}) لأحد المنتجات.");
+        }
+
         var totalAmount = r.Items.Sum(i => i.Quantity * i.UnitPrice);
 
         var ret = new SalesReturn
@@ -117,14 +166,7 @@ public class CreateSalesReturnCommandHandler(IApplicationDbContext db)
         db.SalesReturns.Add(ret);
 
         // Restore client's credit balance
-        var client = await db.Clients.FindAsync([r.ClientId], ct);
-        if (client is not null)
-            client.ClientsCreditBalance += totalAmount;
-
-        // Load the sales order for warehouse info (if provided)
-        SalesOrder? salesOrder = null;
-        if (r.SalesOrderId.HasValue)
-            salesOrder = await db.SalesOrders.FindAsync([r.SalesOrderId.Value], ct);
+        client.ClientsCreditBalance += totalAmount;
 
         await db.SaveChangesAsync(ct); // get ret.ReturnsId
 

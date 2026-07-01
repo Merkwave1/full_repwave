@@ -36,6 +36,8 @@ public record UpsertVisitPlanRequest(
 
 public record AddVisitPlanClientRequest(int ClientId, int VisitOrder, string? Notes);
 
+public record SyncVisitPlanClientsRequest(List<int>? ClientIds);
+
 public record GetAllVisitPlansQuery(int? UserId = null, string? Status = null)
     : IRequest<ApiResponse<List<VisitPlanDto>>>;
 
@@ -178,6 +180,48 @@ public class RemoveClientFromVisitPlanCommandHandler(IApplicationDbContext db)
         db.VisitPlanClients.Remove(pc);
         await db.SaveChangesAsync(ct);
         return ApiResponse<object>.Success(null!, "Client removed from plan.");
+    }
+}
+
+public record SyncVisitPlanClientsCommand(int PlanId, SyncVisitPlanClientsRequest Req)
+    : IRequest<ApiResponse<object>>;
+
+public class SyncVisitPlanClientsCommandHandler(IApplicationDbContext db)
+    : IRequestHandler<SyncVisitPlanClientsCommand, ApiResponse<object>>
+{
+    public async Task<ApiResponse<object>> Handle(SyncVisitPlanClientsCommand request, CancellationToken ct)
+    {
+        var plan = await db.VisitPlans
+            .Include(p => p.Clients)
+            .FirstOrDefaultAsync(p => p.VisitPlanId == request.PlanId, ct);
+        if (plan is null)
+            return ApiResponse<object>.Failure("Visit plan not found.");
+
+        var desired = (request.Req.ClientIds ?? [])
+            .Where(id => id > 0)
+            .Distinct()
+            .ToHashSet();
+
+        var existing = plan.Clients.ToList();
+        var existingIds = existing.Select(c => c.ClientId).ToHashSet();
+
+        foreach (var row in existing.Where(c => !desired.Contains(c.ClientId)))
+            db.VisitPlanClients.Remove(row);
+
+        var order = existing.Count > 0 ? existing.Max(c => c.VisitOrder) : 0;
+        foreach (var clientId in desired.Where(id => !existingIds.Contains(id)))
+        {
+            order++;
+            db.VisitPlanClients.Add(new VisitPlanClient
+            {
+                VisitPlanId = request.PlanId,
+                ClientId = clientId,
+                VisitOrder = order,
+            });
+        }
+
+        await db.SaveChangesAsync(ct);
+        return ApiResponse<object>.Success(null!, "تم حفظ تخصيص العملاء بنجاح.");
     }
 }
 

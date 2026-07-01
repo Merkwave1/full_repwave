@@ -27,6 +27,11 @@ import {
   formatLocalDateTime,
 } from "../../../../../utils/dateUtils";
 import { isOdooIntegrationEnabled } from "../../../../../utils/odooIntegration";
+import {
+  safePrimaryBtnClass,
+  safePageIconClass,
+  safePageWrapperClass,
+} from "../safeManagementUi";
 
 const formatDateParts = (dateString) => {
   const formatted = formatLocalDateTime(dateString);
@@ -217,6 +222,57 @@ export default function SafeTransfersTab() {
   const normalizedTransfers = useMemo(() => {
     const items = Array.isArray(rawTransfers) ? rawTransfers : [];
     return items.map((item) => {
+      // .NET API: SafeTransferDto
+      if (
+        item.safe_transfer_id != null ||
+        item.from_safe_id != null ||
+        item.to_safe_id != null
+      ) {
+        const id = item.safe_transfer_id ?? item.id;
+        const statusRaw = String(item.status ?? "completed").toLowerCase();
+        const status = statusRaw === "completed" ? "approved" : statusRaw;
+
+        return {
+          id,
+          transactionId: id,
+          reference: item.notes ?? null,
+          amount: Math.abs(Number(item.amount ?? 0)),
+          signedAmount: Number(item.amount ?? 0),
+          date: item.transfer_date ?? item.created_at ?? null,
+          user_name: null,
+          user_id: item.created_by ?? null,
+          source:
+            item.from_safe_id != null
+              ? {
+                  id: item.from_safe_id,
+                  name: item.from_safe_name,
+                  type: null,
+                }
+              : null,
+          destination:
+            item.to_safe_id != null
+              ? {
+                  id: item.to_safe_id,
+                  name: item.to_safe_name,
+                  type: null,
+                }
+              : null,
+          direction: "transfer",
+          rowKey: `transfer-${id}`,
+          transfer_in_id: null,
+          transferOutId: id,
+          transferInId: null,
+          status,
+          transferOutStatus: status,
+          transferInStatus: status,
+          approvedByName: null,
+          approvedDate: null,
+          isPending: status === "pending",
+          transfer_out_odoo_id: null,
+          transfer_in_odoo_id: null,
+        };
+      }
+
       const source =
         item.affected_safe_id != null
           ? {
@@ -457,11 +513,12 @@ export default function SafeTransfersTab() {
   }, []);
 
   const handleTransferAdded = useCallback(() => {
+    setPage(1);
     loadTransfers();
     setShowAddForm(false);
     setGlobalMessage({
       type: "success",
-      message: "تم إرسال طلب التحويل وبانتظار موافقة المسؤول.",
+      message: "تم إنشاء التحويل بنجاح.",
     });
   }, [loadTransfers, setGlobalMessage]);
 
@@ -766,7 +823,7 @@ export default function SafeTransfersTab() {
         render: (row) => {
           const id = row.transactionId ?? row.transferOutId ?? row.transferInId;
           return (
-            <span className="inline-flex items-center justify-center bg-[#EDE7FF] text-[#1A0F35] text-xs font-semibold px-3 py-1 rounded-full">
+            <span className="inline-flex items-center justify-center bg-[#EDE7FF] text-[#7A52C2] text-xs font-semibold px-3 py-1 rounded-full border border-[#C4A8F0]/30">
               #{id ?? "—"}
             </span>
           );
@@ -860,7 +917,7 @@ export default function SafeTransfersTab() {
           const { date, time } = formatDateParts(row.date);
           return (
             <div className="flex items-start gap-2 text-sm text-gray-600">
-              <CalendarDaysIcon className="h-4 w-4 text-indigo-500" />
+              <CalendarDaysIcon className="h-4 w-4 text-[#8B5FD6]" />
               <div className="flex flex-col leading-tight text-xs">
                 <span>{date}</span>
                 <span className="text-gray-400">{time || "—"}</span>
@@ -963,7 +1020,7 @@ export default function SafeTransfersTab() {
         className: "",
         render: (row) => (
           <div className="flex items-center gap-2 text-sm text-gray-700">
-            <UserCircleIcon className="h-5 w-5 text-indigo-500" />
+            <UserCircleIcon className="h-5 w-5 text-[#8B5FD6]" />
             <span>{row.user_name || "—"}</span>
           </div>
         ),
@@ -1003,11 +1060,12 @@ export default function SafeTransfersTab() {
   }
 
   return (
-    <div className="p-6 space-y-6" dir="rtl">
+    <div className={safePageWrapperClass} dir="rtl">
       <CustomPageHeader
         title="تحويلات الخزائن"
         subtitle="إدارة وتتبع تحويلات الأموال بين الخزائن"
-        icon={<ArrowsRightLeftIcon className="h-8 w-8 text-[#1A0F35]" />}
+        icon={<ArrowsRightLeftIcon className={safePageIconClass} />}
+        color="purple"
         statValue={formatMoney(totalAmount)}
         statLabel="إجمالي قيمة التحويلات"
         statSecondaryValue={totalItems}
@@ -1016,7 +1074,7 @@ export default function SafeTransfersTab() {
           <button
             type="button"
             onClick={handleAddTransfer}
-            className="bg-[#1A0F35] text-[#C4A8F0] hover:bg-[#374151] px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg font-bold text-lg"
+            className={safePrimaryBtnClass}
             disabled={loading}
           >
             <PlusIcon className="h-5 w-5" />

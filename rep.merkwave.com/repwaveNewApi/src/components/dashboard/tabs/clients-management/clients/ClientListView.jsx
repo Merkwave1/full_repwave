@@ -21,7 +21,7 @@ import {
 
 // Avatar helpers
 const AVATAR_COLORS = [
-  "bg-[#f5f3ff]0",
+  "bg-[#8B5FD6]",
   "bg-green-500",
   "bg-purple-500",
   "bg-yellow-500",
@@ -165,7 +165,7 @@ export default function ClientListView({
     <>
       {!loading && !error && clients.length === 0 && (
         <div className="bg-white rounded-xl shadow border border-gray-200 p-12 text-center animate-fadeIn">
-          <div className="text-4xl mb-4 text-blue-300">📂</div>
+          <div className="text-4xl mb-4 text-[#C4A8F0]">📂</div>
           <p className="text-gray-700 text-lg font-semibold">
             لا توجد عملاء لعرضهم
           </p>
@@ -363,7 +363,7 @@ export default function ClientListView({
                           onClick={() =>
                             onOpenStatement && onOpenStatement(client)
                           }
-                          className="group px-2.5 py-1.5 bg-indigo-50 text-[#7A52C2] hover:bg-[#8B5FD6] hover:text-white rounded-full text-xs font-semibold flex items-center gap-1 shadow-sm border border-indigo-200 transition-all"
+                          className="group px-2.5 py-1.5 bg-[#f5f3ff] text-[#7A52C2] hover:bg-[#8B5FD6] hover:text-white rounded-full text-xs font-semibold flex items-center gap-1 shadow-sm border border-[#C4A8F0]/50 transition-all"
                           title="كشف حساب"
                         >
                           <FileText

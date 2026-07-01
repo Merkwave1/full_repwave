@@ -26,14 +26,14 @@ const ProductsReportsPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const tabs = [
-    { key: 'overview', label: 'نظرة عامة', icon: ChartBarIcon },
-    { key: 'inventory', label: 'المخزون', icon: CubeIcon },
-    { key: 'categories', label: 'الفئات', icon: TagIcon },
-    { key: 'suppliers', label: 'الموردين', icon: TruckIcon },
-    { key: 'analytics', label: 'التحليلات', icon: PresentationChartLineIcon },
-    { key: 'interested_products', label: 'اهتمامات العملاء', icon: UserGroupIcon },
-    { key: 'stock_levels', label: 'مستويات المخزون', icon: ExclamationTriangleIcon },
+  const SUB_TABS = [
+    { key: 'overview', label: 'نظرة عامة', desc: 'الإحصائيات الكلية', icon: ChartBarIcon, gradientFrom: '#8B5FD6', gradientTo: '#6B45B0', iconBg: '#EDE7FF', iconColor: '#8B5FD6' },
+    { key: 'inventory', label: 'المخزون', desc: 'كميات وحركة المخزون', icon: CubeIcon, gradientFrom: '#F97366', gradientTo: '#d45a4e', iconBg: '#FFF0EE', iconColor: '#F97366' },
+    { key: 'categories', label: 'الفئات', desc: 'تصنيف المنتجات', icon: TagIcon, gradientFrom: '#10b981', gradientTo: '#059669', iconBg: '#ecfdf5', iconColor: '#10b981' },
+    { key: 'suppliers', label: 'الموردين', desc: 'بيانات الموردين', icon: TruckIcon, gradientFrom: '#f59e0b', gradientTo: '#d97706', iconBg: '#fffbeb', iconColor: '#f59e0b' },
+    { key: 'analytics', label: 'التحليلات', desc: 'تحليل المبيعات والأداء', icon: PresentationChartLineIcon, gradientFrom: '#64748b', gradientTo: '#475569', iconBg: '#f1f5f9', iconColor: '#64748b' },
+    { key: 'interested_products', label: 'اهتمامات العملاء', desc: 'منتجات مطلوبة', icon: UserGroupIcon, gradientFrom: '#7A52C2', gradientTo: '#5A3AA0', iconBg: '#f3e8ff', iconColor: '#7A52C2' },
+    { key: 'stock_levels', label: 'مستويات المخزون', desc: 'تنبيهات المخزون', icon: ExclamationTriangleIcon, gradientFrom: '#ef4444', gradientTo: '#dc2626', iconBg: '#fef2f2', iconColor: '#ef4444' },
   ];
 
   useEffect(() => {
@@ -80,47 +80,51 @@ const ProductsReportsPage = () => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-50" dir="rtl">
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center">
-          <div className="p-2 rounded-lg bg-green-500 text-white ml-3">
-            <CubeIcon className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">تقارير المنتجات والمخزون</h1>
-            <p className="text-gray-600 mt-1">تقارير شاملة ومفصلة لجميع المنتجات والمخزون والموردين</p>
-            {error && <p className="text-red-600 text-sm mt-1">تحذير: {error}</p>}
-          </div>
+    <div className="h-full flex flex-col" dir="rtl">
+      {error && (
+        <div className="flex-shrink-0 bg-red-50 border-b border-red-100 px-5 py-2">
+          <p className="text-red-500 text-xs">⚠ {error}</p>
         </div>
-      </div>
-
-      <div className="bg-white border-b border-gray-200">
-        <nav className="flex px-6 overflow-x-auto" aria-label="Tabs">
-          {tabs.map((tab) => {
-            const IconComponent = tab.icon;
+      )}
+      <div className="flex-1 flex overflow-hidden">
+        <aside className="w-52 flex-shrink-0 bg-white border-l border-gray-100 flex flex-col py-3 px-2 gap-1 overflow-y-auto">
+          {SUB_TABS.map((tab) => {
+            const Icon = tab.icon;
             const isActive = activeTab === tab.key;
             return (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`${
+                className={`w-full text-right px-3 py-3 flex items-center gap-3 rounded-xl transition-all duration-200 ${
+                  !isActive ? 'hover:bg-gray-50' : ''
+                }`}
+                style={
                   isActive
-                    ? 'border-green-500 text-green-600 bg-green-50'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
-                } whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm flex items-center space-x-2 space-x-reverse transition-colors`}
+                    ? { background: `linear-gradient(135deg, ${tab.gradientFrom} 0%, ${tab.gradientTo} 100%)`, boxShadow: '0 4px 14px rgba(0,0,0,0.18)' }
+                    : {}
+                }
               >
-                <IconComponent className="w-4 h-4" />
-                <span>{tab.label}</span>
+                <div
+                  className="p-1.5 rounded-lg flex-shrink-0"
+                  style={{ backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : tab.iconBg }}
+                >
+                  <Icon className="h-4 w-4" style={{ color: isActive ? '#fff' : tab.iconColor }} />
+                </div>
+                <div className="min-w-0 text-right">
+                  <p className="text-sm font-semibold leading-tight" style={{ color: isActive ? '#fff' : '#1f2937' }}>
+                    {tab.label}
+                  </p>
+                  <p className="text-xs leading-tight mt-0.5 truncate" style={{ color: isActive ? 'rgba(255,255,255,0.7)' : '#9ca3af' }}>
+                    {tab.desc}
+                  </p>
+                </div>
               </button>
             );
           })}
-        </nav>
-      </div>
-
-      <div className="flex-1 bg-gray-50 overflow-hidden">
-        <div className="h-full overflow-y-auto px-6 py-6">
-          {renderTabContent()}
-        </div>
+        </aside>
+        <main className="flex-1 overflow-y-auto bg-gray-50">
+          <div className="p-5">{renderTabContent()}</div>
+        </main>
       </div>
     </div>
   );

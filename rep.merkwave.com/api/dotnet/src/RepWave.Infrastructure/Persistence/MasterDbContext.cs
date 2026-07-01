@@ -27,6 +27,8 @@ public class MasterDbContext(DbContextOptions<MasterDbContext> options)
             e.Property(t => t.ConnectionString).IsRequired();
             e.Property(t => t.Plan).HasMaxLength(100);
             e.Property(t => t.ContactEmail).HasMaxLength(255);
+            e.Property(t => t.ContactPhone).HasMaxLength(50);
+            e.Property(t => t.ContactCountry).HasMaxLength(100);
             e.Property(t => t.IsActive).HasDefaultValue(true);
             e.Property(t => t.CreatedAt).HasDefaultValueSql("NOW()");
         });

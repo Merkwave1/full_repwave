@@ -75,7 +75,7 @@ export default function SalesOrderListView({
       Draft: "bg-gray-100 text-gray-800",
       Pending: "bg-yellow-100 text-yellow-800",
       Approved: "bg-[#EDE7FF] text-[#2D1B69]",
-      Invoiced: "bg-indigo-100 text-indigo-800",
+      Invoiced: "bg-[#EDE7FF] text-[#2D1B69]",
       Cancelled: "bg-red-100 text-red-800",
     };
     return colors[status] || "bg-gray-100 text-gray-800";

@@ -4,7 +4,7 @@ namespace RepWave.Application.Common.Models;
 public record StatusUpdateRequest(string Status);
 
 /// <summary>Simple body DTO for PATCH settings/{key}.</summary>
-public record SettingValueRequest(string? Value);
+public record SettingValueRequest(string? Value, string? Description = null, string? Type = null);
 
 /// <summary>Simple body DTO for POST versions/increment.</summary>
 public record IncrementVersionRequest(string Entity);

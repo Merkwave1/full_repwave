@@ -34,10 +34,15 @@ export default defineConfig({
         target: process.env.DOTNET_API_TARGET || 'http://localhost:5050',
         changeOrigin: true,
       },
+      '/uploads': {
+        target: process.env.DOTNET_API_TARGET || 'http://localhost:5050',
+        changeOrigin: true,
+      },
       '/hubs': {
         target: process.env.DOTNET_API_TARGET || 'http://localhost:5050',
         changeOrigin: true,
         ws: true,
+        secure: false,
       }
     },
     // Watch options for better performance in Docker

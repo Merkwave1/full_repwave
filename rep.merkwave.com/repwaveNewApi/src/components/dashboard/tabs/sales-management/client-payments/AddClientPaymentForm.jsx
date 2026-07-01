@@ -137,7 +137,7 @@ const AddClientPaymentForm = ({
         dir="rtl"
       >
         {/* ── Premium Header ── */}
-        <div className="px-5 py-4 flex items-center justify-between bg-gradient-to-l from-[#8B5FD6] to-[#F97366]">
+        <div className="px-5 py-4 flex items-center justify-between" style={{ background: "linear-gradient(135deg, #8B5FD6 0%, #7A52C2 100%)" }}>
           <div className="flex items-center gap-3 min-w-0">
             <div className="bg-white/20 rounded-xl p-2 shrink-0">
               <CurrencyDollarIcon className="h-6 w-6 text-white" />
@@ -308,7 +308,7 @@ const AddClientPaymentForm = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full sm:flex-1 py-2.5 px-6 rounded-xl text-sm font-bold text-white bg-gradient-to-l from-[#8B5FD6] to-[#F97366] hover:from-[#7A52C2] hover:to-[#E8624F] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full sm:flex-1 py-2.5 px-6 rounded-xl text-sm font-bold text-white bg-[#8B5FD6] hover:bg-[#7A52C2] transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>

@@ -1,10 +1,19 @@
 ﻿// src/components/dashboard/tabs/settings/components/ClientTaxonomiesSettings.jsx
 import React, { useEffect, useState } from 'react';
-import { PlusIcon, PencilIcon, TrashIcon, ArrowPathIcon, MagnifyingGlassIcon, TagIcon, BuildingOffice2Icon, UsersIcon } from '@heroicons/react/24/outline';
-import Button from '../../../../common/Button/Button.jsx';
-import TextField from '../../../../common/TextField/TextField.jsx';
+import { PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, TagIcon, BuildingOffice2Icon, UsersIcon } from '@heroicons/react/24/outline';
 import Loader from '../../../../common/Loader/Loader.jsx';
 import Alert from '../../../../common/Alert/Alert.jsx';
+import { SettingsCard } from '../SettingsFormField.jsx';
+import {
+  settingsInputClass,
+  settingsSearchInputClass,
+  settingsPrimaryBtnClass,
+  settingsSecondaryBtnClass,
+  settingsTableWrapClass,
+  settingsListItemClass,
+  settingsFieldsStackClass,
+  settingsSectionsStackClass,
+} from '../settingsUi.js';
 import {
   getAppClientAreaTags,
   getAppClientIndustries,
@@ -25,33 +34,6 @@ import {
   updateClientType,
   deleteClientType
 } from '../../../../../apis/client_types.js';
-
-// Generic card shell
-const Card = ({ title, icon, description, children, refreshing, onRefresh }) => (
-  <div className="bg-white border border-gray-100 rounded-xl shadow-sm flex flex-col overflow-hidden hover:shadow-md transition-shadow duration-200">
-    <div className="px-4 sm:px-5 pt-4 sm:pt-5 flex items-start justify-between gap-2">
-      <div className="flex items-start gap-3 min-w-0">
-        <div className="p-2 rounded-lg bg-[#f5f3ff] text-[#8B5FD6] shrink-0">
-          {icon}
-        </div>
-        <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-gray-800 mb-1 leading-snug">{title}</h3>
-          {description && <p className="text-xs text-gray-500 leading-relaxed">{description}</p>}
-        </div>
-      </div>
-      <button
-        className={`inline-flex items-center shrink-0 text-xs font-medium px-2.5 py-1.5 rounded-md border ${refreshing ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-white hover:bg-gray-50 text-gray-600 border-gray-200'}`}
-        onClick={onRefresh}
-        disabled={refreshing}
-        title="تحديث"
-      >
-        <ArrowPathIcon className={`h-3.5 w-3.5 ml-1 ${refreshing ? 'animate-spin' : ''}`} />
-        {refreshing ? 'جاري...' : 'تحديث'}
-      </button>
-    </div>
-    <div className="p-4 sm:p-5 pt-3 flex-1 flex flex-col">{children}</div>
-  </div>
-);
 
 function ListManager({
   placeholder,
@@ -164,7 +146,7 @@ function ListManager({
       <div className="flex flex-col gap-2 mb-4">
         <div className="flex flex-col sm:flex-row gap-2">
           <input
-            className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] text-sm"
+            className={`flex-1 ${settingsInputClass}`}
             placeholder={placeholder}
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -173,21 +155,26 @@ function ListManager({
           <div className="flex gap-2">
             <input
               type="number"
-              className="w-24 sm:w-24 flex-1 sm:flex-none px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] text-sm"
+              className={`w-24 sm:w-24 flex-1 sm:flex-none ${settingsInputClass}`}
               placeholder="الترتيب"
               value={newSortOrder}
               onChange={(e) => setNewSortOrder(e.target.value)}
               min="0"
             />
-            <Button onClick={handleAdd} disabled={saving || !newName.trim()} className="bg-[#C4A8F0] hover:bg-[#7CC4E0] flex-1 sm:flex-none flex items-center justify-center text-sm whitespace-nowrap">
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={saving || !newName.trim()}
+              className={`${settingsPrimaryBtnClass} flex-1 sm:flex-none justify-center text-sm whitespace-nowrap`}
+            >
               <PlusIcon className="h-4 w-4 ml-1" /> إضافة
-            </Button>
+            </button>
           </div>
         </div>
         <div className="relative">
-          <MagnifyingGlassIcon className="h-4 w-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <MagnifyingGlassIcon className="h-4 w-4 absolute right-3 top-1/2 -translate-y-1/2 text-[#8B5FD6]/50" />
           <input
-            className="w-full pr-8 pl-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] bg-gray-50 text-sm"
+            className={settingsSearchInputClass}
             placeholder="بحث..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -200,23 +187,23 @@ function ListManager({
       ) : (
         <>
           {/* Mobile card-list (hidden on sm+) */}
-          <div className="sm:hidden max-h-72 overflow-y-auto custom-scrollbar flex flex-col gap-2 border border-gray-100 rounded-xl p-2">
+          <div className="sm:hidden max-h-72 overflow-y-auto custom-scrollbar flex flex-col gap-2 border border-[#EDE7FF] rounded-xl p-2 bg-[#FAFAFE]">
             {filteredItems.length === 0 ? (
               <p className="py-6 text-center text-gray-400 text-sm">لا توجد عناصر</p>
             ) : (
               filteredItems.map((item) => (
-                <div key={item[idKey]} className="bg-gray-50 border border-gray-100 rounded-lg px-3 py-2.5">
+                <div key={item[idKey]} className={settingsListItemClass}>
                   {editingId === item[idKey] ? (
                     <div className="flex flex-col gap-2">
                       <input
-                        className="w-full px-2.5 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] text-sm"
+                        className={settingsInputClass}
                         value={editingName}
                         onChange={(e) => setEditingName(e.target.value)}
                         placeholder="الاسم"
                       />
                       <input
                         type="number"
-                        className="w-full px-2.5 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] text-sm"
+                        className={settingsInputClass}
                         value={editingSortOrder}
                         onChange={(e) => setEditingSortOrder(e.target.value)}
                         min="0"
@@ -224,35 +211,37 @@ function ListManager({
                       />
                       <div className="flex gap-2">
                         <button
-                          className="flex-1 py-1.5 rounded-lg bg-green-600 text-white text-xs font-medium"
+                          type="button"
+                          className={`flex-1 py-2 rounded-xl ${settingsPrimaryBtnClass} justify-center text-xs`}
                           onClick={handleUpdate}
                           disabled={saving || !editingName.trim()}
                         >حفظ</button>
                         <button
-                          className="flex-1 py-1.5 rounded-lg bg-gray-200 text-gray-700 text-xs font-medium"
+                          type="button"
+                          className={`flex-1 py-2 rounded-xl ${settingsSecondaryBtnClass} justify-center text-xs`}
                           onClick={resetEditState}
                         >إلغاء</button>
                       </div>
                     </div>
                   ) : (
                     <div className="flex flex-col gap-2">
-                      {/* Row 1 – sort badge + full name */}
                       <div className="flex items-start gap-2">
-                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#f5f3ff] text-[#8B5FD6] text-xs font-semibold shrink-0 mt-0.5">
+                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#EDE7FF] text-[#8B5FD6] text-xs font-semibold shrink-0 mt-0.5">
                           {normalizeSortOrder(item[sortKey])}
                         </span>
-                        <span className="text-gray-800 text-sm font-medium leading-snug break-words w-full">
+                        <span className="text-[#2D1B69] text-sm font-medium leading-snug break-words w-full">
                           {item[nameKey]}
                         </span>
                       </div>
-                      {/* Row 2 – actions */}
-                      <div className="flex gap-2 justify-end border-t border-gray-100 pt-1.5">
+                      <div className="flex gap-2 justify-end border-t border-[#EDE7FF] pt-1.5">
                         <button
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-yellow-50 text-yellow-700 text-xs font-medium hover:bg-yellow-100"
+                          type="button"
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-xl ${settingsSecondaryBtnClass} text-xs`}
                           onClick={() => startEdit(item)}
                         ><PencilIcon className="h-3.5 w-3.5" /> تعديل</button>
                         <button
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs font-medium hover:bg-red-100"
+                          type="button"
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-50 text-red-600 border border-red-100 text-xs font-semibold hover:bg-red-100"
                           onClick={() => handleDelete(item[idKey])}
                         ><TrashIcon className="h-3.5 w-3.5" /> حذف</button>
                       </div>
@@ -265,58 +254,58 @@ function ListManager({
 
           {/* Desktop table (hidden on mobile) */}
           <div className="hidden sm:block overflow-x-auto">
-            <div className="max-h-56 overflow-y-auto custom-scrollbar border border-gray-100 rounded-md">
+            <div className={`max-h-56 overflow-y-auto custom-scrollbar ${settingsTableWrapClass}`}>
               <table className="min-w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-[#F8F5FF]">
                   <tr>
-                    <th className="text-right text-sm font-medium text-gray-600 px-3 py-2 w-24">الترتيب</th>
-                    <th className="text-right text-sm font-medium text-gray-600 px-3 py-2">الاسم</th>
+                    <th className="text-right text-sm font-semibold text-[#2D1B69] px-3 py-2.5 w-24">الترتيب</th>
+                    <th className="text-right text-sm font-semibold text-[#2D1B69] px-3 py-2.5">الاسم</th>
                     <th className="w-24"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredItems.map((item) => (
-                    <tr key={item[idKey]} className="border-t border-gray-100">
-                      <td className="px-3 py-1.5 align-middle">
+                    <tr key={item[idKey]} className="border-t border-[#EDE7FF] hover:bg-[#FAFAFE]">
+                      <td className="px-3 py-2 align-middle">
                         {editingId === item[idKey] ? (
                           <input
                             type="number"
-                            className="w-20 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] text-sm"
+                            className={`w-20 ${settingsInputClass}`}
                             value={editingSortOrder}
                             onChange={(e) => setEditingSortOrder(e.target.value)}
                             min="0"
                           />
                         ) : (
-                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#f5f3ff] text-[#8B5FD6] text-xs font-semibold">
+                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#EDE7FF] text-[#8B5FD6] text-xs font-semibold">
                             {normalizeSortOrder(item[sortKey])}
                           </span>
                         )}
                       </td>
-                      <td className="px-3 py-1.5 align-middle">
+                      <td className="px-3 py-2 align-middle">
                         {editingId === item[idKey] ? (
-                          <div className="flex items-center gap-2">
-                            <input
-                              className="flex-1 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8B5FD6]"
-                              value={editingName}
-                              onChange={(e) => setEditingName(e.target.value)}
-                            />
-                          </div>
+                          <input
+                            className={settingsInputClass}
+                            value={editingName}
+                            onChange={(e) => setEditingName(e.target.value)}
+                          />
                         ) : (
-                          <span className="text-gray-800 text-sm">{item[nameKey]}</span>
+                          <span className="text-[#2D1B69] text-sm">{item[nameKey]}</span>
                         )}
                       </td>
-                      <td className="px-3 py-1.5 text-left">
+                      <td className="px-3 py-2 text-left">
                         {editingId === item[idKey] ? (
                           <div className="flex gap-2 justify-end">
                             <button
-                              className="inline-flex items-center px-2 py-1 rounded-md bg-green-600 text-white hover:bg-green-700 text-xs"
+                              type="button"
+                              className={`inline-flex items-center px-2.5 py-1.5 rounded-xl ${settingsPrimaryBtnClass} text-xs`}
                               onClick={handleUpdate}
                               disabled={saving || !editingName.trim()}
                             >
                               حفظ
                             </button>
                             <button
-                              className="inline-flex items-center px-2 py-1 rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300 text-xs"
+                              type="button"
+                              className={`inline-flex items-center px-2.5 py-1.5 rounded-xl ${settingsSecondaryBtnClass} text-xs`}
                               onClick={resetEditState}
                             >
                               إلغاء
@@ -325,14 +314,16 @@ function ListManager({
                         ) : (
                           <div className="flex gap-2 justify-end">
                             <button
-                              className="p-1.5 rounded-md hover:bg-yellow-50 text-yellow-700"
+                              type="button"
+                              className="p-1.5 rounded-xl hover:bg-[#F8F5FF] text-[#8B5FD6]"
                               title="تعديل"
                               onClick={() => startEdit(item)}
                             >
                               <PencilIcon className="h-4 w-4" />
                             </button>
                             <button
-                              className="p-1.5 rounded-md hover:bg-red-50 text-red-600"
+                              type="button"
+                              className="p-1.5 rounded-xl hover:bg-red-50 text-red-600"
                               title="حذف"
                               onClick={() => handleDelete(item[idKey])}
                             >
@@ -358,7 +349,7 @@ function ListManager({
   );
 }
 
-export default function ClientTaxonomiesSettings() {
+export default function ClientTaxonomiesSettings({ embedded = false }) {
   // State groups kept separate for clarity & independent loading
   const [areaTags, setAreaTags] = useState([]);
   const [industries, setIndustries] = useState([]);
@@ -481,15 +472,16 @@ export default function ClientTaxonomiesSettings() {
   const iconSize = 'h-5 w-5';
 
   return (
-    <div className="space-y-8" dir="rtl">
-      <div className="mb-2">
-        <p className="text-sm text-gray-600">إدارة التصنيفات المرتبطة بالعملاء. تم توحيد العرض لإلغاء أزرار التبديل المربكة – الآن كل نوع ظاهر أمامك ويمكنك التعديل مباشرة.</p>
-      </div>
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Area Tags */}
-        <Card
+    <div className={settingsSectionsStackClass} dir="rtl">
+      {!embedded && (
+        <p className="text-sm text-gray-500 leading-relaxed">
+          إدارة التصنيفات المرتبطة بالعملاء — كل نوع ظاهر أمامك ويمكنك التعديل مباشرة.
+        </p>
+      )}
+      <div className={settingsSectionsStackClass}>
+        <SettingsCard
           title="وسوم المناطق"
-          description="استخدمها لتصنيف العملاء حسب مناطق أو نطاقات جغرافية"
+          subtitle="استخدمها لتصنيف العملاء حسب مناطق أو نطاقات جغرافية"
           icon={<TagIcon className={iconSize} />}
           refreshing={refreshingAreaTags}
           onRefresh={() => fetchAreaTags(true)}
@@ -506,12 +498,11 @@ export default function ClientTaxonomiesSettings() {
             error={errorAreaTags}
             setError={setErrorAreaTags}
           />
-        </Card>
+        </SettingsCard>
 
-        {/* Industries */}
-        <Card
+        <SettingsCard
           title="الصناعات"
-          description="تعريف القطاعات الصناعية للعملاء لتقارير وتحليلات أدق"
+          subtitle="تعريف القطاعات الصناعية للعملاء لتقارير وتحليلات أدق"
           icon={<BuildingOffice2Icon className={iconSize} />}
           refreshing={refreshingIndustries}
           onRefresh={() => fetchIndustries(true)}
@@ -528,12 +519,11 @@ export default function ClientTaxonomiesSettings() {
             error={errorIndustries}
             setError={setErrorIndustries}
           />
-        </Card>
+        </SettingsCard>
 
-        {/* Client Types */}
-        <Card
+        <SettingsCard
           title="أنواع العملاء"
-          description="تقسيم العملاء (مثل جملة، تجزئة، مستهلك نهائي)" 
+          subtitle="تقسيم العملاء (مثل جملة، تجزئة، مستهلك نهائي)"
           icon={<UsersIcon className={iconSize} />}
           refreshing={refreshingClientTypes}
           onRefresh={() => fetchClientTypes(true)}
@@ -550,7 +540,7 @@ export default function ClientTaxonomiesSettings() {
             error={errorClientTypes}
             setError={setErrorClientTypes}
           />
-        </Card>
+        </SettingsCard>
       </div>
     </div>
   );

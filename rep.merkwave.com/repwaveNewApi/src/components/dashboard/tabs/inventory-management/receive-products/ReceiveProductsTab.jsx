@@ -1,7 +1,12 @@
 ﻿// src/components/dashboard/tabs/inventory-management/receive-products/ReceiveProductsTab.jsx
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
-import { getAppPendingPurchaseOrdersForReceive } from "../../../../../apis/auth";
+import {
+  getAppPendingPurchaseOrdersForReceive,
+  getAppWarehouses,
+  getAppSuppliers,
+  getAppProducts,
+} from "../../../../../apis/auth";
 import { addGoodsReceipt } from "../../../../../apis/goods_receipts"; // UPDATED: Import the new API function
 import Loader from "../../../../common/Loader/Loader";
 import Alert from "../../../../common/Alert/Alert";
@@ -150,66 +155,37 @@ export default function ReceiveProductsTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
 
+  const unwrapList = (response) => {
+    if (Array.isArray(response)) return response;
+    if (Array.isArray(response?.data)) return response.data;
+    if (Array.isArray(response?.data?.data)) return response.data.data;
+    if (Array.isArray(response?.data?.purchase_orders))
+      return response.data.purchase_orders;
+    return [];
+  };
+
   const loadData = useCallback(
     async (forceRefresh = false) => {
       setLoading(true);
       setError(null);
       try {
-        // Only fetch pending orders from API, load other data from localStorage
-        const ordersData =
-          await getAppPendingPurchaseOrdersForReceive(forceRefresh);
+        const [
+          ordersResponse,
+          warehousesResponse,
+          suppliersResponse,
+          productsResponse,
+        ] = await Promise.all([
+          getAppPendingPurchaseOrdersForReceive(forceRefresh),
+          getAppWarehouses(),
+          getAppSuppliers(),
+          getAppProducts(),
+        ]);
 
-        // Load suppliers, products, and warehouses from localStorage only
-        let warehousesData = [];
-        let productsData = [];
-        let suppliersData = [];
+        setWarehouses(unwrapList(warehousesResponse));
+        setProducts(unwrapList(productsResponse));
+        setSuppliers(unwrapList(suppliersResponse));
 
-        try {
-          const warehousesRaw = JSON.parse(
-            localStorage.getItem("appWarehouses") || "[]",
-          );
-          warehousesData = Array.isArray(warehousesRaw)
-            ? warehousesRaw
-            : warehousesRaw?.data || [];
-        } catch (e) {
-          console.warn("Failed to load warehouses from localStorage:", e);
-          warehousesData = [];
-        }
-
-        try {
-          const productsRaw = JSON.parse(
-            localStorage.getItem("appProducts") || "[]",
-          );
-          productsData = Array.isArray(productsRaw)
-            ? productsRaw
-            : productsRaw?.data || [];
-        } catch (e) {
-          console.warn("Failed to load products from localStorage:", e);
-          productsData = [];
-        }
-
-        try {
-          const suppliersRaw = JSON.parse(
-            localStorage.getItem("appSuppliers") || "[]",
-          );
-          suppliersData = Array.isArray(suppliersRaw)
-            ? suppliersRaw
-            : suppliersRaw?.data || [];
-        } catch (e) {
-          console.warn("Failed to load suppliers from localStorage:", e);
-          suppliersData = [];
-        }
-
-        setWarehouses(warehousesData || []);
-        setProducts(productsData || []);
-        setSuppliers(suppliersData || []);
-
-        // The caching layer returns the data directly as an array, not nested
-        const allOrders = Array.isArray(ordersData)
-          ? ordersData
-          : Array.isArray(ordersData?.data?.purchase_orders)
-            ? ordersData.data.purchase_orders
-            : [];
+        const allOrders = unwrapList(ordersResponse);
 
         // Sort by order date (new to old); tie-break by ID (newer ID first)
         const sortedOrders = [...allOrders].sort((a, b) => {
@@ -271,18 +247,24 @@ export default function ReceiveProductsTab() {
   };
 
   const getWarehouseNameById = useCallback(
-    (warehouseId) => {
+    (warehouseId, order) => {
+      if (order?.warehouse_name) return order.warehouse_name;
       if (!Array.isArray(warehouses)) return "مخزن غير معروف";
-      const warehouse = warehouses.find((w) => w.warehouse_id === warehouseId);
+      const warehouse = warehouses.find(
+        (w) => String(w.warehouse_id) === String(warehouseId),
+      );
       return warehouse ? warehouse.warehouse_name : "مخزن غير معروف";
     },
     [warehouses],
   );
 
   const getSupplierNameById = useCallback(
-    (supplierId) => {
+    (supplierId, order) => {
+      if (order?.supplier_name) return order.supplier_name;
       if (!Array.isArray(suppliers)) return "مورد غير معروف";
-      const supplier = suppliers.find((s) => s.supplier_id === supplierId);
+      const supplier = suppliers.find(
+        (s) => String(s.supplier_id) === String(supplierId),
+      );
       return supplier ? supplier.supplier_name : "مورد غير معروف";
     },
     [suppliers],
@@ -326,7 +308,7 @@ export default function ReceiveProductsTab() {
       ordersArray = ordersArray.filter((order) => {
         const idMatch = order.purchase_orders_id.toString().includes(term);
         const supplierName =
-          getSupplierNameById(order.purchase_orders_supplier_id) || "";
+          getSupplierNameById(order.purchase_orders_supplier_id, order) || "";
         const supplierMatch = supplierName.toLowerCase().includes(term);
         return idMatch || supplierMatch;
       });
@@ -726,11 +708,11 @@ export default function ReceiveProductsTab() {
           </tbody>
         </table>
         ${
-          receiptDetails[order.purchase_orders_id]?.notes
+          receiptDetails[String(order.purchase_orders_id)]?.notes
             ? `
           <div class="notes">
             <h3>ملاحظات الاستلام</h3>
-            <p>${receiptDetails[order.purchase_orders_id]?.notes}</p>
+            <p>${receiptDetails[String(order.purchase_orders_id)]?.notes || ""}</p>
           </div>`
             : ""
         }
@@ -1013,14 +995,19 @@ export default function ReceiveProductsTab() {
     }
 
     const itemsToSubmit = order.items
-      .map((item) => ({
-        po_item_id: item.purchase_order_items_id,
-        quantity: getQuantityForItem(orderId, item.purchase_order_items_id),
-        production_date:
+      .map((item) => {
+        const qty = getQuantityForItem(orderId, item.purchase_order_items_id);
+        const productionDate =
           getProductionDateForItem(orderId, item.purchase_order_items_id) ||
-          new Date().toISOString().split("T")[0],
-      }))
-      .filter((item) => item.quantity > 0);
+          new Date().toISOString().split("T")[0];
+        return {
+          variant_id: item.purchase_order_items_variant_id,
+          packaging_type_id: item.purchase_order_items_packaging_type_id ?? null,
+          quantity_received: qty,
+          production_date: productionDate,
+        };
+      })
+      .filter((item) => item.quantity_received > 0);
 
     if (itemsToSubmit.length === 0) {
       setGlobalMessage({
@@ -1031,20 +1018,25 @@ export default function ReceiveProductsTab() {
       return;
     }
 
-    const details = receiptDetails[orderId] || {};
-    // Server will set the receipt datetime to current server time; do not send receipt_date so backend can use NOW().
+    const details = receiptDetails[String(orderId)] || {};
     const notes = details.notes || "";
 
     const receiptData = {
       warehouse_id: order.purchase_orders_warehouse_id,
-      items: itemsToSubmit,
+      purchase_order_id: order.purchase_orders_id,
       notes,
+      items: itemsToSubmit,
     };
 
     try {
-      // UPDATED: Use the new addGoodsReceipt function
-      const message = await addGoodsReceipt(receiptData);
-      setGlobalMessage({ type: "success", message });
+      const result = await addGoodsReceipt(receiptData);
+      const receiptId = result?.goods_receipt_id ?? result?.receipt_id;
+      setGlobalMessage({
+        type: "success",
+        message: receiptId
+          ? `تم تسجيل الاستلام بنجاح — إيصال #${receiptId}`
+          : "تم تسجيل الاستلام بنجاح",
+      });
 
       setQuantitiesToReceive((prev) => {
         const updated = { ...prev };
@@ -1163,13 +1155,16 @@ export default function ReceiveProductsTab() {
                     <span className="font-semibold text-gray-500">
                       المورد:{" "}
                     </span>
-                    {getSupplierNameById(order.purchase_orders_supplier_id)}
+                    {getSupplierNameById(order.purchase_orders_supplier_id, order)}
                   </span>
                   <span>
                     <span className="font-semibold text-gray-500">
                       المخزن:{" "}
                     </span>
-                    {getWarehouseNameById(order.purchase_orders_warehouse_id)}
+                    {getWarehouseNameById(
+                      order.purchase_orders_warehouse_id,
+                      order,
+                    )}
                   </span>
                 </div>
                 {selectableItems.length > 0 && (
@@ -1441,7 +1436,7 @@ export default function ReceiveProductsTab() {
                       <label className="block mb-1">ملاحظات</label>
                       <textarea
                         rows={2}
-                        value={receiptDetails[orderId]?.notes || ""}
+                        value={receiptDetails[String(orderId)]?.notes ?? ""}
                         onChange={(e) =>
                           handleReceiptDetailChange(
                             orderId,

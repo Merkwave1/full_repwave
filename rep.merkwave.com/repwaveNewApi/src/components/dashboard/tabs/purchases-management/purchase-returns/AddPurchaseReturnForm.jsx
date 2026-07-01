@@ -585,7 +585,7 @@ export default function AddPurchaseReturnForm({
                           <div className="mt-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200 overflow-hidden">
                             <div className="bg-gray-200 px-4 py-2 border-b border-gray-300">
                               <h6 className="text-sm font-semibold text-gray-800 flex items-center">
-                                <span className="w-2 h-2 bg-[#f5f3ff]0 rounded-full ml-2"></span>
+                                <span className="w-2 h-2 bg-[#8B5FD6] rounded-full ml-2"></span>
                                 تفاصيل الكمية والأسعار
                               </h6>
                             </div>
@@ -597,7 +597,7 @@ export default function AddPurchaseReturnForm({
                                   <div className="text-lg font-bold text-[#7A52C2]">
                                     {orderItem.purchase_order_items_quantity_ordered}
                                   </div>
-                                  <div className="text-xs text-blue-500">{displayUnit}</div>
+                                  <div className="text-xs text-[#8B5FD6]">{displayUnit}</div>
                                 </div>
 
                                 {/* المستلم */}

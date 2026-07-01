@@ -1,16 +1,26 @@
 ﻿// src/components/dashboard/tabs/settings/components/OdooIntegrationSettings.jsx
-// Component for managing Odoo ERP integration settings
-
 import React, { useState, useEffect } from 'react';
 import { getAllSettings, updateMultipleSettings, createSetting } from '../../../../../apis/settings.js';
 import { testOdooConnection } from '../../../../../apis/odoo.js';
-import Button from '../../../../common/Button/Button.jsx';
-import TextField from '../../../../common/TextField/TextField.jsx';
 import Alert from '../../../../common/Alert/Alert.jsx';
 import Loader from '../../../../common/Loader/Loader.jsx';
 import OdooImportDataDialog from './OdooImportDataDialog.jsx';
+import {
+  SettingsSection,
+  SettingsFieldCard,
+  SettingsLabel,
+  SettingsHint,
+} from '../SettingsFormField.jsx';
+import {
+  settingsInputClass,
+  settingsPrimaryBtnClass,
+  settingsSecondaryBtnClass,
+  SETTINGS_SECTION_GROUPS,
+  settingsFieldsStackClass,
+  settingsSectionsStackClass,
+} from '../settingsUi.js';
 
-function OdooIntegrationSettings() {
+function OdooIntegrationSettings({ embedded = false }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -21,8 +31,10 @@ function OdooIntegrationSettings() {
     odoo_url: '',
     odoo_database: '',
     odoo_username: '',
-    odoo_password: ''
+    odoo_password: '',
   });
+
+  const odooSections = SETTINGS_SECTION_GROUPS.odoo;
 
   useEffect(() => {
     fetchOdooSettings();
@@ -32,17 +44,16 @@ function OdooIntegrationSettings() {
     try {
       setLoading(true);
       const allSettings = await getAllSettings();
-      
-      // Extract Odoo-related settings
+
       const odooSettings = {
         odoo_integration_enabled: 'false',
         odoo_url: '',
         odoo_database: '',
         odoo_username: '',
-        odoo_password: ''
+        odoo_password: '',
       };
 
-      allSettings.forEach(setting => {
+      allSettings.forEach((setting) => {
         if (setting.settings_key.startsWith('odoo_')) {
           odooSettings[setting.settings_key] = setting.settings_value || '';
         }
@@ -58,17 +69,13 @@ function OdooIntegrationSettings() {
   };
 
   const handleChange = (key, value) => {
-    setSettings(prev => ({
-      ...prev,
-      [key]: value
-    }));
+    setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSave = async () => {
     try {
       setSaving(true);
-      
-      // Validate required fields if integration is enabled
+
       if (settings.odoo_integration_enabled === 'true') {
         if (!settings.odoo_url || !settings.odoo_database || !settings.odoo_username || !settings.odoo_password) {
           setMessage({ type: 'error', text: 'جميع الحقول مطلوبة عند تفعيل التكامل' });
@@ -76,16 +83,15 @@ function OdooIntegrationSettings() {
         }
       }
 
-      // Check if settings exist first, create if missing
       const allSettings = await getAllSettings();
-      const existingKeys = new Set(allSettings.map(s => s.settings_key));
-      
+      const existingKeys = new Set(allSettings.map((s) => s.settings_key));
+
       const typeMap = {
         odoo_integration_enabled: 'boolean',
         odoo_url: 'string',
         odoo_database: 'string',
         odoo_username: 'string',
-        odoo_password: 'password'
+        odoo_password: 'password',
       };
 
       const descMap = {
@@ -93,30 +99,20 @@ function OdooIntegrationSettings() {
         odoo_url: 'عنوان URL الخاص بنظام Odoo',
         odoo_database: 'اسم قاعدة البيانات في Odoo',
         odoo_username: 'اسم المستخدم للوصول إلى Odoo',
-        odoo_password: 'كلمة المرور للوصول إلى Odoo'
+        odoo_password: 'كلمة المرور للوصول إلى Odoo',
       };
 
-      // Create missing settings
-      const missingKeys = Object.keys(settings).filter(k => !existingKeys.has(k));
+      const missingKeys = Object.keys(settings).filter((k) => !existingKeys.has(k));
       if (missingKeys.length > 0) {
         await Promise.all(
-          missingKeys.map(key =>
-            createSetting(
-              key,
-              settings[key] || '',
-              descMap[key] || key,
-              typeMap[key] || 'string'
-            )
+          missingKeys.map((key) =>
+            createSetting(key, settings[key] || '', descMap[key] || key, typeMap[key] || 'string')
           )
         );
       }
 
-      // Update all settings
       await updateMultipleSettings(settings);
-      
       setMessage({ type: 'success', text: 'تم حفظ إعدادات Odoo بنجاح' });
-      
-      // Refresh settings from server
       await fetchOdooSettings();
     } catch (error) {
       console.error('Error saving Odoo settings:', error);
@@ -131,7 +127,6 @@ function OdooIntegrationSettings() {
       setTesting(true);
       setMessage({ type: 'info', text: 'جاري اختبار الاتصال بـ Odoo...' });
 
-      // Validate required fields
       if (!settings.odoo_url || !settings.odoo_database || !settings.odoo_username || !settings.odoo_password) {
         setMessage({ type: 'error', text: 'يرجى ملء جميع حقول الاتصال قبل الاختبار' });
         return;
@@ -141,11 +136,11 @@ function OdooIntegrationSettings() {
         url: settings.odoo_url,
         database: settings.odoo_database,
         username: settings.odoo_username,
-        password: settings.odoo_password
+        password: settings.odoo_password,
       });
 
       if (result.status === 'success') {
-        setMessage({ type: 'success', text: 'نجح الاتصال بـ Odoo! ✓' });
+        setMessage({ type: 'success', text: 'نجح الاتصال بـ Odoo!' });
       } else {
         setMessage({ type: 'error', text: 'فشل الاتصال: ' + (result.message || 'خطأ غير معروف') });
       }
@@ -157,217 +152,142 @@ function OdooIntegrationSettings() {
     }
   };
 
+  const canConnect =
+    settings.odoo_url && settings.odoo_database && settings.odoo_username && settings.odoo_password;
+
   if (loading) {
     return <Loader />;
   }
 
-  return (
-    <div className="space-y-6" dir="rtl">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-6">
-        <div className="flex items-start gap-4">
-          <div className="text-4xl">🔗</div>
-          <div className="flex-1">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">التكامل مع Odoo ERP</h3>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              قم بربط النظام مع Odoo لمزامنة البيانات تلقائياً، بما في ذلك العملاء والمنتجات والطلبات. 
-              تأكد من إدخال بيانات الاتصال الصحيحة واختبار الاتصال قبل التفعيل.
-            </p>
-          </div>
-        </div>
-      </div>
+  const connectionSection = odooSections.find((s) => s.id === 'connection');
+  const importSection = odooSections.find((s) => s.id === 'import');
+  const notesSection = odooSections.find((s) => s.id === 'notes');
 
-      {/* Messages */}
+  return (
+    <div className={settingsSectionsStackClass} dir="rtl">
       {message && (
-        <Alert
-          type={message.type}
-          message={message.text}
-          onClose={() => setMessage(null)}
-        />
+        <Alert type={message.type} message={message.text} onClose={() => setMessage(null)} />
       )}
 
-      {/* Enable/Disable Integration
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <h4 className="text-lg font-semibold text-gray-900 mb-1">حالة التكامل</h4>
-            <p className="text-sm text-gray-600">تفعيل أو إيقاف التكامل مع نظام Odoo</p>
-          </div>
-          <div className="mr-4">
-            <select
-              value={settings.odoo_integration_enabled}
-              onChange={(e) => handleChange('odoo_integration_enabled', e.target.value)}
-              className={`px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] font-medium ${
-                settings.odoo_integration_enabled === 'true'
-                  ? 'bg-green-50 text-green-700 border-green-300'
-                  : 'bg-gray-50 text-gray-700 border-gray-300'
-              }`}
-            >
-              <option value="false">غير مفعل</option>
-              <option value="true">مفعل</option>
-            </select>
-          </div>
-        </div>
-      </div> */}
-
-      {/* Connection Settings */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <span>⚙️</span>
-          <span>إعدادات الاتصال</span>
-        </h4>
-        
-        <div className="space-y-4">
-          {/* Odoo URL */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+      <SettingsSection
+        title={connectionSection?.title}
+        subtitle={connectionSection?.subtitle}
+      >
+        <div className={settingsFieldsStackClass}>
+          <SettingsFieldCard>
+            <SettingsLabel>
               عنوان URL الخاص بـ Odoo <span className="text-red-500">*</span>
-            </label>
-            <TextField
+            </SettingsLabel>
+            <input
               type="url"
+              className={settingsInputClass}
               value={settings.odoo_url}
               onChange={(e) => handleChange('odoo_url', e.target.value)}
               placeholder="https://odoo.merkwave.com"
               dir="ltr"
             />
-            <p className="text-xs text-gray-500 mt-1">مثال: https://your-odoo-instance.com</p>
-          </div>
+            <SettingsHint>مثال: https://your-odoo-instance.com</SettingsHint>
+          </SettingsFieldCard>
 
-          {/* Database Name */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <SettingsFieldCard>
+            <SettingsLabel>
               اسم قاعدة البيانات <span className="text-red-500">*</span>
-            </label>
-            <TextField
+            </SettingsLabel>
+            <input
               type="text"
+              className={settingsInputClass}
               value={settings.odoo_database}
               onChange={(e) => handleChange('odoo_database', e.target.value)}
               placeholder="test_mawnak"
               dir="ltr"
             />
-            <p className="text-xs text-gray-500 mt-1">اسم قاعدة البيانات في نظام Odoo</p>
-          </div>
+            <SettingsHint>اسم قاعدة البيانات في نظام Odoo</SettingsHint>
+          </SettingsFieldCard>
 
-          {/* Username */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <SettingsFieldCard>
+            <SettingsLabel>
               اسم المستخدم <span className="text-red-500">*</span>
-            </label>
-            <TextField
+            </SettingsLabel>
+            <input
               type="text"
+              className={settingsInputClass}
               value={settings.odoo_username}
               onChange={(e) => handleChange('odoo_username', e.target.value)}
               placeholder="admin@example.com"
               dir="ltr"
             />
-            <p className="text-xs text-gray-500 mt-1">اسم المستخدم أو البريد الإلكتروني للدخول إلى Odoo</p>
-          </div>
+            <SettingsHint>اسم المستخدم أو البريد الإلكتروني للدخول إلى Odoo</SettingsHint>
+          </SettingsFieldCard>
 
-          {/* Password */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <SettingsFieldCard>
+            <SettingsLabel>
               كلمة المرور <span className="text-red-500">*</span>
-            </label>
-            <TextField
+            </SettingsLabel>
+            <input
               type="password"
+              className={settingsInputClass}
               value={settings.odoo_password}
               onChange={(e) => handleChange('odoo_password', e.target.value)}
               placeholder="••••••••••"
               dir="ltr"
             />
-            <p className="text-xs text-gray-500 mt-1">كلمة المرور الخاصة بحساب Odoo</p>
-          </div>
+            <SettingsHint>كلمة المرور الخاصة بحساب Odoo</SettingsHint>
+          </SettingsFieldCard>
         </div>
-      </div>
 
-      {/* Action Buttons */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <Button
-          onClick={handleSave}
-          disabled={saving}
-          className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
-        >
-          {saving ? (
-            <>
-              <span className="animate-spin">⏳</span>
-              <span>جاري الحفظ...</span>
-            </>
-          ) : (
-            <>
-              <span>💾</span>
-              <span>حفظ الإعدادات</span>
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-3 flex-wrap pt-4 mt-4 border-t border-[#EDE7FF]">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className={settingsPrimaryBtnClass}
+          >
+            {saving ? 'جاري الحفظ...' : 'حفظ الإعدادات'}
+          </button>
 
-        <Button
-          onClick={handleTestConnection}
-          disabled={testing || !settings.odoo_url || !settings.odoo_database}
-          className="bg-[#8B5FD6] hover:bg-[#7A52C2] flex items-center gap-2"
-        >
-          {testing ? (
-            <>
-              <span className="animate-spin">⏳</span>
-              <span>جاري الاختبار...</span>
-            </>
-          ) : (
-            <>
-              <span>🔍</span>
-              <span>اختبار الاتصال</span>
-            </>
-          )}
-        </Button>
+          <button
+            type="button"
+            onClick={handleTestConnection}
+            disabled={testing || !settings.odoo_url || !settings.odoo_database}
+            className={settingsSecondaryBtnClass}
+          >
+            {testing ? 'جاري الاختبار...' : 'اختبار الاتصال'}
+          </button>
+        </div>
+      </SettingsSection>
 
-        <Button
+      <SettingsSection
+        title={importSection?.title}
+        subtitle={importSection?.subtitle}
+      >
+        <p className="text-sm text-gray-500 mb-4 leading-relaxed">
+          استورد العملاء والمنتجات من Odoo. يمكنك تحديث البيانات الموجودة أو استبدالها بالكامل.
+        </p>
+        <button
+          type="button"
           onClick={() => setShowImportDialog(true)}
-          disabled={!settings.odoo_url || !settings.odoo_database || !settings.odoo_username || !settings.odoo_password}
-          className="bg-purple-600 hover:bg-purple-700 flex items-center gap-2"
+          disabled={!canConnect}
+          className={settingsPrimaryBtnClass}
         >
-          <span>📥</span>
-          <span>استيراد البيانات</span>
-        </Button>
-      </div>
+          فتح نافذة الاستيراد
+        </button>
+        {!canConnect && (
+          <p className="text-xs text-[#8B5FD6] mt-3">يرجى ملء جميع إعدادات الاتصال أولاً</p>
+        )}
+      </SettingsSection>
 
-      {/* Import Data Section */}
-      <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
-        <div className="flex items-start gap-4">
-          <div className="text-3xl">📥</div>
-          <div className="flex-1">
-            <h4 className="text-lg font-semibold text-purple-900 mb-2">استيراد البيانات من Odoo</h4>
-            <p className="text-sm text-purple-700 mb-4">
-              يمكنك استيراد البيانات من نظام Odoo إلى هذا النظام. اختر البيانات التي تريد استيرادها 
-              وحدد ما إذا كنت تريد تحديث البيانات الموجودة أو استبدالها بالكامل.
-            </p>
-            <Button
-              onClick={() => setShowImportDialog(true)}
-              disabled={!settings.odoo_url || !settings.odoo_database || !settings.odoo_username || !settings.odoo_password}
-              className="bg-purple-600 hover:bg-purple-700 flex items-center gap-2"
-            >
-              <span>📥</span>
-              <span>فتح نافذة الاستيراد</span>
-            </Button>
-            {(!settings.odoo_url || !settings.odoo_database || !settings.odoo_username || !settings.odoo_password) && (
-              <p className="text-xs text-purple-600 mt-2">
-                ⚠️ يرجى ملء جميع إعدادات الاتصال أولاً لتتمكن من استيراد البيانات
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Info Box */}
-      <div className="bg-[#f5f3ff] border border-[#C4A8F0] rounded-lg p-4">
-        <h5 className="text-sm font-semibold text-blue-900 mb-2">📘 ملاحظات مهمة</h5>
-        <ul className="text-xs text-[#2D1B69] space-y-1 pr-4 list-disc">
+      <SettingsSection
+        title={notesSection?.title}
+        subtitle={notesSection?.subtitle}
+      >
+        <ul className="text-sm text-[#5A3A9E] space-y-2 pr-4 list-disc">
           <li>تأكد من صحة بيانات الاتصال قبل تفعيل التكامل</li>
           <li>استخدم حساب مدير في Odoo للحصول على جميع الصلاحيات</li>
           <li>يجب أن يكون Odoo متاحاً عبر HTTPS للأمان</li>
           <li>قم باختبار الاتصال بعد أي تغيير في الإعدادات</li>
-          <li>سيتم تخزين البيانات بشكل آمن في قاعدة البيانات</li>
         </ul>
-      </div>
+      </SettingsSection>
 
-      {/* Import Data Dialog */}
       <OdooImportDataDialog
         isOpen={showImportDialog}
         onClose={() => setShowImportDialog(false)}

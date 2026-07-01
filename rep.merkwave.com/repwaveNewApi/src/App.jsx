@@ -15,6 +15,7 @@ import AuthLayout from "./layouts/AuthLayout.jsx";
 import DashboardLayout from "./layouts/DashboardLayout.jsx";
 import LoginPage from "./pages/Login.jsx";
 import TryNowPage from "./pages/TryNow.jsx";
+import AuthHandoffPage from "./pages/AuthHandoff.jsx";
 import HomePage from "./pages/Home.jsx";
 import DashboardPage from "./pages/DashboardNew.jsx"; // NEW: Use the comprehensive dashboard
 import NotFoundPage from "./pages/NotFound.jsx";
@@ -168,6 +169,7 @@ function AppContent() {
           }
         />
         <Route path="/try-now" element={<TryNowPage />} />
+        <Route path="/auth/handoff" element={<AuthHandoffPage />} />
         <Route path="/" element={<HomePage />} />
 
         {/* Protected Dashboard Routes */}

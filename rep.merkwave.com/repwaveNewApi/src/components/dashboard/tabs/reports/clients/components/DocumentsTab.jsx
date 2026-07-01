@@ -50,7 +50,7 @@ const DocumentsTab = ({ data, loading }) => {
       {documents.document_types && documents.document_types.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex items-center space-x-3 space-x-reverse mb-6">
-            <div className="p-2 rounded-lg bg-indigo-100 text-[#8B5FD6]">
+            <div className="p-2 rounded-lg bg-[#EDE7FF] text-[#8B5FD6]">
               <ClipboardDocumentListIcon className="w-5 h-5" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900">تحليل أنواع المستندات</h3>

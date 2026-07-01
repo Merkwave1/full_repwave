@@ -715,14 +715,12 @@ function WarehousesTab() {
       {renderContent()}
       {/* Add warehouse modal overlay */}
       {currentView === "add" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-black/40 backdrop-blur-sm p-4">
           <AddWarehouseForm
             onAdd={handleAddWarehouse}
             onCancel={() => setCurrentView("list")}
             allUsers={allUsers}
             salesReps={salesReps}
           />
-        </div>
       )}
       {/* Edit warehouse modal overlay */}
       {currentView === "edit" && selectedWarehouse && (

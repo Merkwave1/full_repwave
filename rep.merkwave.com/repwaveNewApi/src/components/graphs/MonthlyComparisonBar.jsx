@@ -25,6 +25,8 @@ const useIsMobile = () => {
   return mobile;
 };
 
+import { BRAND, DASHBOARD } from "../../constants/brandColors.js";
+
 const MonthlyComparisonBar = ({ data }) => {
   const isMobile = useIsMobile();
   const chartData = [
@@ -89,13 +91,13 @@ const MonthlyComparisonBar = ({ data }) => {
           />
 
           <defs>
-            <linearGradient id="ordersGradient" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#1F2937" />
-              <stop offset="100%" stopColor="#005A7D" />
+            <linearGradient id="ordersGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={DASHBOARD.plum} />
+              <stop offset="100%" stopColor={DASHBOARD.grape} />
             </linearGradient>
-            <linearGradient id="salesGradient" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#1F2937" />
-              <stop offset="100%" stopColor="#005A7D" />
+            <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={BRAND.primary} />
+              <stop offset="100%" stopColor={DASHBOARD.orchid} />
             </linearGradient>
           </defs>
 
@@ -109,7 +111,7 @@ const MonthlyComparisonBar = ({ data }) => {
           >
             <LabelList
               position="top"
-              fill="#1e3a8a"
+              fill={DASHBOARD.plum}
               fontSize={isMobile ? 9 : 12}
             />
           </Bar>
@@ -124,7 +126,7 @@ const MonthlyComparisonBar = ({ data }) => {
           >
             <LabelList
               position="top"
-              fill="#1e40af"
+              fill={DASHBOARD.orchid}
               fontSize={isMobile ? 9 : 12}
             />
           </Bar>

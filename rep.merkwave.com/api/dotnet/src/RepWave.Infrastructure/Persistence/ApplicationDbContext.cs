@@ -52,6 +52,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<GoodsReceipt> GoodsReceipts => Set<GoodsReceipt>();
     public DbSet<GoodsReceiptItem> GoodsReceiptItems => Set<GoodsReceiptItem>();
     public DbSet<TransferRequest> TransferRequests => Set<TransferRequest>();
+    public DbSet<TransferRequestItem> TransferRequestItems => Set<TransferRequestItem>();
     public DbSet<Transfer> Transfers => Set<Transfer>();
     public DbSet<VisitPlan> VisitPlans => Set<VisitPlan>();
     public DbSet<VisitPlanClient> VisitPlanClients => Set<VisitPlanClient>();
@@ -411,6 +412,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             e.Property(i => i.PurchaseOrderItemsUnitCost).HasPrecision(15, 2).HasDefaultValue(0);
             e.Property(i => i.PurchaseOrderItemsTotalCost).HasPrecision(15, 2).HasDefaultValue(0);
             e.HasOne(i => i.PurchaseOrder).WithMany(o => o.Items).HasForeignKey(i => i.PurchaseOrderItemsPurchaseOrderId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(i => i.Variant).WithMany().HasForeignKey(i => i.PurchaseOrderItemsVariantId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(i => i.PackagingType).WithMany().HasForeignKey(i => i.PurchaseOrderItemsPackagingTypeId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<PurchaseReturn>(e =>
@@ -450,6 +453,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             e.Property(i => i.SalesOrderItemsTaxRate).HasPrecision(5, 2).HasDefaultValue(0);
             e.Property(i => i.SalesOrderItemsTotalPrice).HasPrecision(15, 2).HasDefaultValue(0);
             e.HasOne(i => i.SalesOrder).WithMany(o => o.Items).HasForeignKey(i => i.SalesOrderItemsSalesOrderId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(i => i.Variant).WithMany().HasForeignKey(i => i.SalesOrderItemsVariantId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(i => i.PackagingType).WithMany().HasForeignKey(i => i.SalesOrderItemsPackagingTypeId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<SalesDelivery>(e =>
@@ -485,6 +490,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             e.Property(i => i.ReturnItemsUnitPrice).HasPrecision(15, 2).HasDefaultValue(0);
             e.Property(i => i.ReturnItemsTotalPrice).HasPrecision(15, 2).HasDefaultValue(0);
             e.HasOne(i => i.Return).WithMany(r => r.Items).HasForeignKey(i => i.ReturnItemsReturnId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(i => i.SalesOrderItem).WithMany().HasForeignKey(i => i.ReturnItemsSalesOrderItemId).OnDelete(DeleteBehavior.SetNull);
         });
 
         // ── Inventory Movements ──────────────────────────────────────────────
@@ -508,6 +514,19 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             e.HasKey(t => t.RequestId);
             e.Property(t => t.RequestId).UseIdentityColumn();
             e.Property(t => t.RequestStatus).HasMaxLength(50).HasDefaultValue("Pending");
+            e.HasOne(t => t.SourceWarehouse).WithMany().HasForeignKey(t => t.RequestSourceWarehouseId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(t => t.DestinationWarehouse).WithMany().HasForeignKey(t => t.RequestDestinationWarehouseId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(t => t.CreatedByUser).WithMany().HasForeignKey(t => t.RequestCreatedByUserId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<TransferRequestItem>(e =>
+        {
+            e.HasKey(i => i.RequestItemId);
+            e.Property(i => i.RequestItemId).UseIdentityColumn();
+            e.Property(i => i.RequestedQuantity).HasPrecision(10, 2).HasDefaultValue(0);
+            e.HasOne(i => i.Request).WithMany(r => r.Items).HasForeignKey(i => i.RequestId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(i => i.Variant).WithMany().HasForeignKey(i => i.VariantId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(i => i.PackagingType).WithMany().HasForeignKey(i => i.PackagingTypeId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Transfer>(e =>

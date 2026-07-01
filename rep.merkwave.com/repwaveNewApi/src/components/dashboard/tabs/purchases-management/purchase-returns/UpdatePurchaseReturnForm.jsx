@@ -8,7 +8,25 @@ import { getPurchaseReturnDetails } from "../../../../../apis/purchase_returns";
 import { getReturnableQuantities } from "../../../../../apis/purchase_orders";
 import useCurrency from "../../../../../hooks/useCurrency";
 
-export default function UpdatePurchaseReturnFormEnhanced({
+const toDateInput = (value) => {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) {
+    return String(value).split("T")[0]?.split(" ")[0] || "";
+  }
+  return d.toISOString().slice(0, 10);
+};
+
+const mapReturnableItemToOrderItem = (item) => ({
+  purchase_order_items_id: item.purchase_order_items_id,
+  purchase_order_items_variant_id: item.purchase_order_items_variant_id,
+  purchase_order_items_packaging_type_id: item.purchase_order_items_packaging_type_id,
+  purchase_order_items_quantity_ordered: item.purchase_order_items_quantity_ordered,
+  purchase_order_items_quantity_received: item.purchase_order_items_quantity_received,
+  purchase_order_items_unit_cost: item.purchase_order_items_unit_cost,
+});
+
+export default function UpdatePurchaseReturnForm({
   purchaseReturn,
   suppliers,
   products,
@@ -43,50 +61,57 @@ export default function UpdatePurchaseReturnFormEnhanced({
         const details = await getPurchaseReturnDetails(
           purchaseReturn.purchase_returns_id,
         );
+        const header = details.purchase_return ?? details;
+
+        const mappedItems =
+          details.items?.map((item, index) => ({
+            id: item.purchase_return_items_id || Date.now() + index,
+            purchase_order_item_id: String(
+              item.purchase_return_items_purchase_order_item_id ?? "",
+            ),
+            quantity: String(item.purchase_return_items_quantity ?? ""),
+            notes: item.purchase_return_items_notes || "",
+            unit_cost: item.purchase_return_items_unit_cost || 0,
+            total_cost: item.purchase_return_items_total_cost || 0,
+            product_name: item.products_name || item.product_name || "",
+            product_variant_name:
+              item.variant_name || item.product_variant_name || "",
+            packaging_type_name:
+              item.packaging_types_name || item.packaging_type_name || "",
+            available_to_return_received: 0,
+            available_to_return_not_received: 0,
+            total_available_to_return: 0,
+            receive_status: "",
+            quantity_ordered: 0,
+            quantity_received: 0,
+            total_returned: 0,
+          })) || [];
 
         setFormData({
-          supplier_id:
-            details.purchase_return.purchase_returns_supplier_id?.toString() ||
-            "",
-          purchase_order_id:
-            details.purchase_return.purchase_returns_purchase_order_id?.toString() ||
-            "",
-          date:
-            details.purchase_return.purchase_returns_date?.split(" ")[0] || "",
-          reason: details.purchase_return.purchase_returns_reason || "",
-          notes: details.purchase_return.purchase_returns_notes || "",
-          items:
-            details.items?.map((item, index) => ({
-              id: item.purchase_return_items_id || Date.now() + index,
-              purchase_order_item_id:
-                item.purchase_return_items_purchase_order_item_id?.toString() ||
-                "",
-              quantity: item.purchase_return_items_quantity?.toString() || "",
-              notes: item.purchase_return_items_notes || "",
-              // Store additional data for partial return display
-              unit_cost: item.purchase_return_items_unit_cost || 0,
-              total_cost: item.purchase_return_items_total_cost || 0,
-              // These will be populated when we load returnable quantities
-              available_to_return_received: 0,
-              available_to_return_not_received: 0,
-              receive_status: "",
-              product_name: "",
-              product_variant_name: "",
-              packaging_type_name: "",
-            })) || [],
+          supplier_id: String(header.purchase_returns_supplier_id ?? ""),
+          purchase_order_id: String(
+            header.purchase_returns_purchase_order_id ?? "",
+          ),
+          date: toDateInput(header.purchase_returns_date),
+          reason: header.purchase_returns_reason || "",
+          notes: header.purchase_returns_notes || "",
+          items: mappedItems,
         });
 
         // Load returnable quantities if we have a purchase order
-        if (details.purchase_return.purchase_returns_purchase_order_id) {
+        if (header.purchase_returns_purchase_order_id) {
           try {
             const returnableData = await getReturnableQuantities(
-              details.purchase_return.purchase_returns_purchase_order_id,
+              header.purchase_returns_purchase_order_id,
             );
-            if (returnableData.items) {
-              // Create a mapping of returnable quantities by purchase order item id
+            if (returnableData.items?.length) {
+              setAvailableOrderItems(
+                returnableData.items.map(mapReturnableItemToOrderItem),
+              );
+
               const returnableMap = {};
               returnableData.items.forEach((item) => {
-                returnableMap[item.purchase_order_items_id] = {
+                returnableMap[String(item.purchase_order_items_id)] = {
                   available_to_return_received:
                     parseFloat(item.available_to_return_received) || 0,
                   available_to_return_not_received:
@@ -98,45 +123,40 @@ export default function UpdatePurchaseReturnFormEnhanced({
                   quantity_ordered:
                     parseFloat(item.purchase_order_items_quantity_ordered) || 0,
                   quantity_received:
-                    parseFloat(item.purchase_order_items_quantity_received) ||
-                    0,
+                    parseFloat(item.purchase_order_items_quantity_received) || 0,
                   total_returned: parseFloat(item.total_returned) || 0,
                 };
               });
               setReturnableQuantities(returnableMap);
 
-              // Update existing form items with returnable quantity data
               setFormData((prev) => ({
                 ...prev,
                 items: prev.items.map((item) => {
                   const returnableInfo =
-                    returnableMap[item.purchase_order_item_id];
-                  if (returnableInfo) {
-                    // For update form, we need to add back the current return quantity to show actual available quantities
-                    // because the backend already deducted existing returns from available quantities
-                    const currentReturnQty = parseFloat(item.quantity) || 0;
+                    returnableMap[String(item.purchase_order_item_id)];
+                  if (!returnableInfo) return item;
 
-                    // The backend gives us available quantities AFTER existing returns
-                    // So we add back this return's quantity to show what user can actually select
-                    const adjustedReceivedAvailable =
-                      returnableInfo.available_to_return_received +
-                      currentReturnQty;
-                    const adjustedNonReceivedAvailable =
-                      returnableInfo.available_to_return_not_received;
+                  const currentReturnQty = parseFloat(item.quantity) || 0;
+                  const adjustedReceivedAvailable =
+                    returnableInfo.available_to_return_received +
+                    currentReturnQty;
 
-                    return {
-                      ...item,
-                      ...returnableInfo,
-                      // Show adjusted quantities that include current return
-                      available_to_return_received: adjustedReceivedAvailable,
-                      available_to_return_not_received:
-                        adjustedNonReceivedAvailable,
-                      total_available_to_return:
-                        adjustedReceivedAvailable +
-                        adjustedNonReceivedAvailable,
-                    };
-                  }
-                  return item;
+                  return {
+                    ...item,
+                    ...returnableInfo,
+                    product_name:
+                      item.product_name || returnableInfo.product_name,
+                    product_variant_name:
+                      item.product_variant_name ||
+                      returnableInfo.product_variant_name,
+                    packaging_type_name:
+                      item.packaging_type_name ||
+                      returnableInfo.packaging_type_name,
+                    available_to_return_received: adjustedReceivedAvailable,
+                    total_available_to_return:
+                      adjustedReceivedAvailable +
+                      returnableInfo.available_to_return_not_received,
+                  };
                 }),
               }));
             }
@@ -173,58 +193,48 @@ export default function UpdatePurchaseReturnFormEnhanced({
     }
   }, [formData.supplier_id, purchaseOrders]);
 
-  // Get purchase order items when order is selected
+  // Refresh returnable quantities when purchase order changes
   useEffect(() => {
-    if (formData.purchase_order_id) {
-      const selectedOrder = purchaseOrders.find(
-        (order) =>
-          order.purchase_orders_id?.toString() === formData.purchase_order_id,
-      );
-      if (selectedOrder && selectedOrder.items) {
-        setAvailableOrderItems(selectedOrder.items);
-      } else {
-        setAvailableOrderItems([]);
-      }
-
-      // Also fetch returnable quantities for better display
-      const fetchReturnableQuantities = async () => {
-        try {
-          const returnableData = await getReturnableQuantities(
-            formData.purchase_order_id,
-          );
-          if (returnableData.items) {
-            // Create a mapping of returnable quantities by purchase order item id
-            const returnableMap = {};
-            returnableData.items.forEach((item) => {
-              returnableMap[item.purchase_order_items_id] = {
-                available_to_return_received:
-                  parseFloat(item.available_to_return_received) || 0,
-                available_to_return_not_received:
-                  parseFloat(item.available_to_return_not_received) || 0,
-                receive_status: item.receive_status || "لم يتم الاستلام",
-                product_name: item.product_name || "",
-                product_variant_name: item.product_variant_name || "",
-                packaging_type_name: item.packaging_type_name || "",
-                quantity_ordered:
-                  parseFloat(item.purchase_order_items_quantity_ordered) || 0,
-                quantity_received:
-                  parseFloat(item.purchase_order_items_quantity_received) || 0,
-                total_returned: parseFloat(item.total_returned) || 0,
-              };
-            });
-            setReturnableQuantities(returnableMap);
-          }
-        } catch (error) {
-          console.error("Error loading returnable quantities:", error);
-        }
-      };
-
-      fetchReturnableQuantities();
-    } else {
-      setAvailableOrderItems([]);
-      setReturnableQuantities({});
+    if (!formData.purchase_order_id) {
+      return;
     }
-  }, [formData.purchase_order_id, purchaseOrders]);
+
+    const fetchReturnableQuantities = async () => {
+      try {
+        const returnableData = await getReturnableQuantities(
+          formData.purchase_order_id,
+        );
+        if (returnableData.items?.length) {
+          const returnableMap = {};
+          returnableData.items.forEach((item) => {
+            returnableMap[String(item.purchase_order_items_id)] = {
+              available_to_return_received:
+                parseFloat(item.available_to_return_received) || 0,
+              available_to_return_not_received:
+                parseFloat(item.available_to_return_not_received) || 0,
+              receive_status: item.receive_status || "لم يتم الاستلام",
+              product_name: item.product_name || "",
+              product_variant_name: item.product_variant_name || "",
+              packaging_type_name: item.packaging_type_name || "",
+              quantity_ordered:
+                parseFloat(item.purchase_order_items_quantity_ordered) || 0,
+              quantity_received:
+                parseFloat(item.purchase_order_items_quantity_received) || 0,
+              total_returned: parseFloat(item.total_returned) || 0,
+            };
+          });
+          setReturnableQuantities(returnableMap);
+          setAvailableOrderItems(
+            returnableData.items.map(mapReturnableItemToOrderItem),
+          );
+        }
+      } catch (error) {
+        console.error("Error loading returnable quantities:", error);
+      }
+    };
+
+    fetchReturnableQuantities();
+  }, [formData.purchase_order_id]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -293,7 +303,7 @@ export default function UpdatePurchaseReturnFormEnhanced({
 
         // If changing the purchase order item, update the returnable quantities
         if (field === "purchase_order_item_id" && value) {
-          const returnableInfo = returnableQuantities[value];
+          const returnableInfo = returnableQuantities[String(value)];
           if (returnableInfo) {
             Object.assign(updatedItem, {
               ...returnableInfo,
@@ -335,7 +345,7 @@ export default function UpdatePurchaseReturnFormEnhanced({
       );
 
       // Get returnable quantity information
-      const returnableInfo = returnableQuantities[orderItemId] || {};
+      const returnableInfo = returnableQuantities[String(orderItemId)] || {};
 
       return {
         productName:
@@ -400,7 +410,7 @@ export default function UpdatePurchaseReturnFormEnhanced({
       if (!item.quantity || quantity <= 0) {
         newErrors[`item_${index}_quantity`] = "الكمية يجب أن تكون أكبر من صفر";
       } else if (
-        item.total_available_to_return &&
+        item.total_available_to_return > 0 &&
         quantity > item.total_available_to_return
       ) {
         newErrors[`item_${index}_quantity`] =
@@ -421,13 +431,12 @@ export default function UpdatePurchaseReturnFormEnhanced({
 
     // Calculate total for confirmation
     const totalAmount = formData.items.reduce((sum, item) => {
-      const orderItemInfo = getOrderItemInfo(item.purchase_order_item_id);
-      if (orderItemInfo && item.quantity) {
-        return (
-          sum + parseFloat(item.quantity) * parseFloat(orderItemInfo.unitCost)
-        );
-      }
-      return sum;
+      const qty = parseFloat(item.quantity) || 0;
+      const unit =
+        parseFloat(item.unit_cost) ||
+        parseFloat(getOrderItemInfo(item.purchase_order_item_id)?.unitCost) ||
+        0;
+      return sum + qty * unit;
     }, 0);
 
     // Show confirmation dialog
@@ -451,11 +460,19 @@ export default function UpdatePurchaseReturnFormEnhanced({
       date: formData.date,
       reason: formData.reason || null,
       notes: formData.notes || null,
-      items: formData.items.map((item) => ({
-        purchase_order_item_id: parseInt(item.purchase_order_item_id),
-        quantity: parseFloat(item.quantity),
-        notes: item.notes || null,
-      })),
+      items: formData.items.map((item) => {
+        const orderItemInfo = getOrderItemInfo(item.purchase_order_item_id);
+        const unitCost =
+          parseFloat(item.unit_cost) ||
+          parseFloat(orderItemInfo?.unitCost) ||
+          0;
+        return {
+          purchase_order_item_id: parseInt(item.purchase_order_item_id, 10),
+          quantity: parseFloat(item.quantity),
+          unit_cost: unitCost,
+          notes: item.notes || null,
+        };
+      }),
     };
 
     await onSubmit(submissionData);
@@ -463,13 +480,12 @@ export default function UpdatePurchaseReturnFormEnhanced({
 
   const totalAmount = useMemo(() => {
     return formData.items.reduce((sum, item) => {
-      const orderItemInfo = getOrderItemInfo(item.purchase_order_item_id);
-      if (orderItemInfo && item.quantity) {
-        return (
-          sum + parseFloat(item.quantity) * parseFloat(orderItemInfo.unitCost)
-        );
-      }
-      return sum;
+      const qty = parseFloat(item.quantity) || 0;
+      const unit =
+        parseFloat(item.unit_cost) ||
+        parseFloat(getOrderItemInfo(item.purchase_order_item_id)?.unitCost) ||
+        0;
+      return sum + qty * unit;
     }, 0);
   }, [formData.items, getOrderItemInfo]);
 
@@ -549,9 +565,10 @@ export default function UpdatePurchaseReturnFormEnhanced({
                     value={order.purchase_orders_id}
                   >
                     أمر #{order.purchase_orders_id} -{" "}
-                    {new Date(order.purchase_orders_date).toLocaleDateString(
-                      "en-GB",
-                    )}
+                    {new Date(
+                      order.purchase_orders_order_date ||
+                        order.purchase_orders_date,
+                    ).toLocaleDateString("en-GB")}
                   </option>
                 ))}
               </select>
@@ -627,11 +644,29 @@ export default function UpdatePurchaseReturnFormEnhanced({
               <p className="mb-4 text-sm text-red-600">{errors.items}</p>
             )}
 
+            {formData.items.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 text-sm">
+                لا توجد عناصر في هذا المرتجع
+              </div>
+            ) : (
             <div className="space-y-4">
               {formData.items.map((item, index) => {
                 const orderItemInfo = getOrderItemInfo(
                   item.purchase_order_item_id,
                 );
+                const displayName =
+                  item.product_variant_name ||
+                  item.product_name ||
+                  orderItemInfo?.productName ||
+                  "منتج غير معروف";
+                const displayPackaging =
+                  item.packaging_type_name ||
+                  orderItemInfo?.packagingType ||
+                  "—";
+                const lineUnitCost =
+                  parseFloat(item.unit_cost) ||
+                  parseFloat(orderItemInfo?.unitCost) ||
+                  0;
 
                 return (
                   <div
@@ -641,10 +676,16 @@ export default function UpdatePurchaseReturnFormEnhanced({
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <h5 className="font-medium text-gray-800">
-                          عنصر {index + 1}
+                          عنصر {index + 1} — {displayName}
                         </h5>
+                        {displayPackaging !== "—" && (
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            التعبئة: {displayPackaging}
+                          </p>
+                        )}
                         {(item.available_to_return_received > 0 ||
-                          item.available_to_return_not_received > 0) && (
+                          item.available_to_return_not_received > 0 ||
+                          item.receive_status) && (
                           <div className="flex items-center gap-4 text-xs mt-1">
                             <div className="text-gray-500">
                               مطلوب:{" "}
@@ -701,45 +742,60 @@ export default function UpdatePurchaseReturnFormEnhanced({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          العنصر <span className="text-red-500">*</span>
+                          المنتج
                         </label>
-                        <select
-                          value={item.purchase_order_item_id}
-                          onChange={(e) =>
-                            handleItemChange(
-                              item.id,
-                              "purchase_order_item_id",
-                              e.target.value,
-                            )
-                          }
-                          className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] focus:border-[#8B5FD6] ${
-                            errors[`item_${index}_purchase_order_item_id`]
-                              ? "border-red-300"
-                              : "border-gray-300"
-                          }`}
-                          dir="rtl"
-                        >
-                          <option value="">اختر العنصر</option>
-                          {availableOrderItems.map((orderItem) => {
-                            const itemInfo = getOrderItemInfo(
-                              orderItem.purchase_order_items_id.toString(),
-                            );
-                            return (
-                              <option
-                                key={orderItem.purchase_order_items_id}
-                                value={orderItem.purchase_order_items_id}
-                              >
-                                {itemInfo?.productName} {itemInfo?.variantName}{" "}
-                                - كمية مستلمة: {itemInfo?.receivedQuantity}{" "}
-                                {itemInfo?.baseUnit}
-                              </option>
-                            );
-                          })}
-                        </select>
-                        {errors[`item_${index}_purchase_order_item_id`] && (
-                          <p className="mt-1 text-sm text-red-600">
-                            {errors[`item_${index}_purchase_order_item_id`]}
-                          </p>
+                        {item.purchase_order_item_id &&
+                        (item.product_name || item.product_variant_name) ? (
+                          <div className="px-3 py-2 bg-white border border-gray-200 rounded-md text-sm text-gray-800">
+                            {displayName}
+                            {displayPackaging !== "—" && (
+                              <span className="text-gray-500">
+                                {" "}
+                                ({displayPackaging})
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <>
+                            <select
+                              value={item.purchase_order_item_id}
+                              onChange={(e) =>
+                                handleItemChange(
+                                  item.id,
+                                  "purchase_order_item_id",
+                                  e.target.value,
+                                )
+                              }
+                              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] focus:border-[#8B5FD6] ${
+                                errors[`item_${index}_purchase_order_item_id`]
+                                  ? "border-red-300"
+                                  : "border-gray-300"
+                              }`}
+                              dir="rtl"
+                            >
+                              <option value="">اختر العنصر</option>
+                              {availableOrderItems.map((orderItem) => {
+                                const itemInfo = getOrderItemInfo(
+                                  orderItem.purchase_order_items_id.toString(),
+                                );
+                                return (
+                                  <option
+                                    key={orderItem.purchase_order_items_id}
+                                    value={orderItem.purchase_order_items_id}
+                                  >
+                                    {itemInfo?.productName}{" "}
+                                    {itemInfo?.variantName} - مستلم:{" "}
+                                    {itemInfo?.receivedQuantity}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                            {errors[`item_${index}_purchase_order_item_id`] && (
+                              <p className="mt-1 text-sm text-red-600">
+                                {errors[`item_${index}_purchase_order_item_id`]}
+                              </p>
+                            )}
+                          </>
                         )}
                       </div>
 
@@ -800,29 +856,30 @@ export default function UpdatePurchaseReturnFormEnhanced({
                       </div>
                     </div>
 
-                    {orderItemInfo && (
+                    {(orderItemInfo ||
+                      item.product_name ||
+                      item.unit_cost) && (
                       <div className="mt-4 p-3 bg-[#f5f3ff] rounded border-l-4 border-[#C4A8F0]">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div>
                             <span className="font-medium text-gray-700">
                               المنتج:
                             </span>
-                            <p>{orderItemInfo.productName}</p>
+                            <p>{displayName}</p>
                           </div>
                           <div>
                             <span className="font-medium text-gray-700">
                               التكلفة:
                             </span>
                             <p>
-                              {parseFloat(orderItemInfo.unitCost).toFixed(2)}{" "}
-                              {symbol}
+                              {lineUnitCost.toFixed(2)} {symbol}
                             </p>
                           </div>
                           <div>
                             <span className="font-medium text-gray-700">
                               نوع التعبئة:
                             </span>
-                            <p>{orderItemInfo.packagingType}</p>
+                            <p>{displayPackaging}</p>
                           </div>
                           {item.quantity && (
                             <div>
@@ -831,8 +888,7 @@ export default function UpdatePurchaseReturnFormEnhanced({
                               </span>
                               <p className="font-bold text-[#8B5FD6]">
                                 {(
-                                  parseFloat(item.quantity) *
-                                  parseFloat(orderItemInfo.unitCost)
+                                  parseFloat(item.quantity) * lineUnitCost
                                 ).toFixed(2)}{" "}
                                 {symbol}
                               </p>
@@ -861,6 +917,7 @@ export default function UpdatePurchaseReturnFormEnhanced({
                 );
               })}
             </div>
+            )}
           </div>
 
           {/* Total Amount */}

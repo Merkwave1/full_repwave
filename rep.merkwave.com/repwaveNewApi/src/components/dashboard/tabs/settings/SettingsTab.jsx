@@ -3,18 +3,48 @@
 // It provides a tabbed interface to manage all system settings.
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import {
+  Cog6ToothIcon,
+  BuildingOffice2Icon,
+  BanknotesIcon,
+  CubeIcon,
+  UserGroupIcon,
+  MapIcon,
+  LinkIcon,
+} from '@heroicons/react/24/outline';
 import { getAppSettingsCategorized } from '../../../../apis/auth.js';
 import { updateMultipleSettings, createSetting } from '../../../../apis/settings.js';
 import { isOdooIntegrationEnabled } from '../../../../utils/odooIntegration.js';
 import Loader from '../../../common/Loader/Loader.jsx';
 import Alert from '../../../common/Alert/Alert.jsx';
-import Button from '../../../common/Button/Button.jsx';
-import TextField from '../../../common/TextField/TextField.jsx';
 import NumberInput from '../../../common/NumberInput/NumberInput.jsx';
 import ClientTaxonomiesSettings from './components/ClientTaxonomiesSettings.jsx';
 import LocationManagement from './components/LocationManagement.jsx';
 import OdooIntegrationSettings from './components/OdooIntegrationSettings.jsx';
-import MapPicker from '../../../common/MapPicker/MapPicker.jsx';
+import GoogleMapsLocationField from '../../../common/GoogleMapsLocationField/GoogleMapsLocationField.jsx';
+import {
+  SettingsSection,
+  SettingsFieldCard,
+  SettingsLabel,
+  SettingsHint,
+} from './SettingsFormField.jsx';
+import {
+  getSettingsSubTabClasses,
+  settingsPageWrapperClass,
+  settingsContentClass,
+  settingsInputClass,
+  settingsSelectClass,
+  settingsTextareaClass,
+  settingsBooleanCardClass,
+  settingsFileInputClass,
+  settingsLogoPreviewClass,
+  settingsEmptyClass,
+  settingsPendingBoxClass,
+  SETTINGS_TAB_META,
+  SETTINGS_SECTION_GROUPS,
+  settingsFieldsStackClass,
+  settingsSectionsStackClass,
+} from './settingsUi.js';
 
 function SettingsTab() {
   const location = useLocation();
@@ -34,13 +64,14 @@ function SettingsTab() {
 
   // Settings tabs configuration - conditionally include Odoo tab
   const settingsTabs = [
-    { key: 'company', label: 'معلومات الشركة', icon: '🏢', desc: 'بيانات وهوية الشركة العامة' },
-    { key: 'financial', label: 'الإعدادات المالية', icon: '💰', desc: 'الضرائب – العملة – الفوترة – الحدود' },
-    { key: 'inventory', label: 'إدارة المخزون', icon: '📦', desc: 'المخزون – التنبيهات – التتبع – الأذونات' },
-    { key: 'client', label: 'إدارة العملاء', icon: '👥', desc: 'تصنيفات العملاء والوسوم والأنواع' },
-    { key: 'location', label: 'إدارة المناطق', icon: '🗺️', desc: 'الدول والمحافظات والترتيب' },
-    // Only show Odoo tab when integration is enabled
-    ...(odooEnabled ? [{ key: 'odoo', label: 'التكامل مع Odoo', icon: '🔗', desc: 'ربط النظام مع Odoo ERP' }] : []),
+    { key: 'company', label: 'معلومات الشركة', icon: BuildingOffice2Icon, desc: 'بيانات وهوية الشركة' },
+    { key: 'financial', label: 'الإعدادات المالية', icon: BanknotesIcon, desc: 'الضرائب والعملة والفوترة' },
+    { key: 'inventory', label: 'إدارة المخزون', icon: CubeIcon, desc: 'التنبيهات وحدود المخزون' },
+    { key: 'client', label: 'إدارة العملاء', icon: UserGroupIcon, desc: 'تصنيفات ووسوم العملاء' },
+    { key: 'location', label: 'إدارة المناطق', icon: MapIcon, desc: 'الدول والمحافظات' },
+    ...(odooEnabled
+      ? [{ key: 'odoo', label: 'التكامل مع Odoo', icon: LinkIcon, desc: 'ربط النظام مع Odoo ERP' }]
+      : []),
   ];
 
   useEffect(() => {
@@ -237,14 +268,12 @@ function SettingsTab() {
       ];
 
       return (
-        <div key={settings_key} className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {getSettingDisplayName(settings_key)}
-          </label>
+        <div key={settings_key}>
+          <SettingsLabel>{getSettingDisplayName(settings_key)}</SettingsLabel>
           <select
             value={value || 'EG'}
             onChange={(e) => handleSettingChange(settings_key, e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] focus:border-[#8B5FD6]"
+            className={settingsSelectClass}
           >
             <option value="">اختر البلد</option>
             {countries.map(country => (
@@ -274,14 +303,12 @@ function SettingsTab() {
       ];
 
       return (
-        <div key={settings_key} className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {getSettingDisplayName(settings_key)}
-          </label>
+        <div key={settings_key}>
+          <SettingsLabel>{getSettingDisplayName(settings_key)}</SettingsLabel>
           <select
             value={value || 'EGP'}
             onChange={(e) => handleSettingChange(settings_key, e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] focus:border-[#8B5FD6]"
+            className={settingsSelectClass}
           >
             <option value="">اختر العملة</option>
             {currencies.map(currency => (
@@ -297,17 +324,15 @@ function SettingsTab() {
     // Allow custom input for default currency
     if (settings_key === 'default_currency') {
       return (
-        <div key={settings_key} className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {getSettingDisplayName(settings_key)}
-          </label>
+        <div key={settings_key}>
+          <SettingsLabel>{getSettingDisplayName(settings_key)}</SettingsLabel>
           <input
             type="text"
             value={value || ''}
             onChange={(e) => handleSettingChange(settings_key, e.target.value)}
             placeholder="اكتب العملة الافتراضية (مثل: جنيه مصري، ريال سعودي، دولار أمريكي...)"
             disabled={isDisabled}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] focus:border-[#8B5FD6] text-right"
+            className={settingsInputClass}
             dir="rtl"
           />
         </div>
@@ -317,17 +342,15 @@ function SettingsTab() {
     // Allow custom input for currency symbol
     if (settings_key === 'currency_symbol') {
       return (
-        <div key={settings_key} className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {getSettingDisplayName(settings_key)}
-          </label>
+        <div key={settings_key}>
+          <SettingsLabel>{getSettingDisplayName(settings_key)}</SettingsLabel>
           <input
             type="text"
             value={value || ''}
             onChange={(e) => handleSettingChange(settings_key, e.target.value)}
             placeholder="اكتب رمز العملة (مثل: ج.م، ر.س، $، €...)"
             disabled={isDisabled}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] focus:border-[#8B5FD6] text-right"
+            className={settingsInputClass}
             dir="rtl"
           />
         </div>
@@ -337,34 +360,28 @@ function SettingsTab() {
     switch (settings_type) {
       case 'boolean':
         return (
-          <div key={settings_key} className="mb-4 p-4 border border-gray-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {getSettingDisplayName(settings_key)}
-                </label>
-                <p className="text-sm text-gray-500">{settings_description || getSettingDescription(settings_key)}</p>
-              </div>
-              <div className="mr-4">
-                <select
-                  value={value}
-                  onChange={(e) => !isDisabled && handleSettingChange(settings_key, e.target.value)}
-                  disabled={isDisabled}
-                  className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] ${isDisabled ? 'bg-gray-100 text-gray-500 border-gray-200 cursor-not-allowed' : 'border-gray-300'}`}
-                >
-                  <option value="true">مفعل</option>
-                  <option value="false">غير مفعل</option>
-                </select>
-              </div>
+          <div key={settings_key} className={settingsBooleanCardClass}>
+            <div className="flex-1 min-w-0">
+              <SettingsLabel>{getSettingDisplayName(settings_key)}</SettingsLabel>
+              <SettingsHint>{settings_description || getSettingDescription(settings_key)}</SettingsHint>
             </div>
+            <select
+              value={value}
+              onChange={(e) => !isDisabled && handleSettingChange(settings_key, e.target.value)}
+              disabled={isDisabled}
+              className={`${settingsSelectClass} !w-auto min-w-[120px] ${isDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+            >
+              <option value="true">مفعل</option>
+              <option value="false">غير مفعل</option>
+            </select>
           </div>
         );
 
       case 'integer':
       case 'decimal':
         return (
-          <div key={settings_key} className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">{getSettingDisplayName(settings_key)}</label>
+          <div key={settings_key}>
+            <SettingsLabel>{getSettingDisplayName(settings_key)}</SettingsLabel>
             <div className="relative">
               <NumberInput
                 value={value}
@@ -373,42 +390,46 @@ function SettingsTab() {
                 disabled={isDisabled}
                 min={fieldConfig.min}
                 max={fieldConfig.max}
+                className="!p-2.5 !border-[#EDE7FF] !rounded-xl focus:!ring-[#8B5FD6]/25 focus:!border-[#8B5FD6]"
               />
               {isDisabled && (
-                <div className="absolute inset-0 bg-gray-200 bg-opacity-40 cursor-not-allowed rounded-md" title="غير قابل للتعديل"></div>
+                <div className="absolute inset-0 bg-[#F3F0FF]/60 cursor-not-allowed rounded-xl" title="غير قابل للتعديل" />
               )}
             </div>
-            {isDisabled && <p className="text-xs text-gray-500 mt-1">هذا الحقل يُدار من قبل النظام ولا يمكن تعديله.</p>}
+            {isDisabled && <SettingsHint>هذا الحقل يُدار من قبل النظام ولا يمكن تعديله.</SettingsHint>}
           </div>
         );
 
       case 'datetime':
         return (
-          <div key={settings_key} className="mb-4">
-            <TextField
-                label={getSettingDisplayName(settings_key)}
-                type="datetime-local"
-                value={value ? value.slice(0, 16) : ''}
-                onChange={(e) => !isDisabled && handleSettingChange(settings_key, e.target.value)}
-                placeholder={settings_description || getSettingDescription(settings_key)}
-                disabled={isDisabled}
-              />
-            {isDisabled && <p className="text-xs text-gray-500 mt-1">تاريخ الانتهاء يتم تحديده بواسطة الاشتراك.</p>}
+          <div key={settings_key}>
+            <SettingsLabel>{getSettingDisplayName(settings_key)}</SettingsLabel>
+            <input
+              type="datetime-local"
+              value={value ? value.slice(0, 16) : ''}
+              onChange={(e) => !isDisabled && handleSettingChange(settings_key, e.target.value)}
+              placeholder={settings_description || getSettingDescription(settings_key)}
+              disabled={isDisabled}
+              className={settingsInputClass}
+            />
+            {isDisabled && <SettingsHint>تاريخ الانتهاء يتم تحديده بواسطة الاشتراك.</SettingsHint>}
           </div>
         );
 
-      default: // string
+      default:
         return (
-          <div key={settings_key} className="mb-4">
-            <TextField
-              label={getSettingDisplayName(settings_key)}
+          <div key={settings_key}>
+            <SettingsLabel>{getSettingDisplayName(settings_key)}</SettingsLabel>
+            <input
               type="text"
               value={value}
               onChange={(e) => !isDisabled && handleSettingChange(settings_key, e.target.value)}
               placeholder={settings_description || getSettingDescription(settings_key)}
               disabled={isDisabled}
+              className={settingsInputClass}
+              dir="rtl"
             />
-            {isDisabled && <p className="text-xs text-gray-500 mt-1">هذا الحقل للعرض فقط.</p>}
+            {isDisabled && <SettingsHint>هذا الحقل للعرض فقط.</SettingsHint>}
           </div>
         );
     }
@@ -698,97 +719,211 @@ function SettingsTab() {
       }
       
       return (
-        <div key={settings_key} className="col-span-1">
-          <div className="bg-white border border-gray-200 rounded-lg p-4 h-full flex flex-col">
-            <label className="block text-sm font-medium text-gray-700 mb-2">شعار الشركة</label>
-            <div className="flex items-start gap-4">
-              <div className="w-32 h-32 border border-dashed border-gray-300 rounded-md overflow-hidden bg-gray-50 flex items-center justify-center">
+        <div key={settings_key} className="w-full">
+          <SettingsFieldCard className="h-full">
+            <SettingsLabel>شعار الشركة</SettingsLabel>
+            <div className="flex flex-col sm:flex-row items-start gap-4 mt-2">
+              <div className={settingsLogoPreviewClass}>
                 {previewUrl ? (
-                  <img
-                    src={previewUrl}
-                    alt="Company Logo"
-                    className="object-contain w-full h-full"
-                  />
+                  <img src={previewUrl} alt="Company Logo" className="object-contain w-full h-full" />
                 ) : (
-                  <span className="text-xs text-gray-400 text-center px-2">لا يوجد شعار</span>
+                  <span className="text-xs text-[#8B5FD6]/60 text-center px-2">لا يوجد شعار</span>
                 )}
               </div>
-              <div className="flex-1 space-y-3">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleCompanyLogoFile}
-                  className="block w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#f5f3ff] file:text-[#7A52C2] hover:file:bg-[#EDE7FF] cursor-pointer"
-                />
+              <div className="flex-1 space-y-3 w-full">
+                <input type="file" accept="image/*" onChange={handleCompanyLogoFile} className={settingsFileInputClass} />
                 {isFile && (
-                  <p className="text-[11px] text-[#8B5FD6] leading-4">تم اختيار صورة جديدة — احفظ الإعدادات لرفعها إلى الخادم.</p>
+                  <p className="text-xs text-[#8B5FD6]">تم اختيار صورة جديدة — احفظ الإعدادات لرفعها.</p>
                 )}
                 {isUrl && !isFile && (
-                  <p className="text-[11px] text-gray-500 leading-4">الشعار الحالي مخزن على الخادم.</p>
+                  <p className="text-xs text-gray-500">الشعار الحالي مخزن على الخادم.</p>
                 )}
                 {value && (
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleSettingChange('company_logo', '')}
-                      className="text-xs px-3 py-1 rounded-md bg-red-50 text-red-600 hover:bg-red-100"
-                    >إزالة</button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSettingChange('company_logo', '')}
+                    className="text-xs px-3 py-1.5 rounded-xl bg-red-50 text-red-600 border border-red-100 hover:bg-red-100"
+                  >
+                    إزالة
+                  </button>
                 )}
               </div>
             </div>
-          </div>
+          </SettingsFieldCard>
         </div>
       );
     }
 
     if (settings_key === 'company_description') {
       return (
-        <div key={settings_key} className="col-span-1 md:col-span-2">
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">وصف الشركة</label>
+        <div key={settings_key} className="w-full">
+          <SettingsFieldCard>
+            <SettingsLabel>وصف الشركة</SettingsLabel>
             <textarea
               rows={4}
-              className="w-full resize-y px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8B5FD6]"
+              className={settingsTextareaClass}
               placeholder={settings_description || 'أدخل وصفاً مختصراً عن الشركة'}
               value={value}
               onChange={(e) => handleSettingChange('company_description', e.target.value)}
             />
-          </div>
+          </SettingsFieldCard>
         </div>
       );
     }
 
-    // Fallback to generic field rendering but within consistent card styling
     return (
-      <div key={settings_key} className="col-span-1">
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          {renderSettingField(setting)}
-        </div>
+      <div key={settings_key} className="w-full">
+        <SettingsFieldCard>{renderSettingField(setting)}</SettingsFieldCard>
+      </div>
+    );
+  };
+
+
+  const renderCompanyMapSection = () => {
+    const latValue =
+      changedSettings.company_lat !== undefined
+        ? String(changedSettings.company_lat)
+        : sortedCompanySettings.find((s) => s.settings_key === 'company_lat')?.settings_value || '';
+    const lngValue =
+      changedSettings.company_lng !== undefined
+        ? String(changedSettings.company_lng)
+        : sortedCompanySettings.find((s) => s.settings_key === 'company_lng')?.settings_value || '';
+
+    return (
+    <SettingsSection
+      key="location"
+      title="الموقع الجغرافي"
+      subtitle="الصق رابط Google Maps لموقع الشركة — سيتم استخراج الإحداثيات تلقائياً"
+    >
+      <SettingsFieldCard>
+        <GoogleMapsLocationField
+          label="موقع الشركة على الخريطة"
+          hint="من Google Maps: مشاركة → نسخ الرابط → الصقه هنا."
+          latitude={latValue}
+          longitude={lngValue}
+          onLocationChange={(lat, lng) => handleCompanyMapChange(lat, lng)}
+        />
+      </SettingsFieldCard>
+    </SettingsSection>
+    );
+  };
+
+  const renderCompanyTab = () => {
+    const groups = SETTINGS_SECTION_GROUPS.company;
+    const allGroupedKeys = new Set(groups.flatMap((g) => g.keys || []));
+
+    return (
+      <div className={settingsSectionsStackClass}>
+        {groups.map((group) => {
+          if (group.type === 'map') {
+            return renderCompanyMapSection();
+          }
+          const groupSettings = sortedCompanySettings.filter((s) =>
+            group.keys.includes(s.settings_key)
+          );
+          if (groupSettings.length === 0) return null;
+          return (
+            <SettingsSection
+              key={group.id}
+              title={group.title}
+              subtitle={group.subtitle}
+            >
+              <div className={settingsFieldsStackClass}>
+                {groupSettings.map((s) => renderCompanyCustomField(s))}
+              </div>
+            </SettingsSection>
+          );
+        })}
+        {sortedCompanySettings.filter((s) => !allGroupedKeys.has(s.settings_key)).length > 0 && (
+          <SettingsSection
+            title="إعدادات إضافية"
+            subtitle="حقول الشركة الأخرى غير المصنّفة"
+          >
+            <div className={settingsFieldsStackClass}>
+              {sortedCompanySettings
+                .filter((s) => !allGroupedKeys.has(s.settings_key))
+                .map((s) => renderCompanyCustomField(s))}
+            </div>
+          </SettingsSection>
+        )}
+      </div>
+    );
+  };
+
+  const renderGroupedSettingsTab = (tabKey) => {
+    const groups = SETTINGS_SECTION_GROUPS[tabKey] || [];
+    const allGroupedKeys = new Set(groups.flatMap((g) => g.keys || []));
+
+    return (
+      <div className={settingsSectionsStackClass}>
+        {groups.map((group) => {
+          const groupSettings = currentSettings.filter((s) =>
+            group.keys.includes(s.settings_key)
+          );
+          if (groupSettings.length === 0) return null;
+          return (
+            <SettingsSection
+              key={group.id}
+              title={group.title}
+              subtitle={group.subtitle}
+            >
+              <div className={settingsFieldsStackClass}>
+                {groupSettings.map((setting) => (
+                  <SettingsFieldCard key={setting.settings_key}>
+                    {renderSettingField(setting)}
+                  </SettingsFieldCard>
+                ))}
+              </div>
+            </SettingsSection>
+          );
+        })}
+        {currentSettings.filter((s) => !allGroupedKeys.has(s.settings_key)).length > 0 && (
+          <SettingsSection
+            title="إعدادات إضافية"
+            subtitle="حقول أخرى في هذا القسم"
+          >
+            <div className={settingsFieldsStackClass}>
+              {currentSettings
+                .filter((s) => !allGroupedKeys.has(s.settings_key))
+                .map((setting) => (
+                  <SettingsFieldCard key={setting.settings_key}>
+                    {renderSettingField(setting)}
+                  </SettingsFieldCard>
+                ))}
+            </div>
+          </SettingsSection>
+        )}
       </div>
     );
   };
 
   return (
-    <div className="h-full flex flex-col" dir="rtl">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-[#f5f3ff] text-2xl ml-3">⚙️</div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">الإعدادات</h1>
-              <p className="text-sm text-gray-600">تهيئة النظام – الشركات – المخزون – العملاء</p>
+    <div className={settingsPageWrapperClass} dir="rtl">
+      {/* Hero header */}
+      <div className="bg-gradient-to-l from-[#8B5FD6] via-[#7A52C2] to-[#6B45B0] px-4 sm:px-6 py-6 sm:py-8 shadow-md w-full">
+        <div className="flex flex-wrap items-center justify-between gap-4 w-full">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-3 sm:p-3.5 shrink-0 ring-1 ring-white/30">
+              <Cog6ToothIcon className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                الإعدادات
+              </h1>
+              <p className="text-sm sm:text-base text-white/85 mt-1">
+                تهيئة النظام — الشركة، المخزون، العملاء، والمناطق
+              </p>
             </div>
           </div>
           {Object.keys(changedSettings).length > 0 && (
-            <Button
+            <button
+              type="button"
               onClick={handleSaveSettings}
               disabled={saving}
-              className="bg-green-600 hover:bg-green-700"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-[#6B45B0] bg-white hover:bg-[#F8F5FF] shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 shrink-0"
             >
               {saving ? 'جاري الحفظ...' : 'حفظ التغييرات'}
-            </Button>
+            </button>
           )}
         </div>
         {message && (
@@ -802,150 +937,107 @@ function SettingsTab() {
         )}
       </div>
 
-      {/* Navigation Tabs (Reports style) */}
-      <div className="bg-white border-b border-gray-200">
-        <nav className="flex px-6 overflow-x-auto no-scrollbar">
-          {settingsTabs.map(tab => {
+      {/* Pill tab bar */}
+      <div className="-mt-4 relative z-10 w-full px-0">
+        <nav
+          className="flex w-full gap-2 sm:gap-3 p-2 sm:p-2.5 bg-white/95 backdrop-blur-sm border-y border-[#EDE7FF] shadow-lg shadow-[#8B5FD6]/10 overflow-x-auto"
+          aria-label="أقسام الإعدادات"
+          style={{ scrollbarWidth: 'none' }}
+        >
+          {settingsTabs.map((tab) => {
+            const Icon = tab.icon;
             const isActive = activeTab === tab.key;
+            const count = settings[tab.key]?.length ?? 0;
             return (
               <button
                 key={tab.key}
+                type="button"
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex flex-col items-start justify-center px-4 py-3 text-sm font-medium border-b-2 min-w-[150px] text-right transition-colors duration-200 ${
+                title={tab.desc}
+                className={`${getSettingsSubTabClasses(isActive)} min-w-[120px] sm:min-w-0 flex-col sm:flex-row py-3 sm:py-2.5 ${
                   isActive
-                    ? 'border-[#8B5FD6] text-[#8B5FD6] bg-[#f5f3ff]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                    ? '[&_svg]:text-white'
+                    : '[&_svg]:text-[#8B5FD6] hover:[&_svg]:text-[#7A52C2]'
                 }`}
               >
-                <div className="flex items-center mb-1">
-                  <span className="ml-2 text-base">{tab.icon}</span>
-                  <span>{tab.label}</span>
-                  {settings[tab.key] && settings[tab.key].length > 0 && (
-                    <span className={`mr-2 text-[11px] font-medium rounded-full px-2 py-0.5 ${isActive ? 'bg-[#EDE7FF] text-[#8B5FD6]' : 'bg-gray-100 text-gray-600'}`}>{settings[tab.key].length}</span>
+                <span className="flex items-center gap-1.5 sm:gap-2">
+                  <Icon className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                  <span className="truncate text-center leading-tight">{tab.label}</span>
+                  {count > 0 && (
+                    <span
+                      className={`text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[1.25rem] ${
+                        isActive
+                          ? 'bg-white/25 text-white'
+                          : 'bg-[#EDE7FF] text-[#8B5FD6]'
+                      }`}
+                    >
+                      {count}
+                    </span>
                   )}
-                </div>
-                {/* subtitle removed as requested */}
+                </span>
+                <span
+                  className={`hidden lg:block text-[10px] font-normal truncate max-w-full mt-0.5 ${
+                    isActive ? 'text-white/75' : 'text-gray-400 group-hover:text-[#8B5FD6]/70'
+                  }`}
+                >
+                  {tab.desc}
+                </span>
               </button>
             );
           })}
         </nav>
       </div>
 
-      {/* Tab Content */}
-      <div className="flex-1 bg-gray-50 overflow-y-auto p-6 space-y-10">
+      {/* Tab content */}
+      <div className={`${settingsContentClass} ${settingsSectionsStackClass}`}>
         {activeTab === 'client' && (
-          <div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-4">تصنيفات العملاء</h3>
-            <ClientTaxonomiesSettings />
-          </div>
+          <SettingsSection
+            title={SETTINGS_TAB_META.client.title}
+            subtitle={SETTINGS_TAB_META.client.subtitle}
+            icon={UserGroupIcon}
+          >
+            <ClientTaxonomiesSettings embedded />
+          </SettingsSection>
         )}
 
         {activeTab === 'location' && (
-          <div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-4">إدارة الدول والمحافظات</h3>
-            <LocationManagement />
-          </div>
+          <SettingsSection
+            title={SETTINGS_TAB_META.location.title}
+            subtitle={SETTINGS_TAB_META.location.subtitle}
+            icon={MapIcon}
+          >
+            <LocationManagement embedded />
+          </SettingsSection>
         )}
 
         {activeTab === 'odoo' && (
-          <div>
-            <OdooIntegrationSettings />
-          </div>
+          <SettingsSection
+            title={SETTINGS_TAB_META.odoo.title}
+            subtitle={SETTINGS_TAB_META.odoo.subtitle}
+            icon={LinkIcon}
+          >
+            <OdooIntegrationSettings embedded />
+          </SettingsSection>
         )}
 
-        {currentSettings.length === 0 ? (
-          <div className="text-center py-20 border-2 border-dashed border-gray-200 rounded-xl bg-white">
+        {currentSettings.length === 0 && !['client', 'location', 'odoo'].includes(activeTab) ? (
+          <div className={settingsEmptyClass}>
             <p className="text-gray-500">لا توجد إعدادات في هذا القسم حالياً</p>
           </div>
         ) : (
-          activeTab === 'company' ? (
-            <div className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {sortedCompanySettings
-                  .filter(s => ['company_logo','company_name','company_description'].includes(s.settings_key))
-                  .map(s => renderCompanyCustomField(s))}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {sortedCompanySettings
-                  .filter(s => ['company_website','company_email','company_phone'].includes(s.settings_key))
-                  .map(s => renderCompanyCustomField(s))}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {sortedCompanySettings
-                  .filter(s => ['company_address','company_commercial_register','company_vat_number'].includes(s.settings_key))
-                  .map(s => renderCompanyCustomField(s))}
-              </div>
-              
-              {/* Company Location Section */}
-              <div className="grid grid-cols-1 gap-6">
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h4 className="text-lg font-medium text-gray-900 mb-4">📍 موقع الشركة</h4>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">تحديد الموقع على الخريطة</label>
-                      <MapPicker
-                        key={`map-${changedSettings.company_lat || sortedCompanySettings.find(s => s.settings_key === 'company_lat')?.settings_value || '30.0444'}-${changedSettings.company_lng || sortedCompanySettings.find(s => s.settings_key === 'company_lng')?.settings_value || '31.2357'}`}
-                        initialLatitude={parseFloat(changedSettings.company_lat || sortedCompanySettings.find(s => s.settings_key === 'company_lat')?.settings_value) || 30.0444}
-                        initialLongitude={parseFloat(changedSettings.company_lng || sortedCompanySettings.find(s => s.settings_key === 'company_lng')?.settings_value) || 31.2357}
-                        onLocationChange={handleCompanyMapChange}
-                      />
-                    </div>
-                    
-                    {/* Manual Coordinate Input */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">خط العرض (Latitude)</label>
-                        <input
-                          type="number"
-                          step="0.000001"
-                          value={
-                            changedSettings.company_lat !== undefined 
-                              ? String(changedSettings.company_lat) 
-                              : (sortedCompanySettings.find(s => s.settings_key === 'company_lat')?.settings_value || '')
-                          }
-                          onChange={(e) => handleSettingChange('company_lat', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] focus:border-[#8B5FD6]"
-                          placeholder="30.0444"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">خط الطول (Longitude)</label>
-                        <input
-                          type="number"
-                          step="0.000001"
-                          value={
-                            changedSettings.company_lng !== undefined 
-                              ? String(changedSettings.company_lng) 
-                              : (sortedCompanySettings.find(s => s.settings_key === 'company_lng')?.settings_value || '')
-                          }
-                          onChange={(e) => handleSettingChange('company_lng', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] focus:border-[#8B5FD6]"
-                          placeholder="31.2357"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Render any remaining company fields not explicitly grouped */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {sortedCompanySettings
-                  .filter(s => !companyOrder.includes(s.settings_key))
-                  .map(s => renderCompanyCustomField(s))}
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {currentSettings.map(setting => renderSettingField(setting))}
-            </div>
-          )
+          activeTab === 'company' && currentSettings.length > 0
+            ? renderCompanyTab()
+            : (activeTab === 'financial' || activeTab === 'inventory') && currentSettings.length > 0
+              ? renderGroupedSettingsTab(activeTab)
+              : currentSettings.length > 0
+                ? renderGroupedSettingsTab(activeTab)
+                : null
         )}
 
         {Object.keys(changedSettings).length > 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-yellow-800 mb-2">التغييرات المعلقة</h3>
-            <ul className="text-xs text-yellow-800 space-y-1 max-h-40 overflow-y-auto pr-1">
+          <div className={settingsPendingBoxClass}>
+            <h3 className="text-sm font-bold text-[#2D1B69] mb-2">التغييرات المعلقة</h3>
+            <ul className="text-xs text-[#5A3A9E] space-y-1 max-h-40 overflow-y-auto pr-1">
               {Object.entries(changedSettings).map(([key, value]) => (
                 <li key={key} className="flex justify-between gap-2">
                   <span className="truncate" title={getSettingDisplayName(key)}>{getSettingDisplayName(key)}</span>

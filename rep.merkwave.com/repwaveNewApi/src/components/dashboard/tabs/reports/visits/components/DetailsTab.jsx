@@ -382,7 +382,7 @@ const DetailsTab = ({ data }) => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div className="flex space-x-4 space-x-reverse">
                       <span className="flex items-center">
-                        <ChatBubbleLeftRightIcon className="h-4 w-4 text-blue-500 ml-1" />
+                        <ChatBubbleLeftRightIcon className="h-4 w-4 text-[#8B5FD6] ml-1" />
                         {visit.activities_count || 0}
                       </span>
                       <span className="flex items-center">

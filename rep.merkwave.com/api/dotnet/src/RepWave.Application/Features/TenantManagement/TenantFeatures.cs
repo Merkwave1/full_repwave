@@ -209,7 +209,8 @@ public record TrialRegistrationRequest(
     string ContactName,
     string ContactEmail,
     string? ContactPhone,
-    string CompanyName);
+    string CompanyName,
+    string Country);
 
 public record TrialCredentialsDto(
     string CompanyName,
@@ -223,7 +224,8 @@ public record RegisterTrialCommand(TrialRegistrationRequest Req) : IRequest<ApiR
 
 public class RegisterTrialCommandHandler(
     IMasterDbContext masterDb,
-    ITenantDbContextFactory dbFactory) : IRequestHandler<RegisterTrialCommand, ApiResponse<TrialCredentialsDto>>
+    ITenantDbContextFactory dbFactory,
+    ITenantProvisioningHelper provisioning) : IRequestHandler<RegisterTrialCommand, ApiResponse<TrialCredentialsDto>>
 {
     private static readonly string[] ForbiddenSlugs = ["demo", "admin", "test", "repwave", "system", "root", "api"];
 
@@ -231,30 +233,57 @@ public class RegisterTrialCommandHandler(
     {
         var req = request.Req;
 
+        var contactName = req.ContactName?.Trim() ?? "";
+        var contactEmail = req.ContactEmail?.Trim().ToLowerInvariant() ?? "";
+        var companyName = req.CompanyName?.Trim() ?? "";
+        var country = req.Country?.Trim() ?? "";
+
+        if (contactName.Length < 2)
+            return ApiResponse<TrialCredentialsDto>.Failure("Please enter your full name.");
+        if (string.IsNullOrEmpty(contactEmail) || !contactEmail.Contains('@'))
+            return ApiResponse<TrialCredentialsDto>.Failure("Please enter a valid email address.");
+        if (companyName.Length < 2)
+            return ApiResponse<TrialCredentialsDto>.Failure("Please enter your company name.");
+        if (country.Length < 2)
+            return ApiResponse<TrialCredentialsDto>.Failure("Please select your country.");
+
+        if (await masterDb.Tenants.AnyAsync(t => t.ContactEmail == contactEmail, ct))
+            return ApiResponse<TrialCredentialsDto>.Failure(
+                "This email is already registered. Please log in or use a different email.");
+
         // 1. Generate unique TenantId slug from company name
-        var baseSlug = GenerateSlug(req.CompanyName);
+        var baseSlug = GenerateSlug(companyName);
         var tenantId = await EnsureUniqueTenantIdAsync(baseSlug, ct);
 
         // 2. Generate random password
         var password = GeneratePassword();
 
-        // 3. Build connection string (postgres service name in Docker network)
-        var connectionString = $"Host=postgres;Port=5432;Database=repwave_{tenantId};Username=repwave_user;Password=repwave_pass";
-
         var expiresAt = DateTime.UtcNow.AddDays(7);
         const int trialDays = 7;
+
+        try
+        {
+            await provisioning.EnsureDatabaseExistsAsync(tenantId, ct);
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<TrialCredentialsDto>.Failure($"Could not provision trial database: {ex.Message}");
+        }
+
+        var connectionString = provisioning.BuildConnectionString(tenantId);
 
         // 4. Save tenant record in master DB
         var tenant = new Tenant
         {
             TenantId = tenantId,
-            Name = req.CompanyName,
+            Name = companyName,
             ConnectionString = connectionString,
             Plan = "trial",
             ExpirationDate = expiresAt,
-            ContactEmail = req.ContactEmail,
-            ContactPhone = req.ContactPhone,
-            Notes = $"Self-service trial. Contact: {req.ContactName}",
+            ContactEmail = contactEmail,
+            ContactPhone = req.ContactPhone?.Trim(),
+            ContactCountry = country,
+            Notes = $"Self-service trial. Contact: {contactName}",
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -268,11 +297,11 @@ public class RegisterTrialCommandHandler(
 
             tenantDb.Users.Add(new User
             {
-                UsersName = req.ContactName,
-                UsersEmail = req.ContactEmail,
+                UsersName = contactName,
+                UsersEmail = contactEmail,
                 UsersPassword = BCrypt.Net.BCrypt.HashPassword(password),
                 UsersRole = "admin",
-                UsersPhone = req.ContactPhone,
+                UsersPhone = req.ContactPhone?.Trim(),
                 UsersStatus = true,
                 CreatedAt = DateTime.UtcNow
             });
@@ -286,8 +315,15 @@ public class RegisterTrialCommandHandler(
             tenantDb.Settings.Add(new Setting
             {
                 SettingsKey = "company_name",
-                SettingsValue = req.CompanyName,
+                SettingsValue = companyName,
                 SettingsLabel = "Company Name",
+                SettingsCategory = "general"
+            });
+            tenantDb.Settings.Add(new Setting
+            {
+                SettingsKey = "country",
+                SettingsValue = country,
+                SettingsLabel = "Country",
                 SettingsCategory = "general"
             });
             await tenantDb.SaveChangesAsync(ct);
@@ -301,9 +337,9 @@ public class RegisterTrialCommandHandler(
 
         return ApiResponse<TrialCredentialsDto>.Success(
             new TrialCredentialsDto(
-                CompanyName: req.CompanyName,
+                CompanyName: companyName,
                 TenantId: tenantId,
-                Email: req.ContactEmail,
+                Email: contactEmail,
                 Password: password,
                 ExpiresAt: expiresAt.ToString("MMM dd, yyyy"),
                 Days: trialDays),

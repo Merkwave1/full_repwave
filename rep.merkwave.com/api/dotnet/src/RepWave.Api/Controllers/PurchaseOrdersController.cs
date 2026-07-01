@@ -11,6 +11,12 @@ namespace RepWave.Api.Controllers;
 public class PurchaseOrdersController(IMediator mediator) : ControllerBase
 {
     [HttpGet] public async Task<IActionResult> GetAll([FromQuery] GetAllPurchaseOrdersQuery q) => Ok(await mediator.Send(q));
+    [HttpGet("pending-for-receive")]
+    public async Task<IActionResult> GetPendingForReceive()
+        => Ok(await mediator.Send(new GetPendingPurchaseOrdersForReceiveQuery()));
+    [HttpGet("{id:int}/returnable-quantities")]
+    public async Task<IActionResult> GetReturnableQuantities(int id)
+        => Ok(await mediator.Send(new GetReturnableQuantitiesQuery(id)));
     [HttpGet("{id:int}")] public async Task<IActionResult> GetById(int id) => Ok(await mediator.Send(new GetPurchaseOrderByIdQuery(id)));
     [HttpPost][Authorize(Roles = "admin")] public async Task<IActionResult> Create([FromBody] CreatePurchaseOrderRequest req) => Ok(await mediator.Send(new CreatePurchaseOrderCommand(req)));
     [HttpPatch("{id:int}/status")][Authorize(Roles = "admin")] public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdatePurchaseOrderStatusCommand cmd) => Ok(await mediator.Send(cmd with { Id = id }));

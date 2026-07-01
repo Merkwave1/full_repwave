@@ -130,7 +130,7 @@ const AnalyticsTab = ({ data, loading }) => {
       {analytics.brand_analysis && analytics.brand_analysis.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex items-center space-x-3 space-x-reverse mb-6">
-            <div className="p-2 rounded-lg bg-indigo-100 text-[#8B5FD6]">
+            <div className="p-2 rounded-lg bg-[#EDE7FF] text-[#8B5FD6]">
               <SparklesIcon className="w-5 h-5" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900">أهم العلامات التجارية</h3>
@@ -162,7 +162,7 @@ const AnalyticsTab = ({ data, loading }) => {
         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition-shadow">
           {/* Header */}
           <div className="flex items-center space-x-3 space-x-reverse mb-6">
-            <div className="p-3 rounded-lg bg-teal-100 text-[#8B5FD6]">
+            <div className="p-3 rounded-lg bg-[#EDE7FF] text-[#8B5FD6]">
               <CalendarDaysIcon className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900">تحليل النمو</h3>

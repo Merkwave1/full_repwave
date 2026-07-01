@@ -1,21 +1,21 @@
 ﻿// src/components/dashboard/tabs/inventory-management/Transfers/AddTransferForm.jsx
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import NumberInput from '../../../../common/NumberInput/NumberInput.jsx';
-import { PlusCircleIcon, MinusCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { PlusCircleIcon, MinusCircleIcon, ExclamationTriangleIcon, ArrowsRightLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import SearchableSelect from '../../../../common/SearchableSelect/SearchableSelect'; // Reusing SearchableSelect
 import { format } from 'date-fns'; // For date formatting
+import { MODAL_GRADIENTS, modalPrimaryBtnClass, modalSecondaryBtnClass, modalSectionClass, modalSectionHeaderClass } from '../../../../../constants/brandColors.js';
 import ConfirmActionModal from '../../../../common/ConfirmActionModal';
 
 // A reusable component for form sections to keep the design consistent.
-function FormSection({ title, children }) {
+function FormSection({ title, children, icon: Icon }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-visible mb-8" style={{position: 'relative', zIndex: 'auto'}}>
-      <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+    <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-visible mb-5">
+      <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+        {Icon && <Icon className="h-4 w-4 text-[#8B5FD6]" />}
+        <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
       </div>
-      <div className="p-6 overflow-visible">
-        {children}
-      </div>
+      <div className="p-4 sm:p-5 overflow-visible">{children}</div>
     </div>
   );
 }
@@ -382,10 +382,31 @@ export default function AddTransferForm({ onAdd, onCancel, warehouses, allInvent
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md max-w-4xl mx-auto overflow-visible" dir="rtl" style={{position: 'relative', zIndex: 1}}>
-      <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">إضافة تحويل مخزون جديد</h3>
-      <form onSubmit={handleSubmit} className="space-y-6 overflow-visible">
-        <FormSection title="تفاصيل التحويل">
+    <div className="bg-gray-50 rounded-2xl shadow-2xl max-w-4xl w-full overflow-visible" dir="rtl">
+      <div
+        className="px-5 py-4 flex items-center justify-between"
+        style={{ background: MODAL_GRADIENTS.brand }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="bg-white/20 rounded-xl p-2">
+            <ArrowsRightLeftIcon className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h3 className="text-base sm:text-lg font-bold text-white">إضافة تحويل مخزون جديد</h3>
+            <p className="text-xs text-white/70 hidden sm:block">اختر المخازن والمنتجات ثم أنشئ التحويل</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="bg-white/20 hover:bg-white/30 rounded-full p-1.5 text-white transition-colors"
+        >
+          <XMarkIcon className="h-5 w-5" />
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-2 overflow-visible">
+        <FormSection title="تفاصيل التحويل" icon={ArrowsRightLeftIcon}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-visible">
             <div>
               <label htmlFor="source_warehouse_id" className="block text-sm font-medium text-gray-700">
@@ -429,7 +450,7 @@ export default function AddTransferForm({ onAdd, onCancel, warehouses, allInvent
                 onChange={handleChange}
                 rows="3"
                 maxLength={500}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#8B5FD6] focus:border-[#8B5FD6] sm:text-sm"
+                className="mt-1 block w-full px-3 py-2.5 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8B5FD6]/30 focus:border-[#8B5FD6] sm:text-sm"
               ></textarea>
             </div>
           </div>
@@ -569,9 +590,9 @@ export default function AddTransferForm({ onAdd, onCancel, warehouses, allInvent
         </FormSection>
 
         {/* Action Buttons */}
-        <div className="flex justify-end space-x-4 space-x-reverse mt-8 pt-5 border-t border-gray-200">
-          <button type="button" onClick={onCancel} className="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">إلغاء</button>
-          <button type="submit" className="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#8B5FD6] hover:bg-[#7A52C2]">إنشاء التحويل</button>
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+          <button type="button" onClick={onCancel} className="px-5 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 transition-colors">إلغاء</button>
+          <button type="submit" className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#8B5FD6] hover:bg-[#7A52C2] transition-colors shadow-sm">إنشاء التحويل</button>
         </div>
       </form>
       <ConfirmActionModal

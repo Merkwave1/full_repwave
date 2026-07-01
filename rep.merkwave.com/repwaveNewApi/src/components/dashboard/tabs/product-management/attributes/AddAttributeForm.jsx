@@ -107,7 +107,7 @@ function AddAttributeForm({ onAdd, onCancel }) {
             <button
               type="button"
               onClick={handleAddValue}
-              className="ml-2 px-4 py-2 bg-[#f5f3ff]0 text-white rounded-md hover:bg-[#8B5FD6] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8B5FD6] transition duration-150 ease-in-out text-sm"
+              className="ml-2 px-4 py-2 bg-[#8B5FD6] text-white rounded-md hover:bg-[#8B5FD6] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8B5FD6] transition duration-150 ease-in-out text-sm"
             >
               إضافة
             </button>
@@ -122,7 +122,7 @@ function AddAttributeForm({ onAdd, onCancel }) {
                 <button
                   type="button"
                   onClick={() => handleRemoveValue(value)}
-                  className="ml-2 -mr-0.5 h-4 w-4 flex items-center justify-center rounded-full hover:bg-blue-200 text-blue-500 hover:text-[#7A52C2]"
+                  className="ml-2 -mr-0.5 h-4 w-4 flex items-center justify-center rounded-full hover:bg-[#C4A8F0]/30 text-[#8B5FD6] hover:text-[#7A52C2]"
                 >
                   &times;
                 </button>

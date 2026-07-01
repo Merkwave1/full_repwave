@@ -1,8 +1,6 @@
 ﻿// src/components/dashboard/tabs/safe-management/safe-transactions/TransactionDetailsModal.jsx
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { createPortal } from "react-dom";
 import {
-  XMarkIcon,
   CheckIcon,
   XCircleIcon,
   PhotoIcon,
@@ -16,6 +14,7 @@ import {
   ShieldCheckIcon,
   InformationCircleIcon,
 } from "@heroicons/react/24/outline";
+import AppModalShell, { modalPrimaryBtnClass, modalSecondaryBtnClass } from "../../../../common/AppModalShell.jsx";
 import Loader from "../../../../common/Loader/Loader";
 import ConfirmActionModal from "../../../../common/ConfirmActionModal";
 import {
@@ -230,74 +229,81 @@ const TransactionDetailsModal = ({
   );
 
   if (loading) {
-    return createPortal(
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-[9999] p-3 sm:p-6 overflow-y-auto">
-        <div className="bg-white rounded-xl shadow-xl p-6 my-auto">
-          <Loader />
-          <p className="text-center mt-4 text-gray-600">
-            جاري تحميل تفاصيل المعاملة...
-          </p>
-        </div>
-      </div>,
-      document.body,
+    return (
+      <AppModalShell open onClose={onClose} title="تفاصيل المعاملة" icon={BanknotesIcon} size="md" gradient="brand" zIndex="z-[9999]" portal>
+        <Loader />
+        <p className="text-center mt-4 text-gray-600">جاري تحميل تفاصيل المعاملة...</p>
+      </AppModalShell>
     );
   }
 
   if (error) {
-    return createPortal(
-      <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-[9999] p-3 sm:p-6 overflow-y-auto"
-        onClick={onClose}
-      >
-        <div
-          className="bg-white rounded-xl shadow-xl max-w-md w-full mx-2 sm:mx-4 my-auto"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="p-4 sm:p-6">
-            <div className="text-center">
-              <XMarkIcon className="h-12 w-12 text-red-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                خطأ في تحميل البيانات
-              </h3>
-              <p className="text-sm text-gray-500 mb-4">{error}</p>
-              <button
-                onClick={onClose}
-                className="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
-              >
-                إغلاق
-              </button>
-            </div>
-          </div>
+    return (
+      <AppModalShell open onClose={onClose} title="خطأ في تحميل البيانات" icon={BanknotesIcon} size="sm" gradient="danger" zIndex="z-[9999]" portal>
+        <div className="text-center">
+          <p className="text-sm text-gray-500 mb-4">{error}</p>
+          <button type="button" onClick={onClose} className={`${modalPrimaryBtnClass} w-full bg-red-600 hover:bg-red-700`}>
+            إغلاق
+          </button>
         </div>
-      </div>,
-      document.body,
+      </AppModalShell>
     );
   }
 
-  const modal = (
+  return (
     <>
-      <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-[9999] p-3 sm:p-6 overflow-y-auto"
-        onClick={onClose}
+      <AppModalShell
+        open
+        onClose={onClose}
+        title={`تفاصيل المعاملة #${transaction?.id}`}
+        icon={BanknotesIcon}
+        size="3xl"
+        gradient="brand"
+        zIndex="z-[9999]"
+        portal
+        footer={
+          transaction?.status === "pending" ? (
+            <div className="flex gap-4 justify-center">
+              <button
+                type="button"
+                onClick={handleApproveClick}
+                disabled={updating}
+                className={`${modalPrimaryBtnClass} bg-green-600 hover:bg-green-700 flex items-center gap-2 disabled:opacity-50`}
+              >
+                {updating && confirmAction === "approve" ? (
+                  <Loader />
+                ) : (
+                  <>
+                    <CheckIcon className="h-5 w-5" />
+                    الموافقة
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={handleRejectClick}
+                disabled={updating}
+                className={`${modalPrimaryBtnClass} bg-red-600 hover:bg-red-700 flex items-center gap-2 disabled:opacity-50`}
+              >
+                {updating && confirmAction === "reject" ? (
+                  <Loader />
+                ) : (
+                  <>
+                    <XCircleIcon className="h-5 w-5" />
+                    الرفض
+                  </>
+                )}
+              </button>
+            </div>
+          ) : (
+            <div className="flex justify-end">
+              <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+                إغلاق
+              </button>
+            </div>
+          )
+        }
       >
-        <div
-          className="bg-white rounded-xl shadow-xl max-w-4xl w-full mx-2 sm:mx-4 max-h-[95vh] sm:max-h-[90vh] overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="bg-gradient-to-r from-[#8B5FD6] to-[#F97366] px-4 py-3 sm:px-6 sm:py-4 flex justify-between items-center">
-            <h2 className="text-base sm:text-xl font-bold text-white">
-              تفاصيل المعاملة #{transaction?.id}
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-white hover:text-gray-200 transition-colors"
-            >
-              <XMarkIcon className="h-6 w-6" />
-            </button>
-          </div>
-
-          <div className="p-3 sm:p-6 overflow-y-auto max-h-[calc(95vh-60px)] sm:max-h-[calc(90vh-80px)]">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               {summaryCards.map((card, index) => {
                 const Icon = card.icon;
@@ -335,7 +341,7 @@ const TransactionDetailsModal = ({
             </div>
 
             {directionDetails && (
-              <div className="mb-6 bg-gradient-to-l from-blue-50 via-white to-blue-50 border border-blue-100 rounded-xl p-5 shadow-sm">
+              <div className="mb-6 bg-gradient-to-l from-[#f5f3ff] via-white to-[#f5f3ff] border border-[#EDE7FF] rounded-xl p-5 shadow-sm">
                 <div className="flex items-center gap-2 text-[#7A52C2] mb-4">
                   <InformationCircleIcon className="h-5 w-5" />
                   <h3 className="text-base font-semibold">مسار التحويل</h3>
@@ -359,7 +365,7 @@ const TransactionDetailsModal = ({
                       )}
                   </div>
                   <div className="flex items-center justify-center md:px-4">
-                    <ArrowRightIcon className="h-6 w-6 text-blue-500 transform rotate-180" />
+                    <ArrowRightIcon className="h-6 w-6 text-[#8B5FD6] transform rotate-180" />
                   </div>
                   <div className="flex-1 bg-white border border-green-100 rounded-xl p-4 shadow-sm">
                     <p className="text-xs text-green-600 font-semibold mb-1">
@@ -385,7 +391,7 @@ const TransactionDetailsModal = ({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm space-y-5">
                 <div className="flex items-center gap-2 border-b pb-3">
-                  <DocumentTextIcon className="h-5 w-5 text-blue-500" />
+                  <DocumentTextIcon className="h-5 w-5 text-[#8B5FD6]" />
                   <h3 className="text-base font-semibold text-gray-900">
                     معلومات المعاملة
                   </h3>
@@ -468,7 +474,7 @@ const TransactionDetailsModal = ({
 
               <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm space-y-5">
                 <div className="flex items-center gap-2 border-b pb-3">
-                  <ArchiveBoxIcon className="h-5 w-5 text-blue-500" />
+                  <ArchiveBoxIcon className="h-5 w-5 text-[#8B5FD6]" />
                   <h3 className="text-base font-semibold text-gray-900">
                     معلومات الخزنة والمستخدمين
                   </h3>
@@ -578,47 +584,8 @@ const TransactionDetailsModal = ({
               </div>
             )}
 
-            {/* Action Buttons */}
-            {transaction?.status === "pending" && (
-              <div className="flex gap-4 justify-center pt-6 border-t">
-                <button
-                  onClick={handleApproveClick}
-                  disabled={updating}
-                  className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-400 flex items-center gap-2"
-                >
-                  {updating && confirmAction === "approve" ? (
-                    <Loader />
-                  ) : (
-                    <>
-                      <CheckIcon className="h-5 w-5" />
-                      الموافقة
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={handleRejectClick}
-                  disabled={updating}
-                  className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 disabled:bg-gray-400 flex items-center gap-2"
-                >
-                  {updating && confirmAction === "reject" ? (
-                    <Loader />
-                  ) : (
-                    <>
-                      <XCircleIcon className="h-5 w-5" />
-                      الرفض
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      </AppModalShell>
 
-      {/* Image Modal */}
-      {/* Removed enlarge modal per request */}
-
-      {/* Confirmation Modal */}
       <ConfirmActionModal
         isOpen={confirmAction !== null}
         onClose={handleCancelConfirmation}
@@ -638,7 +605,6 @@ const TransactionDetailsModal = ({
       />
     </>
   );
-  return createPortal(modal, document.body);
 };
 
 export default TransactionDetailsModal;

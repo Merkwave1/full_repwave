@@ -13,7 +13,7 @@ export const getInvoiceById = (id) => api.get('/invoices/' + id);
 export const createInvoice = (data) => api.post('/invoices', data);
 export const updateInvoiceStatus = (id, status) => api.patch('/invoices/' + id + '/status', { status });
 export const deleteInvoice = (id) => api.delete('/invoices/' + id);
-export const getClientAccountStatement = (clientId, params) => api.get('/invoices', { clientId, ...params });
+// Client account statement lives in client_account_statement.js (aggregated from multiple endpoints)
 
 // ── Map .NET camelCase -> component snake_case ─────────────────────────────
 function mapAccount(a) {

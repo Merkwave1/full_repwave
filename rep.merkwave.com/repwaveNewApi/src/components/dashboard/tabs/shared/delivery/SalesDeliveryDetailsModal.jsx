@@ -3,22 +3,15 @@ import {
   TruckIcon,
   CalendarIcon,
   PrinterIcon,
-  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import Loader from "../../../../common/Loader/Loader";
+import AppModalShell, {
+  modalPrimaryBtnClass,
+  modalSecondaryBtnClass,
+  modalHeaderActionClass,
+  modalSectionClass,
+} from "../../../../common/AppModalShell.jsx";
 
-/**
- * Reusable delivery details modal (visual clone of the one used in DeliveryHistoryTab)
- * Props:
- *  - open: boolean
- *  - delivery: base delivery object (may be null while loading)
- *  - details: full details object (expected to contain items array) - optional
- *  - loading: show loading spinner instead of content
- *  - onClose: function
- *  - onPrint: function (print current delivery)
- *  - warehouses: array (optional) used to resolve warehouse name by id
- *  - clients: array (optional) used to resolve client name by id
- */
 export default function SalesDeliveryDetailsModal({
   open,
   delivery,
@@ -79,48 +72,49 @@ export default function SalesDeliveryDetailsModal({
   const items = details?.items || [];
 
   return (
-    <div
-      className="fixed inset-0 backdrop-blur-sm bg-black/40 overflow-y-auto h-full w-full z-50"
-      dir="rtl"
+    <AppModalShell
+      open={open}
+      onClose={onClose}
+      title={`تفاصيل التسليم #${delivery.sales_deliveries_id || delivery.delivery_id}`}
+      icon={TruckIcon}
+      size="2xl"
+      headerActions={
+        onPrint ? (
+          <button
+            type="button"
+            onClick={() => onPrint(delivery)}
+            className={modalHeaderActionClass}
+            title="طباعة سند التسليم"
+          >
+            <PrinterIcon className="h-4 w-4 inline ml-1" />
+            طباعة
+          </button>
+        ) : null
+      }
+      footer={
+        <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3">
+          {onPrint && (
+            <button
+              type="button"
+              onClick={() => onPrint(delivery)}
+              className={modalPrimaryBtnClass}
+            >
+              <PrinterIcon className="h-4 w-4 inline ml-1" /> طباعة سند التسليم
+            </button>
+          )}
+          <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+            إغلاق
+          </button>
+        </div>
+      }
     >
-      <div className="relative top-4 sm:top-10 mx-auto p-4 sm:p-5 border w-11/12 md:w-4/5 lg:w-3/4 xl:w-2/3 shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto mb-4">
-        <div className="mt-3">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center">
-              <div className="bg-[#EDE7FF] rounded-full p-2 ml-3">
-                <TruckIcon className="h-6 w-6 text-[#8B5FD6]" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900">
-                تفاصيل التسليم #
-                {delivery.sales_deliveries_id || delivery.delivery_id}
-              </h3>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => onPrint && onPrint(delivery)}
-                className="text-[#8B5FD6] hover:text-[#2D1B69] flex items-center px-2 py-1 rounded hover:bg-[#f5f3ff]"
-                title="طباعة سند التسليم"
-              >
-                <PrinterIcon className="h-5 w-5 ml-1" /> طباعة
-              </button>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-          </div>
-
           {loading ? (
             <div className="flex justify-center py-16">
               <Loader />
             </div>
           ) : (
             <>
-              {/* Basic Info Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className={`${modalSectionClass} grid grid-cols-1 md:grid-cols-3 gap-6 p-4 mb-6`}>
                 <InfoBlock
                   label="رقم التسليم"
                   value={`#${delivery.sales_deliveries_id || delivery.delivery_id}`}
@@ -135,7 +129,7 @@ export default function SalesDeliveryDetailsModal({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     تاريخ التسليم الكامل
                   </label>
-                  <div className="bg-gray-50 p-2 rounded">
+                  <div className="bg-[#FAFAFE] p-2 rounded border border-[#EDE7FF]">
                     <p className="text-sm text-gray-900">{dateParts.full}</p>
                     <div className="flex items-center mt-2 text-xs text-gray-500">
                       <CalendarIcon className="h-4 w-4 ml-1" />
@@ -145,25 +139,24 @@ export default function SalesDeliveryDetailsModal({
                     </div>
                   </div>
                 </div>
-                {/* delivery status removed as per request */}
                 <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     ملاحظات
                   </label>
-                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded min-h-[60px] whitespace-pre-wrap">
+                  <p className="text-sm text-gray-900 bg-[#FAFAFE] p-2 rounded min-h-[60px] whitespace-pre-wrap border border-[#EDE7FF]">
                     {notes}
                   </p>
                 </div>
               </div>
 
               {items && items.length > 0 ? (
-                <div className="border-t pt-6">
-                  <h4 className="text-lg font-medium text-gray-800 mb-4">
+                <div className="border-t border-[#EDE7FF] pt-6">
+                  <h4 className="text-lg font-medium text-[#2D1B69] mb-4">
                     المنتجات المُسلَّمة ({items.length})
                   </h4>
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y divide-[#EDE7FF]">
+                      <thead className="bg-[#FAFAFE]">
                         <tr>
                           <Th>#</Th>
                           <Th>اسم الصنف</Th>
@@ -173,9 +166,9 @@ export default function SalesDeliveryDetailsModal({
                           <Th>ملاحظات</Th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="bg-white divide-y divide-[#EDE7FF]">
                         {items.map((item, index) => (
-                          <tr key={index} className="hover:bg-gray-50">
+                          <tr key={index} className="hover:bg-[#FAFAFE]">
                             <Td center>{index + 1}</Td>
                             <Td>
                               <div className="flex flex-col">
@@ -201,7 +194,7 @@ export default function SalesDeliveryDetailsModal({
                             <Td center>
                               {item.packaging_types_name || "غير محدد"}
                             </Td>
-                            <Td center className="font-medium text-green-600">
+                            <Td center className="font-medium text-[#8B5FD6]">
                               {parseFloat(
                                 item.sales_delivery_items_quantity_delivered ||
                                   0,
@@ -217,7 +210,7 @@ export default function SalesDeliveryDetailsModal({
                   </div>
                 </div>
               ) : (
-                <div className="border-t pt-6">
+                <div className="border-t border-[#EDE7FF] pt-6">
                   <div className="text-center text-gray-500 py-8">
                     لا توجد تفاصيل إضافية متاحة لهذا التسليم
                   </div>
@@ -225,25 +218,7 @@ export default function SalesDeliveryDetailsModal({
               )}
             </>
           )}
-
-          {/* Footer */}
-          <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center mt-6 pt-4 border-t gap-3">
-            <button
-              onClick={() => onPrint && onPrint(delivery)}
-              className="w-full sm:w-auto px-4 py-3 sm:px-4 sm:py-2.5 bg-[#8B5FD6] text-white rounded-md hover:bg-[#7A52C2] transition-colors flex items-center justify-center text-base sm:text-sm"
-            >
-              <PrinterIcon className="h-4 w-4 ml-1" /> طباعة سند التسليم
-            </button>
-            <button
-              onClick={onClose}
-              className="w-full sm:w-auto px-4 py-3 sm:px-4 sm:py-2.5 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors text-base sm:text-sm"
-            >
-              إغلاق
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </AppModalShell>
   );
 }
 
@@ -252,7 +227,7 @@ const InfoBlock = ({ label, value }) => (
     <label className="block text-sm font-medium text-gray-700 mb-1">
       {label}
     </label>
-    <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{value}</p>
+    <p className="text-sm text-gray-900 bg-[#FAFAFE] p-2 rounded border border-[#EDE7FF]">{value}</p>
   </div>
 );
 

@@ -40,10 +40,10 @@ const RepresentativesReportsPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const tabs = [
-    { key: 'overview', label: 'نظرة عامة', icon: ChartBarIcon },
-    { key: 'location', label: 'تتبع المواقع', icon: MapPinIcon },
-    { key: 'attendance', label: 'الحضور والانصراف', icon: ClockIcon },
+  const SUB_TABS = [
+    { key: 'overview', label: 'نظرة عامة', desc: 'ملخص المستخدمين', icon: ChartBarIcon, gradientFrom: '#8B5FD6', gradientTo: '#6B45B0', iconBg: '#EDE7FF', iconColor: '#8B5FD6' },
+    { key: 'location', label: 'تتبع المواقع', desc: 'المواقع الحالية للمندوبين', icon: MapPinIcon, gradientFrom: '#10b981', gradientTo: '#059669', iconBg: '#ecfdf5', iconColor: '#10b981' },
+    { key: 'attendance', label: 'الحضور والانصراف', desc: 'سجلات الحضور اليومي', icon: ClockIcon, gradientFrom: '#f59e0b', gradientTo: '#d97706', iconBg: '#fffbeb', iconColor: '#f59e0b' },
   ];
 
   // Sync state with URL param
@@ -123,54 +123,46 @@ const RepresentativesReportsPage = () => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <UserGroupIcon className="h-8 w-8 text-[#8B5FD6] ml-3" />
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">تقارير المستخدمين</h1>
-              <p className="text-sm text-gray-600">تتبع حضور المستخدمين ومواقعهم وأدائهم</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-4 space-x-reverse">
-            <CalendarDaysIcon className="h-6 w-6 text-gray-400" />
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="bg-white border-b border-gray-200">
-        <nav className="flex px-6 overflow-x-auto whitespace-nowrap">
-          {tabs.map((tabItem) => {
-            const Icon = tabItem.icon;
-            const isActive = activeTab === tabItem.key;
-            
+    <div className="h-full flex flex-col" dir="rtl">
+      <div className="flex-1 flex overflow-hidden">
+        <aside className="w-52 flex-shrink-0 bg-white border-l border-gray-100 flex flex-col py-3 px-2 gap-1 overflow-y-auto">
+          {SUB_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
             return (
               <button
-                key={tabItem.key}
-                onClick={() => handleTabChange(tabItem.key)}
-                className={`
-                  flex items-center px-4 py-3 text-sm font-medium border-b-2 transition-colors duration-200
-                  ${isActive
-                    ? 'border-[#8B5FD6] text-[#8B5FD6] bg-[#f5f3ff]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
-                  }
-                `}
+                key={tab.key}
+                onClick={() => handleTabChange(tab.key)}
+                className={`w-full text-right px-3 py-3 flex items-center gap-3 rounded-xl transition-all duration-200 ${
+                  !isActive ? 'hover:bg-gray-50' : ''
+                }`}
+                style={
+                  isActive
+                    ? { background: `linear-gradient(135deg, ${tab.gradientFrom} 0%, ${tab.gradientTo} 100%)`, boxShadow: '0 4px 14px rgba(0,0,0,0.18)' }
+                    : {}
+                }
               >
-                <Icon className="h-5 w-5 ml-2" />
-                {tabItem.label}
+                <div
+                  className="p-1.5 rounded-lg flex-shrink-0"
+                  style={{ backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : tab.iconBg }}
+                >
+                  <Icon className="h-4 w-4" style={{ color: isActive ? '#fff' : tab.iconColor }} />
+                </div>
+                <div className="min-w-0 text-right">
+                  <p className="text-sm font-semibold leading-tight" style={{ color: isActive ? '#fff' : '#1f2937' }}>
+                    {tab.label}
+                  </p>
+                  <p className="text-xs leading-tight mt-0.5 truncate" style={{ color: isActive ? 'rgba(255,255,255,0.7)' : '#9ca3af' }}>
+                    {tab.desc}
+                  </p>
+                </div>
               </button>
             );
           })}
-        </nav>
-      </div>
-
-      {/* Tab Content */}
-      <div className="flex-1 overflow-auto">
-        {renderTabContent()}
+        </aside>
+        <main className="flex-1 overflow-y-auto bg-gray-50">
+          <div className="p-5">{renderTabContent()}</div>
+        </main>
       </div>
     </div>
   );

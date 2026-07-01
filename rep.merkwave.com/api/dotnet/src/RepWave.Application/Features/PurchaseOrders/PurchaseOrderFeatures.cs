@@ -1,4 +1,5 @@
 using MediatR;
+using RepWave.Application.Common;
 using RepWave.Application.Common.Interfaces;
 using RepWave.Application.Common.Models;
 using RepWave.Domain.Entities;
@@ -16,7 +17,7 @@ public record PurchaseOrderItemRequest(int? VariantId, int? PackagingTypeId, int
 public record CreatePurchaseOrderRequest(int SupplierId, int? WarehouseId, DateTime? OrderDate, string? Notes,
     DateOnly? ExpectedDeliveryDate, string Status = "Ordered", IList<PurchaseOrderItemRequest>? Items = null);
 
-public record GetAllPurchaseOrdersQuery(int Page = 1, int PageSize = 50, string? Status = null)
+public record GetAllPurchaseOrdersQuery(int Page = 1, int PageSize = 50, string? Status = null, int? SupplierId = null)
     : IRequest<ApiResponse<PagedResult<PurchaseOrderDto>>>;
 public class GetAllPurchaseOrdersHandler(IApplicationDbContext db)
     : IRequestHandler<GetAllPurchaseOrdersQuery, ApiResponse<PagedResult<PurchaseOrderDto>>>
@@ -24,7 +25,17 @@ public class GetAllPurchaseOrdersHandler(IApplicationDbContext db)
     public async Task<ApiResponse<PagedResult<PurchaseOrderDto>>> Handle(GetAllPurchaseOrdersQuery q, CancellationToken ct)
     {
         var query = db.PurchaseOrders.AsNoTracking();
-        if (q.Status is not null) query = query.Where(o => o.PurchaseOrdersStatus == q.Status);
+        if (!string.IsNullOrWhiteSpace(q.Status))
+        {
+            var statuses = q.Status
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            query = statuses.Length switch
+            {
+                1 => query.Where(o => o.PurchaseOrdersStatus == statuses[0]),
+                _ => query.Where(o => statuses.Contains(o.PurchaseOrdersStatus)),
+            };
+        }
+        if (q.SupplierId.HasValue) query = query.Where(o => o.PurchaseOrdersSupplierId == q.SupplierId.Value);
         var total = await query.CountAsync(ct);
         var items = await query.OrderByDescending(o => o.PurchaseOrdersCreatedAt).Skip((q.Page - 1) * q.PageSize).Take(q.PageSize)
             .Select(o => new PurchaseOrderDto(o.PurchaseOrdersId, o.PurchaseOrdersSupplierId, o.PurchaseOrdersWarehouseId, o.PurchaseOrdersOrderDate, o.PurchaseOrdersTotalAmount, o.PurchaseOrdersStatus, o.PurchaseOrdersNotes, o.PurchaseOrdersCreatedAt,
@@ -36,17 +47,81 @@ public class GetAllPurchaseOrdersHandler(IApplicationDbContext db)
     }
 }
 
-public record GetPurchaseOrderByIdQuery(int Id) : IRequest<ApiResponse<PurchaseOrderDto>>;
-public class GetPurchaseOrderByIdHandler(IApplicationDbContext db) : IRequestHandler<GetPurchaseOrderByIdQuery, ApiResponse<PurchaseOrderDto>>
+public record GetPurchaseOrderByIdQuery(int Id) : IRequest<ApiResponse<PurchaseOrderDetailDto>>;
+
+public record PurchaseOrderItemDetailDto(
+    int PurchaseOrderItemsId,
+    int? PurchaseOrderItemsVariantId,
+    int? PurchaseOrderItemsPackagingTypeId,
+    int PurchaseOrderItemsQuantityOrdered,
+    int PurchaseOrderItemsQuantityReceived,
+    int PurchaseOrderItemsQuantityReturned,
+    decimal PurchaseOrderItemsUnitCost,
+    decimal PurchaseOrderItemsTotalCost,
+    string? ProductsName,
+    string? VariantName,
+    string? PackagingTypesName,
+    string? BaseUnitsName);
+
+public record PurchaseOrderDetailDto(
+    int PurchaseOrdersId,
+    int? PurchaseOrdersSupplierId,
+    int? PurchaseOrdersWarehouseId,
+    DateTime? PurchaseOrdersOrderDate,
+    decimal PurchaseOrdersTotalAmount,
+    string PurchaseOrdersStatus,
+    string? PurchaseOrdersNotes,
+    DateTime? PurchaseOrdersCreatedAt,
+    string? SupplierName,
+    string? WarehouseName,
+    List<PurchaseOrderItemDetailDto> Items);
+
+public class GetPurchaseOrderByIdHandler(IApplicationDbContext db)
+    : IRequestHandler<GetPurchaseOrderByIdQuery, ApiResponse<PurchaseOrderDetailDto>>
 {
-    public async Task<ApiResponse<PurchaseOrderDto>> Handle(GetPurchaseOrderByIdQuery q, CancellationToken ct)
+    public async Task<ApiResponse<PurchaseOrderDetailDto>> Handle(GetPurchaseOrderByIdQuery q, CancellationToken ct)
     {
         var o = await db.PurchaseOrders.AsNoTracking()
-            .Include(x => x.Supplier).Include(x => x.Warehouse).Include(x => x.Items)
+            .Include(x => x.Supplier)
+            .Include(x => x.Warehouse)
+            .Include(x => x.Items)
+                .ThenInclude(i => i.Variant!)
+                    .ThenInclude(v => v.Product!)
+                        .ThenInclude(p => p.UnitOfMeasure)
+            .Include(x => x.Items)
+                .ThenInclude(i => i.PackagingType)
             .FirstOrDefaultAsync(x => x.PurchaseOrdersId == q.Id, ct);
-        if (o is null) return ApiResponse<PurchaseOrderDto>.Failure("Purchase order not found.");
-        return ApiResponse<PurchaseOrderDto>.Success(new PurchaseOrderDto(o.PurchaseOrdersId, o.PurchaseOrdersSupplierId, o.PurchaseOrdersWarehouseId, o.PurchaseOrdersOrderDate, o.PurchaseOrdersTotalAmount, o.PurchaseOrdersStatus, o.PurchaseOrdersNotes, o.PurchaseOrdersCreatedAt,
-            o.Supplier?.SupplierName, o.Warehouse?.WarehouseName, o.Items.Count));
+        if (o is null) return ApiResponse<PurchaseOrderDetailDto>.Failure("Purchase order not found.");
+
+        var items = o.Items
+            .OrderBy(i => i.PurchaseOrderItemsId)
+            .Select(i => new PurchaseOrderItemDetailDto(
+                i.PurchaseOrderItemsId,
+                i.PurchaseOrderItemsVariantId,
+                i.PurchaseOrderItemsPackagingTypeId,
+                i.PurchaseOrderItemsQuantityOrdered,
+                i.PurchaseOrderItemsQuantityReceived,
+                i.PurchaseOrderItemsQuantityReturned,
+                i.PurchaseOrderItemsUnitCost,
+                i.PurchaseOrderItemsTotalCost,
+                i.Variant?.Product?.ProductsName,
+                i.Variant?.VariantName,
+                i.PackagingType?.PackagingTypesName,
+                i.Variant?.Product?.UnitOfMeasure?.BaseUnitsName))
+            .ToList();
+
+        return ApiResponse<PurchaseOrderDetailDto>.Success(new PurchaseOrderDetailDto(
+            o.PurchaseOrdersId,
+            o.PurchaseOrdersSupplierId,
+            o.PurchaseOrdersWarehouseId,
+            o.PurchaseOrdersOrderDate,
+            o.PurchaseOrdersTotalAmount,
+            o.PurchaseOrdersStatus,
+            o.PurchaseOrdersNotes,
+            o.PurchaseOrdersCreatedAt,
+            o.Supplier?.SupplierName,
+            o.Warehouse?.WarehouseName,
+            items));
     }
 }
 
@@ -61,7 +136,7 @@ public class CreatePurchaseOrderHandler(IApplicationDbContext db)
         {
             PurchaseOrdersSupplierId = r.SupplierId,
             PurchaseOrdersWarehouseId = r.WarehouseId,
-            PurchaseOrdersOrderDate = r.OrderDate ?? DateTime.UtcNow,
+            PurchaseOrdersOrderDate = r.OrderDate.ToUtc() ?? DateTime.UtcNow,
             PurchaseOrdersNotes = r.Notes,
             PurchaseOrdersExpectedDeliveryDate = r.ExpectedDeliveryDate,
             PurchaseOrdersStatus = r.Status,
@@ -134,5 +209,225 @@ public class DeletePurchaseOrderHandler(IApplicationDbContext db) : IRequestHand
         if (o is null) return ApiResponse<object>.Failure("Purchase order not found.");
         db.PurchaseOrders.Remove(o); await db.SaveChangesAsync(ct);
         return ApiResponse<object>.Success(null, "Purchase order deleted.");
+    }
+}
+
+// ── Pending for receive (inventory) ───────────────────────────────────────────
+
+public record PendingPurchaseOrderItemDto(
+    int PurchaseOrderItemsId,
+    int? PurchaseOrderItemsVariantId,
+    int? PurchaseOrderItemsPackagingTypeId,
+    int PurchaseOrderItemsQuantityOrdered,
+    int PurchaseOrderItemsQuantityReceived,
+    int PurchaseOrderItemsQuantityReturned,
+    decimal QuantityPending,
+    string? ProductsName,
+    string? VariantName,
+    string? PackagingTypesName,
+    string? BaseUnitsName);
+
+public record PendingPurchaseOrderDto(
+    int PurchaseOrdersId,
+    int? PurchaseOrdersSupplierId,
+    int? PurchaseOrdersWarehouseId,
+    DateTime? PurchaseOrdersOrderDate,
+    decimal PurchaseOrdersTotalAmount,
+    string PurchaseOrdersStatus,
+    string? PurchaseOrdersNotes,
+    string? SupplierName,
+    string? WarehouseName,
+    List<PendingPurchaseOrderItemDto> Items);
+
+public record GetPendingPurchaseOrdersForReceiveQuery()
+    : IRequest<ApiResponse<List<PendingPurchaseOrderDto>>>;
+
+public class GetPendingPurchaseOrdersForReceiveHandler(IApplicationDbContext db)
+    : IRequestHandler<GetPendingPurchaseOrdersForReceiveQuery, ApiResponse<List<PendingPurchaseOrderDto>>>
+{
+    private static readonly string[] ReceiveStatuses = ["Ordered", "Partially Received", "Shipped"];
+
+    public async Task<ApiResponse<List<PendingPurchaseOrderDto>>> Handle(
+        GetPendingPurchaseOrdersForReceiveQuery request, CancellationToken ct)
+    {
+        var orders = await db.PurchaseOrders.AsNoTracking()
+            .Include(o => o.Supplier)
+            .Include(o => o.Warehouse)
+            .Include(o => o.Items)
+                .ThenInclude(i => i.Variant!)
+                    .ThenInclude(v => v.Product!)
+                        .ThenInclude(p => p.UnitOfMeasure)
+            .Include(o => o.Items)
+                .ThenInclude(i => i.PackagingType)
+            .Where(o => ReceiveStatuses.Contains(o.PurchaseOrdersStatus))
+            .OrderByDescending(o => o.PurchaseOrdersOrderDate)
+            .ToListAsync(ct);
+
+        var result = new List<PendingPurchaseOrderDto>();
+
+        foreach (var order in orders)
+        {
+            var pendingItems = order.Items
+                .Select(i =>
+                {
+                    var pending = i.PurchaseOrderItemsQuantityOrdered
+                        - i.PurchaseOrderItemsQuantityReceived
+                        - i.PurchaseOrderItemsQuantityReturned;
+                    return new { Item = i, Pending = pending };
+                })
+                .Where(x => x.Pending > 0)
+                .Select(x => new PendingPurchaseOrderItemDto(
+                    x.Item.PurchaseOrderItemsId,
+                    x.Item.PurchaseOrderItemsVariantId,
+                    x.Item.PurchaseOrderItemsPackagingTypeId,
+                    x.Item.PurchaseOrderItemsQuantityOrdered,
+                    x.Item.PurchaseOrderItemsQuantityReceived,
+                    x.Item.PurchaseOrderItemsQuantityReturned,
+                    x.Pending,
+                    x.Item.Variant?.Product?.ProductsName,
+                    x.Item.Variant?.VariantName,
+                    x.Item.PackagingType?.PackagingTypesName,
+                    x.Item.Variant?.Product?.UnitOfMeasure?.BaseUnitsName))
+                .ToList();
+
+            if (pendingItems.Count == 0) continue;
+
+            result.Add(new PendingPurchaseOrderDto(
+                order.PurchaseOrdersId,
+                order.PurchaseOrdersSupplierId,
+                order.PurchaseOrdersWarehouseId,
+                order.PurchaseOrdersOrderDate,
+                order.PurchaseOrdersTotalAmount,
+                order.PurchaseOrdersStatus,
+                order.PurchaseOrdersNotes,
+                order.Supplier?.SupplierName,
+                order.Warehouse?.WarehouseName,
+                pendingItems));
+        }
+
+        return ApiResponse<List<PendingPurchaseOrderDto>>.Success(result);
+    }
+}
+
+// ── Returnable quantities (purchase returns) ─────────────────────────────────
+
+public record ReturnableQuantityItemDto(
+    int PurchaseOrderItemsId,
+    int? PurchaseOrderItemsVariantId,
+    int? PurchaseOrderItemsPackagingTypeId,
+    int PurchaseOrderItemsQuantityOrdered,
+    int PurchaseOrderItemsQuantityReceived,
+    int PurchaseOrderItemsQuantityReturned,
+    decimal PurchaseOrderItemsUnitCost,
+    int TotalReturned,
+    int AvailableToReturnNotReceived,
+    int AvailableToReturnReceived,
+    string ReceiveStatus,
+    int? WarehouseId,
+    string? WarehouseName,
+    int InventoryQuantity,
+    string? ProductName,
+    string? ProductVariantName,
+    string? PackagingTypeName,
+    string? BaseUnitName);
+
+public record ReturnableQuantitiesResult(
+    int PurchaseOrderId,
+    List<ReturnableQuantityItemDto> Items);
+
+public record GetReturnableQuantitiesQuery(int PurchaseOrderId)
+    : IRequest<ApiResponse<ReturnableQuantitiesResult>>;
+
+public class GetReturnableQuantitiesHandler(IApplicationDbContext db)
+    : IRequestHandler<GetReturnableQuantitiesQuery, ApiResponse<ReturnableQuantitiesResult>>
+{
+    public async Task<ApiResponse<ReturnableQuantitiesResult>> Handle(
+        GetReturnableQuantitiesQuery q, CancellationToken ct)
+    {
+        var order = await db.PurchaseOrders.AsNoTracking()
+            .Include(o => o.Warehouse)
+            .Include(o => o.Items)
+                .ThenInclude(i => i.Variant!)
+                    .ThenInclude(v => v.Product!)
+                        .ThenInclude(p => p.UnitOfMeasure)
+            .Include(o => o.Items)
+                .ThenInclude(i => i.PackagingType)
+            .FirstOrDefaultAsync(o => o.PurchaseOrdersId == q.PurchaseOrderId, ct);
+
+        if (order is null)
+            return ApiResponse<ReturnableQuantitiesResult>.Failure("Purchase order not found.");
+
+        var warehouseId = order.PurchaseOrdersWarehouseId;
+        var variantIds = order.Items
+            .Where(i => i.PurchaseOrderItemsVariantId.HasValue)
+            .Select(i => i.PurchaseOrderItemsVariantId!.Value)
+            .Distinct()
+            .ToList();
+
+        var inventoryByVariant = new Dictionary<int, int>();
+        if (warehouseId.HasValue && variantIds.Count > 0)
+        {
+            var sums = await db.Inventories.AsNoTracking()
+                .Where(i => i.WarehouseId == warehouseId.Value && variantIds.Contains(i.VariantId))
+                .GroupBy(i => i.VariantId)
+                .Select(g => new { VariantId = g.Key, Qty = g.Sum(x => x.InventoryQuantity) })
+                .ToListAsync(ct);
+            inventoryByVariant = sums.ToDictionary(x => x.VariantId, x => x.Qty);
+        }
+
+        var items = order.Items
+            .OrderBy(i => i.PurchaseOrderItemsId)
+            .Select(i =>
+            {
+                var ordered = i.PurchaseOrderItemsQuantityOrdered;
+                var received = i.PurchaseOrderItemsQuantityReceived;
+                var returned = i.PurchaseOrderItemsQuantityReturned;
+
+                var availableReceived = received > 0 && received > returned
+                    ? received - returned
+                    : 0;
+
+                var availableNotReceived = 0;
+                if (received == 0 || received <= returned)
+                {
+                    var returnedBeyondReceived = Math.Max(0, returned - received);
+                    availableNotReceived = Math.Max(0, (ordered - received) - returnedBeyondReceived);
+                }
+
+                var receiveStatus = received == 0
+                    ? "لم يتم الاستلام"
+                    : received >= ordered
+                        ? "تم الاستلام بالكامل"
+                        : "تم الاستلام جزئياً";
+
+                var variantId = i.PurchaseOrderItemsVariantId;
+                var inventoryQty = variantId.HasValue && inventoryByVariant.TryGetValue(variantId.Value, out var qty)
+                    ? qty
+                    : 0;
+
+                return new ReturnableQuantityItemDto(
+                    i.PurchaseOrderItemsId,
+                    i.PurchaseOrderItemsVariantId,
+                    i.PurchaseOrderItemsPackagingTypeId,
+                    ordered,
+                    received,
+                    returned,
+                    i.PurchaseOrderItemsUnitCost,
+                    returned,
+                    availableNotReceived,
+                    availableReceived,
+                    receiveStatus,
+                    warehouseId,
+                    order.Warehouse?.WarehouseName,
+                    inventoryQty,
+                    i.Variant?.Product?.ProductsName,
+                    i.Variant?.VariantName,
+                    i.PackagingType?.PackagingTypesName,
+                    i.Variant?.Product?.UnitOfMeasure?.BaseUnitsName);
+            })
+            .ToList();
+
+        return ApiResponse<ReturnableQuantitiesResult>.Success(
+            new ReturnableQuantitiesResult(q.PurchaseOrderId, items));
     }
 }

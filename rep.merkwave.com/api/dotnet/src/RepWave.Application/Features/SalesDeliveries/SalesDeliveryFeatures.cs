@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using RepWave.Application.Common;
 using RepWave.Application.Common.Interfaces;
 using RepWave.Application.Common.Models;
 using RepWave.Domain.Entities;
@@ -16,6 +17,10 @@ public record SalesDeliveryDto(
     int? SalesDeliveriesDeliveredBy,
     string? DeliveredByName,
     DateTime? SalesDeliveriesDate,
+    DateTime? SalesDeliveriesDeliveryDate,
+    int? SalesDeliveriesWarehouseId,
+    int? SalesDeliveriesClientId,
+    string? ClientsCompanyName,
     string? SalesDeliveriesNotes,
     List<SalesDeliveryItemDto> Items);
 
@@ -39,6 +44,28 @@ public record CreateSalesDeliveryItemRequest(
 
 public record UpdateDeliveryStatusRequest(string Status);
 
+internal static class SalesDeliveryMapping
+{
+    internal static SalesDeliveryDto Map(SalesDelivery d) => new(
+        d.SalesDeliveriesId,
+        d.SalesDeliveriesSalesOrderId,
+        d.SalesOrder?.SalesOrdersNotes,
+        d.SalesDeliveriesDeliveryStatus,
+        d.SalesDeliveriesDeliveredBy,
+        d.DeliveredByUser?.UsersName,
+        d.SalesDeliveriesDate,
+        d.SalesDeliveriesDate,
+        d.SalesOrder?.SalesOrdersWarehouseId,
+        d.SalesOrder?.SalesOrdersClientId,
+        d.SalesOrder?.Client?.ClientsCompanyName,
+        d.SalesDeliveriesNotes,
+        d.Items.Select(i => new SalesDeliveryItemDto(
+            i.SalesDeliveryItemsId,
+            i.SalesDeliveryItemsSalesDeliveryId,
+            i.SalesDeliveryItemsSalesOrderItemId,
+            i.SalesDeliveryItemsQuantityDelivered)).ToList());
+}
+
 // ── Queries ───────────────────────────────────────────────────────────────────
 
 public record GetAllSalesDeliveriesQuery(int? SalesOrderId = null, string? Status = null)
@@ -50,7 +77,10 @@ public class GetAllSalesDeliveriesQueryHandler(IApplicationDbContext db)
     public async Task<ApiResponse<List<SalesDeliveryDto>>> Handle(GetAllSalesDeliveriesQuery request, CancellationToken ct)
     {
         var query = db.SalesDeliveries.AsNoTracking()
-            .Include(d => d.SalesOrder)
+            .Include(d => d.SalesOrder!)
+                .ThenInclude(o => o.Client)
+            .Include(d => d.SalesOrder!)
+                .ThenInclude(o => o.Warehouse)
             .Include(d => d.DeliveredByUser)
             .Include(d => d.Items)
             .AsQueryable();
@@ -62,16 +92,7 @@ public class GetAllSalesDeliveriesQueryHandler(IApplicationDbContext db)
 
         var list = await query.OrderByDescending(d => d.SalesDeliveriesDate).ToListAsync(ct);
 
-        var result = list.Select(d => new SalesDeliveryDto(
-            d.SalesDeliveriesId, d.SalesDeliveriesSalesOrderId,
-            d.SalesOrder?.SalesOrdersNotes, d.SalesDeliveriesDeliveryStatus,
-            d.SalesDeliveriesDeliveredBy, d.DeliveredByUser?.UsersName,
-            d.SalesDeliveriesDate, d.SalesDeliveriesNotes,
-            d.Items.Select(i => new SalesDeliveryItemDto(
-                i.SalesDeliveryItemsId, i.SalesDeliveryItemsSalesDeliveryId,
-                i.SalesDeliveryItemsSalesOrderItemId,
-                i.SalesDeliveryItemsQuantityDelivered)).ToList()
-        )).ToList();
+        var result = list.Select(SalesDeliveryMapping.Map).ToList();
 
         return ApiResponse<List<SalesDeliveryDto>>.Success(result);
     }
@@ -85,22 +106,17 @@ public class GetSalesDeliveryByIdQueryHandler(IApplicationDbContext db)
     public async Task<ApiResponse<SalesDeliveryDto>> Handle(GetSalesDeliveryByIdQuery request, CancellationToken ct)
     {
         var d = await db.SalesDeliveries.AsNoTracking()
-            .Include(x => x.SalesOrder)
+            .Include(x => x.SalesOrder!)
+                .ThenInclude(o => o.Client)
+            .Include(x => x.SalesOrder!)
+                .ThenInclude(o => o.Warehouse)
             .Include(x => x.DeliveredByUser)
             .Include(x => x.Items)
             .FirstOrDefaultAsync(x => x.SalesDeliveriesId == request.Id, ct);
 
         if (d is null) return ApiResponse<SalesDeliveryDto>.Failure("Delivery not found.");
 
-        return ApiResponse<SalesDeliveryDto>.Success(new SalesDeliveryDto(
-            d.SalesDeliveriesId, d.SalesDeliveriesSalesOrderId,
-            d.SalesOrder?.SalesOrdersNotes, d.SalesDeliveriesDeliveryStatus,
-            d.SalesDeliveriesDeliveredBy, d.DeliveredByUser?.UsersName,
-            d.SalesDeliveriesDate, d.SalesDeliveriesNotes,
-            d.Items.Select(i => new SalesDeliveryItemDto(
-                i.SalesDeliveryItemsId, i.SalesDeliveryItemsSalesDeliveryId,
-                i.SalesDeliveryItemsSalesOrderItemId,
-                i.SalesDeliveryItemsQuantityDelivered)).ToList()));
+        return ApiResponse<SalesDeliveryDto>.Success(SalesDeliveryMapping.Map(d));
     }
 }
 
@@ -118,15 +134,30 @@ public class CreateSalesDeliveryCommandHandler(IApplicationDbContext db)
         // Load sales order with items to get warehouse and variant info
         var salesOrder = await db.SalesOrders
             .Include(o => o.Items)
+            .Include(o => o.Client)
             .FirstOrDefaultAsync(o => o.SalesOrdersId == r.SalesOrderId, ct);
         if (salesOrder is null) return ApiResponse<SalesDeliveryDto>.Failure("Sales order not found.");
+
+        if (r.Items is null || r.Items.Count == 0)
+            return ApiResponse<SalesDeliveryDto>.Failure("يجب تحديد كمية واحدة على الأقل للتسليم.");
+
+        foreach (var item in r.Items)
+        {
+            if (!item.SalesOrderItemId.HasValue || item.QuantityDelivered <= 0)
+                return ApiResponse<SalesDeliveryDto>.Failure("بيانات منتج التسليم غير صالحة.");
+
+            var soItem = salesOrder.Items.FirstOrDefault(i =>
+                i.SalesOrderItemsId == item.SalesOrderItemId.Value);
+            if (soItem is null)
+                return ApiResponse<SalesDeliveryDto>.Failure("أحد منتجات التسليم لا يتبع أمر البيع المحدد.");
+        }
 
         var delivery = new SalesDelivery
         {
             SalesDeliveriesSalesOrderId = r.SalesOrderId,
             SalesDeliveriesDeliveryStatus = r.DeliveryStatus,
             SalesDeliveriesDeliveredBy = r.DeliveredBy,
-            SalesDeliveriesDate = r.DeliveryDate ?? DateTime.UtcNow,
+            SalesDeliveriesDate = r.DeliveryDate.ToUtc() ?? DateTime.UtcNow,
             SalesDeliveriesNotes = r.Notes
         };
         db.SalesDeliveries.Add(delivery);
@@ -195,10 +226,8 @@ public class CreateSalesDeliveryCommandHandler(IApplicationDbContext db)
         salesOrder.SalesOrdersDeliveryStatus = allFullyDelivered ? "Delivered" : "Partially Delivered";
         await db.SaveChangesAsync(ct);
 
-        return ApiResponse<SalesDeliveryDto>.Success(new SalesDeliveryDto(
-            delivery.SalesDeliveriesId, delivery.SalesDeliveriesSalesOrderId, null,
-            delivery.SalesDeliveriesDeliveryStatus, delivery.SalesDeliveriesDeliveredBy, null,
-            delivery.SalesDeliveriesDate, delivery.SalesDeliveriesNotes, []));
+        delivery.SalesOrder = salesOrder;
+        return ApiResponse<SalesDeliveryDto>.Success(SalesDeliveryMapping.Map(delivery));
     }
 }
 

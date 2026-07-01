@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from "react";
+import AppModalShell, { modalPrimaryBtnClass } from "../../../common/AppModalShell.jsx";
 import {
   TagIcon,
   ScaleIcon,
@@ -16,27 +17,6 @@ import {
 import { isOdooIntegrationEnabled } from "../../../../utils/odooIntegration";
 import { getAppInventory, getAppWarehouses } from "../../../../apis/auth";
 
-// Reusable Modal component
-const Modal = ({
-  isOpen,
-  onClose,
-  dir = "rtl",
-  modalWidthClass = "max-w-3xl",
-  children,
-}) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 backdrop-blur-sm bg-black/40 flex justify-center items-center p-2 sm:p-4 z-50">
-      <div
-        className={`bg-white rounded-xl shadow-2xl p-0 ${modalWidthClass} w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col`}
-        dir={dir}
-      >
-        {children}
-      </div>
-    </div>
-  );
-};
-
 // Reusable DetailItem component
 const DetailItem = ({
   icon,
@@ -47,7 +27,7 @@ const DetailItem = ({
 }) => (
   <div className="flex items-start justify-between py-3 px-4 bg-white rounded-lg border border-gray-200">
     <div className="flex items-center gap-3">
-      {React.cloneElement(icon, { className: "h-5 w-5 text-blue-500" })}
+      {React.cloneElement(icon, { className: "h-5 w-5 text-[#8B5FD6]" })}
       <span className="font-medium text-gray-700">{label}:</span>
     </div>
     {children || (
@@ -122,23 +102,23 @@ export default function ProductDetailsModal({
   const warehouseEntries = Object.entries(warehouseGroups);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white rounded-t-xl sticky top-0 z-10">
-        <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-          <Bars3BottomLeftIcon className="h-7 w-7 text-[#8B5FD6]" />
-          تفاصيل المنتج
-        </h3>
-        <button
-          onClick={onClose}
-          className="p-2 rounded-full text-gray-500 hover:bg-red-100 hover:text-red-600 transition-colors"
-        >
-          <XMarkIcon className="h-6 w-6" />
-        </button>
-      </div>
-
-      {/* Body */}
-      <div className="p-6 flex-grow overflow-y-auto bg-gray-50">
+    <AppModalShell
+      open={isOpen}
+      onClose={onClose}
+      title="تفاصيل المنتج"
+      subtitle={product.products_name}
+      icon={CubeIcon}
+      size="3xl"
+      gradient="brand"
+      footer={
+        <div className="flex justify-center">
+          <button type="button" onClick={onClose} className={modalPrimaryBtnClass}>
+            إغلاق
+          </button>
+        </div>
+      }
+    >
+      <div className="space-y-6">
         <div className="bg-white rounded-lg shadow-md p-6 mb-6 flex flex-col md:flex-row items-center md:items-start gap-6">
           <div className="flex-shrink-0">
             {srcUrl ? (
@@ -154,8 +134,8 @@ export default function ProductDetailsModal({
               />
             ) : null}
             {!srcUrl && (
-              <div className="w-32 h-32 md:w-48 md:h-48 rounded-lg bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center shadow-inner border border-gray-200">
-                <span className="text-5xl font-extrabold text-indigo-500 select-none">
+              <div className="w-32 h-32 md:w-48 md:h-48 rounded-lg bg-gradient-to-br from-[#EDE7FF] to-[#C4A8F0]/50 flex items-center justify-center shadow-inner border border-gray-200">
+                <span className="text-5xl font-extrabold text-[#8B5FD6] select-none">
                   {product.products_name?.charAt(0)?.toUpperCase() ?? "?"}
                 </span>
               </div>
@@ -222,7 +202,7 @@ export default function ProductDetailsModal({
               {product.preferred_packaging.map((pkg) => (
                 <span
                   key={pkg.packaging_types_id}
-                  className="bg-teal-100 text-teal-800 text-sm font-medium px-3 py-1 rounded-full"
+                  className="bg-[#EDE7FF] text-[#2D1B69] text-sm font-medium px-3 py-1 rounded-full"
                 >
                   {pkg.packaging_types_name}
                 </span>
@@ -380,17 +360,6 @@ export default function ProductDetailsModal({
           )}
         </div>
       </div>
-
-      <div className="p-4 bg-gray-100 border-t border-gray-200 rounded-b-xl sticky bottom-0">
-        <div className="flex justify-center">
-          <button
-            onClick={onClose}
-            className="w-full sm:w-auto px-4 py-3 sm:px-6 sm:py-2.5 bg-[#8B5FD6] text-white rounded-md hover:bg-[#7A52C2] text-base sm:text-sm"
-          >
-            إغلاق
-          </button>
-        </div>
-      </div>
-    </Modal>
+    </AppModalShell>
   );
 }

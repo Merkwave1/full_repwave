@@ -7,7 +7,6 @@ import {
   PlusIcon,
   ArchiveBoxIcon,
   BanknotesIcon,
-  CreditCardIcon,
   UserCircleIcon,
   CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
@@ -19,16 +18,18 @@ import CustomPageHeader from "../../../../common/CustomPageHeader/CustomPageHead
 import GlobalTable from "../../../../common/GlobalTable/GlobalTable";
 import FilterBar from "../../../../common/FilterBar/FilterBar";
 import { getSafes, deleteSafe } from "../../../../../apis/safes";
-import {
-  PAYMENT_METHOD_ICONS,
-  PAYMENT_METHOD_COLORS,
-} from "../../../../../constants/paymentMethods";
 import AddSafeForm from "./AddSafeForm";
 import UpdateSafeForm from "./UpdateSafeForm";
 // SafeDetailsModal removed from table actions per UX request
 import useCurrency from "../../../../../hooks/useCurrency";
 import { formatLocalDateTime } from "../../../../../utils/dateUtils";
 import { isOdooIntegrationEnabled } from "../../../../../utils/odooIntegration";
+import {
+  safePrimaryBtnClass,
+  safePageIconClass,
+  safePageWrapperClass,
+  safeIdBadgeClass,
+} from "../safeManagementUi";
 
 export default function SafesTab() {
   const { setGlobalMessage, setChildRefreshHandler } = useOutletContext();
@@ -46,7 +47,6 @@ export default function SafesTab() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [repFilter, setRepFilter] = useState("");
-  const [methodFilter, setMethodFilter] = useState("");
 
   const loadSafes = useCallback(async () => {
     setLoading(true);
@@ -145,7 +145,6 @@ export default function SafesTab() {
     setTypeFilter("all");
     setStatusFilter("all");
     setRepFilter("");
-    setMethodFilter("");
   }, []);
 
   const typeOptions = useMemo(
@@ -174,7 +173,6 @@ export default function SafesTab() {
             safe.safes_name,
             safe.safes_description,
             safe.rep_name,
-            safe.payment_method_name,
           ]
             .filter(Boolean)
             .some((field) =>
@@ -194,19 +192,15 @@ export default function SafesTab() {
       const matchesRep = repFilter
         ? String(safe.rep_user_id ?? safe.safes_rep_user_id ?? "") === repFilter
         : true;
-      const matchesMethod = methodFilter
-        ? String(safe.payment_method_id ?? "") === methodFilter
-        : true;
 
       return (
         matchesSearch &&
         matchesType &&
         matchesStatus &&
-        matchesRep &&
-        matchesMethod
+        matchesRep
       );
     });
-  }, [safes, searchTerm, typeFilter, statusFilter, repFilter, methodFilter]);
+  }, [safes, searchTerm, typeFilter, statusFilter, repFilter]);
 
   const activeFilterChips = useMemo(() => {
     const chips = [];
@@ -256,26 +250,12 @@ export default function SafesTab() {
         onRemove: () => setRepFilter(""),
       });
     }
-    if (methodFilter) {
-      const methodLabel =
-        safes.find(
-          (safe) => String(safe.payment_method_id ?? "") === methodFilter,
-        )?.payment_method_name || "غير محدد";
-      chips.push({
-        key: "method",
-        label: "طريقة الدفع",
-        value: methodLabel,
-        tone: "teal",
-        onRemove: () => setMethodFilter(""),
-      });
-    }
     return chips;
   }, [
     searchTerm,
     typeFilter,
     statusFilter,
     repFilter,
-    methodFilter,
     clearSearch,
     typeOptions,
     statusOptions,
@@ -300,27 +280,6 @@ export default function SafesTab() {
     ];
   }, [safes]);
 
-  const methodOptions = useMemo(() => {
-    const uniqueMethods = new Map();
-    safes.forEach((safe) => {
-      const methodId = String(safe.payment_method_id ?? "");
-      if (!methodId) return;
-      if (!uniqueMethods.has(methodId)) {
-        uniqueMethods.set(
-          methodId,
-          safe.payment_method_name || `طريقة ${methodId}`,
-        );
-      }
-    });
-    return [
-      { value: "", label: "كل طرق الدفع" },
-      ...Array.from(uniqueMethods.entries()).map(([value, label]) => ({
-        value,
-        label,
-      })),
-    ];
-  }, [safes]);
-
   const columns = useMemo(
     () => [
       {
@@ -329,9 +288,7 @@ export default function SafesTab() {
         sortable: true,
         className: "min-w-[80px]",
         render: (safe) => (
-          <span className="text-sm font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded">
-            #{safe.safes_id}
-          </span>
+          <span className={safeIdBadgeClass}>#{safe.safes_id}</span>
         ),
       },
       ...(odooEnabled
@@ -372,7 +329,7 @@ export default function SafesTab() {
           }
           if (isStoreKeeper) {
             return (
-              <span className={`${baseClass} bg-indigo-100 text-[#7A52C2]`}>
+              <span className={`${baseClass} bg-[#EDE7FF] text-[#7A52C2]`}>
                 <ArchiveBoxIcon className="h-4 w-4" />
                 خزنة أمين المخزن
               </span>
@@ -394,7 +351,7 @@ export default function SafesTab() {
         className: "min-w-[160px]",
         render: (safe) => (
           <div className="flex items-center gap-2 font-semibold text-gray-900">
-            <ArchiveBoxIcon className="h-4 w-4 text-blue-500" />
+            <ArchiveBoxIcon className="h-4 w-4 text-[#8B5FD6]" />
             <span>{safe.safes_name}</span>
           </div>
         ),
@@ -434,30 +391,12 @@ export default function SafesTab() {
         sortable: true,
         render: (safe) => (
           <div className="flex items-center gap-2 text-sm text-gray-700">
-            <UserCircleIcon className="h-5 w-5 text-indigo-500" />
+            <UserCircleIcon className="h-5 w-5 text-[#8B5FD6]" />
             <span>
               {safe.rep_name ||
                 (safe.safes_type === "company"
                   ? "الشركة الرئيسية"
                   : "غير محدد")}
-            </span>
-          </div>
-        ),
-      },
-      {
-        key: "payment_method_name",
-        title: "طريقة الدفع",
-        className: "min-w-[180px]",
-        sortable: true,
-        render: (safe) => (
-          <div className="flex items-center gap-2">
-            <span className="text-lg">
-              {PAYMENT_METHOD_ICONS[safe.payment_method_type] || "💳"}
-            </span>
-            <span
-              className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${PAYMENT_METHOD_COLORS[safe.payment_method_type] || "text-gray-600 bg-gray-100"}`}
-            >
-              {safe.payment_method_name || "غير محدد"}
             </span>
           </div>
         ),
@@ -533,9 +472,10 @@ export default function SafesTab() {
     const listNode = (
       <>
         <CustomPageHeader
-          title="إدارة الخزائن"
+          title="الخزائن"
           subtitle="عرض حالة الخزائن والأرصدة الحالية"
-          icon={<ArchiveBoxIcon className="h-8 w-8 text-[#1A0F35]" />}
+          icon={<ArchiveBoxIcon className={safePageIconClass} />}
+          color="purple"
           statValue={formatMoney(calculateTotalBalance(), {
             withSymbol: false,
             fractionDigits: 0,
@@ -546,7 +486,7 @@ export default function SafesTab() {
           actionButton={
             <button
               onClick={handleAddSafe}
-              className="bg-[#1A0F35] text-[#C4A8F0] hover:bg-[#374151] px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg font-bold text-lg"
+              className={safePrimaryBtnClass}
             >
               <PlusIcon className="h-5 w-5" />
               إضافة خزنة
@@ -588,13 +528,6 @@ export default function SafesTab() {
               value: repFilter,
               onChange: setRepFilter,
               options: repOptions,
-            },
-            {
-              key: "method",
-              label: "طريقة الدفع",
-              value: methodFilter,
-              onChange: setMethodFilter,
-              options: methodOptions,
             },
           ]}
           activeChips={activeFilterChips}
@@ -647,7 +580,7 @@ export default function SafesTab() {
   };
 
   return (
-    <div className="p-6" dir="rtl">
+    <div className={safePageWrapperClass} dir="rtl">
       {renderContent()}
     </div>
   );

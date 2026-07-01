@@ -68,7 +68,7 @@ const TopClientsTab = ({ data }) => {
     if (index === 0) return { icon: TrophyIcon, color: 'text-yellow-500', bg: 'bg-yellow-50' };
     if (index === 1) return { icon: StarIcon, color: 'text-gray-400', bg: 'bg-gray-50' };
     if (index === 2) return { icon: StarIcon, color: 'text-orange-400', bg: 'bg-orange-50' };
-    return { icon: StarIcon, color: 'text-blue-400', bg: 'bg-[#f5f3ff]' };
+    return { icon: StarIcon, color: 'text-[#8B5FD6]', bg: 'bg-[#f5f3ff]' };
   };
 
   const getTotalStats = () => {
@@ -309,7 +309,7 @@ const TopClientsTab = ({ data }) => {
                     
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <DocumentTextIcon className="h-4 w-4 text-blue-500 ml-2" />
+                        <DocumentTextIcon className="h-4 w-4 text-[#8B5FD6] ml-2" />
                         <span className="text-sm text-gray-900">
                           {formatNumber(client.total_orders || 0)}
                         </span>

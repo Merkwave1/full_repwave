@@ -107,7 +107,7 @@ export default function NumberInput({ value, onChange, className = '', dir = 'rt
       onWheelCapture={handleWheel}
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}
-      className={`w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#8B5FD6] focus:border-[#8B5FD6] ${className}`}
+      className={`w-full px-3 py-2.5 text-sm border border-[#EDE7FF] rounded-xl bg-white text-[#2D1B69] placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-[#8B5FD6]/25 focus:border-[#8B5FD6] hover:border-[#C4A8F0] transition-colors disabled:bg-[#F3F0FF] disabled:text-gray-400 ${className}`}
       dir={dir}
       placeholder={placeholder}
       name={name}

@@ -4,19 +4,23 @@ import {
   PlusCircleIcon,
   MinusCircleIcon,
   ExclamationTriangleIcon,
-  XMarkIcon,
+  ShoppingBagIcon,
 } from "@heroicons/react/24/outline";
 import { getAppSettingsCategorized } from "../../../../apis/auth.js";
 import NumberInput from "../../../common/NumberInput/NumberInput.jsx";
+import AppModalShell, {
+  modalPrimaryBtnClass,
+  modalSecondaryBtnClass,
+  modalSectionClass,
+  modalSectionHeaderClass,
+  modalInputClass,
+} from "../../../common/AppModalShell.jsx";
 
-// A reusable component for form sections to keep the design consistent.
 function FormSection({ title, children }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mb-8">
-      <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
-      </div>
-      <div className="p-6">{children}</div>
+    <div className={modalSectionClass}>
+      <div className={modalSectionHeaderClass}>{title}</div>
+      <div className="p-4 sm:p-6">{children}</div>
     </div>
   );
 }
@@ -117,34 +121,33 @@ function AddProductForm({
 
   if (!categories || categories.length === 0) {
     return (
-      <div
-        className="bg-white p-4 md:p-8 rounded-lg shadow-md max-w-xl mx-auto text-center"
-        dir="rtl"
+      <AppModalShell
+        portal
+        open
+        onClose={onCancel}
+        title="لا توجد أقسام"
+        subtitle="أضف قسم منتجات أولاً"
+        icon={ExclamationTriangleIcon}
+        size="md"
+        footer={
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={onCancel} className={modalSecondaryBtnClass}>
+              إغلاق
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard/product-management/categories")}
+              className={modalPrimaryBtnClass}
+            >
+              الذهاب للأقسام
+            </button>
+          </div>
+        }
       >
-        <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-yellow-500" />
-        <h3 className="mt-4 text-2xl font-bold text-gray-800">
-          لا توجد أقسام للمنتجات
-        </h3>
-        <p className="mt-2 text-gray-600">
-          يجب عليك أولاً إضافة الأقسام قبل إضافة منتج جديد.
+        <p className="text-sm text-gray-600 text-center py-2">
+          يجب إضافة أقسام المنتجات قبل إنشاء منتج جديد.
         </p>
-        <div className="mt-1 md:mt-6 flex justify-center gap-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-          >
-            رجوع
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/dashboard/product-management/categories")}
-            className="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#8B5FD6] hover:bg-[#7A52C2]"
-          >
-            الذهاب لصفحة الأقسام
-          </button>
-        </div>
-      </div>
+      </AppModalShell>
     );
   }
 
@@ -377,27 +380,27 @@ function AddProductForm({
   };
 
   return (
-    <div
-      className="bg-gray-50 p-4 sm:p-6 rounded-lg max-w-4xl mx-auto"
-      dir="rtl"
+    <AppModalShell
+      portal
+      open
+      onClose={onCancel}
+      title="إضافة منتج جديد"
+      subtitle="املأ التفاصيل الأساسية والخيارات والتعبئة المفضلة"
+      icon={ShoppingBagIcon}
+      size="3xl"
+      bodyClassName="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 bg-[#FAFAFE] max-h-[78vh]"
+      footer={
+        <div className="flex justify-end gap-3">
+          <button type="button" onClick={onCancel} className={modalSecondaryBtnClass}>
+            إلغاء
+          </button>
+          <button type="submit" form="add-product-form" className={modalPrimaryBtnClass}>
+            إضافة المنتج
+          </button>
+        </div>
+      }
     >
-      <div className="relative text-center mt-4 md:mt-4 sm:mb-4 md:mb-8">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="absolute left-0 top-0 p-1 rounded-full text-gray-400 hover:bg-red-100 hover:text-red-600 transition-colors"
-          aria-label="إغلاق"
-        >
-          <XMarkIcon className="h-6 w-6" />
-        </button>
-        <h2 className="text-3xl font-extrabold text-gray-900">
-          إضافة منتج جديد
-        </h2>
-        <p className="mt-2 text-sm text-gray-600">
-          املأ الحقول أدناه لإضافة منتجك.
-        </p>
-      </div>
-      <form onSubmit={handleSubmit}>
+      <form id="add-product-form" onSubmit={handleSubmit} className="space-y-5">
         {renderFormErrorAlert()}
         <FormSection title="تفاصيل المنتج الأساسية">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1239,25 +1242,8 @@ function AddProductForm({
             </div>
           )}
         </FormSection>
-
-        {/* Action Buttons */}
-        <div className="flex justify-end space-x-4 space-x-reverse mt-8 pt-5 border-t border-gray-200">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-          >
-            إلغاء
-          </button>
-          <button
-            type="submit"
-            className="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#8B5FD6] hover:bg-[#7A52C2]"
-          >
-            إضافة المنتج
-          </button>
-        </div>
       </form>
-    </div>
+    </AppModalShell>
   );
 }
 

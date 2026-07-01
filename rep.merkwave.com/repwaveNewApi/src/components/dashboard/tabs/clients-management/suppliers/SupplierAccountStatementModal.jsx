@@ -1,5 +1,7 @@
 ﻿import React, { useEffect, useState, useMemo } from 'react';
-import { getAllPurchaseOrders } from '../../../../../apis/purchase_orders.js';
+import { ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
+import AppModalShell, { modalSecondaryBtnClass } from '../../../../common/AppModalShell.jsx';
+import { getPurchaseOrdersBySupplier } from '../../../../../apis/purchase_orders.js';
 import { getPurchaseReturns } from '../../../../../apis/purchase_returns.js';
 import { getSupplierPayments } from '../../../../../apis/supplier_payments.js';
 import useCurrency from '../../../../../hooks/useCurrency.js';
@@ -61,21 +63,15 @@ export default function SupplierAccountStatementModal({ supplier, open, onClose 
     const load = async () => {
       setLoading(true); setError('');
       try {
+        const supplierId = supplier.supplier_id;
         const [ordersAll, returnsAll, paymentsAll] = await Promise.all([
-          getAllPurchaseOrders().catch(()=>[]),
-          getPurchaseReturns().catch(()=>[]),
-          getSupplierPayments({ supplier_id: supplier.supplier_id }).catch(()=>[])
+          getPurchaseOrdersBySupplier(supplierId, { pageSize: 1000 }).catch(() => []),
+          getPurchaseReturns({ supplierId }).catch(() => []),
+          getSupplierPayments({ supplierId, pageSize: 1000 }).catch(() => []),
         ]);
-        const orders = Array.isArray(ordersAll) ? ordersAll.filter(o => (o.purchase_orders_supplier_id || o.supplier_id) == supplier.supplier_id) : [];
-        const returns = Array.isArray(returnsAll) ? returnsAll.filter(r => (r.purchase_returns_supplier_id || r.supplier_id) == supplier.supplier_id) : [];
-        // المدفوعات قد تعود ككائن فيه supplier_payments
-        let paymentsRaw = [];
-        if (Array.isArray(paymentsAll)) {
-          paymentsRaw = paymentsAll;
-        } else if (paymentsAll && Array.isArray(paymentsAll.supplier_payments)) {
-          paymentsRaw = paymentsAll.supplier_payments;
-        }
-        const payments = paymentsRaw.filter(p => (p.supplier_payments_supplier_id || p.supplier_id) == supplier.supplier_id);
+        const orders = Array.isArray(ordersAll) ? ordersAll : [];
+        const returns = Array.isArray(returnsAll) ? returnsAll : [];
+        const payments = Array.isArray(paymentsAll) ? paymentsAll : [];
         if (!cancelled) setData({ orders, returns, payments });
       } catch (e) {
         if (!cancelled) { setError(e.message || 'فشل تحميل كشف حساب المورد'); setData({ orders: [], returns: [], payments: [] }); }
@@ -118,11 +114,11 @@ export default function SupplierAccountStatementModal({ supplier, open, onClose 
     });
     // مدفوعات المورد: مدين (تسديد ما علينا)
     data.payments.forEach(p => {
-      const val = -(parseFloat(p.supplier_payments_amount || p.amount || 0) || 0);
+      const val = -(parseFloat(p.supplier_payments_amount ?? p.amount ?? 0) || 0);
       list.push({
         _type: 'payment',
-        id: p.supplier_payments_id || p.id,
-        date: p.supplier_payments_date || p.date || p.created_at,
+        id: p.supplier_payments_id ?? p.supplier_payment_id ?? p.id,
+        date: p.supplier_payments_date ?? p.payment_date ?? p.date ?? p.created_at,
         status: p.supplier_payments_status || p.status || 'دفعة',
         amount: val,
         _amountForCalc: val,
@@ -402,31 +398,46 @@ export default function SupplierAccountStatementModal({ supplier, open, onClose 
   const balanceClass = b => b > 0 ? 'text-red-600 font-bold' : b < 0 ? 'text-green-600 font-bold' : 'text-gray-600';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" dir="rtl">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col" id="supplier-account-statement">
+    <AppModalShell
+      open={open}
+      onClose={onClose}
+      title="كشف حساب المورد"
+      subtitle={`${supplier.supplier_name} · ${printableDate}`}
+      icon={ClipboardDocumentListIcon}
+      size="2xl"
+      gradient="amber"
+      portal
+      printClassName="supplier-account-statement"
+      headerActions={
+        <button
+          type="button"
+          onClick={handlePrint}
+          className="no-print px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-white/20 hover:bg-white/30 text-white"
+        >
+          طباعة
+        </button>
+      }
+      footer={
+        <div className="flex justify-end">
+          <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+            إغلاق
+          </button>
+        </div>
+      }
+    >
         <style>{`
           @media print {
             body * { visibility: hidden; }
-            #supplier-account-statement, #supplier-account-statement * { visibility: visible; }
-            #supplier-account-statement { position: absolute; inset:0; height:auto; overflow:visible; }
-            #supplier-account-statement thead { display: table-header-group; }
-            #supplier-account-statement tfoot { display: table-footer-group; }
-            #supplier-account-statement tr, #supplier-account-statement td, #supplier-account-statement th { page-break-inside: avoid; }
+            .supplier-account-statement, .supplier-account-statement * { visibility: visible; }
+            .supplier-account-statement { position: absolute; inset:0; height:auto; overflow:visible; }
+            .supplier-account-statement thead { display: table-header-group; }
+            .supplier-account-statement tfoot { display: table-footer-group; }
+            .supplier-account-statement tr, .supplier-account-statement td, .supplier-account-statement th { page-break-inside: avoid; }
             .no-print { display:none!important; }
             .print-scroll-reset { overflow: visible!important; max-height: none!important; }
           }
         `}</style>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-[#C4A8F0] rounded-t-xl">
-          <div>
-            <h3 className="text-lg font-bold text-gray-800">كشف حساب المورد: <span className="text-[#1A0F35]">{supplier.supplier_name}</span></h3>
-            <p className="text-xs text-gray-500 mt-1">تاريخ الطباعة: {printableDate}</p>
-          </div>
-          <div className="flex gap-2 no-print">
-            <button onClick={handlePrint} className="px-3 py-1.5 text-xs font-semibold rounded-md bg-[#1A0F35] hover:bg-[#374151] text-white">طباعة</button>
-            <button onClick={onClose} className="px-3 py-1.5 text-xs font-semibold rounded-md bg-[#C4A8F0] hover:bg-[#7CC0E0] text-gray-700">إغلاق ✕</button>
-          </div>
-        </div>
-  <div className="p-6 overflow-y-auto text-sm space-y-6 print-scroll-reset">
+  <div className="text-sm space-y-6 print-scroll-reset">
           {loading && <div className="text-center py-10 text-orange-600 font-semibold">جاري التحميل...</div>}
           {error && <div className="text-center py-4 text-red-600 font-semibold">{error}</div>}
           {!loading && !error && (
@@ -519,16 +530,12 @@ export default function SupplierAccountStatementModal({ supplier, open, onClose 
             </>
           )}
         </div>
-        <div className="px-6 py-3 border-t border-gray-200 flex justify-end bg-gray-50 rounded-b-xl no-print">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-semibold rounded-md bg-[#C4A8F0] hover:bg-[#7CC0E0] text-gray-700">إغلاق</button>
-        </div>
-      </div>
-    </div>
+    </AppModalShell>
   );
 }
 
 function SummaryCard({ title, amount, count, color, onShow, active, formatCurrency }) {
-  const colorMap = { orange:'bg-orange-50 text-orange-700', red:'bg-red-50 text-red-700', green:'bg-green-50 text-green-700', indigo:'bg-indigo-50 text-[#7A52C2]' };
+  const colorMap = { orange:'bg-orange-50 text-orange-700', red:'bg-red-50 text-red-700', green:'bg-green-50 text-green-700', indigo:'bg-[#f5f3ff] text-[#7A52C2]' };
   return (
     <div className={`p-3 rounded-lg border ${active? 'border-orange-400 ring-2 ring-orange-300':'border-gray-200'} flex flex-col gap-1 ${colorMap[color]||'bg-gray-50 text-gray-700'}`}> 
       <div className="flex items-center justify-between">

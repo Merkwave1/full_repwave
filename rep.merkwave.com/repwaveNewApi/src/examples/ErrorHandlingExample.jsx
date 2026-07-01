@@ -128,7 +128,7 @@ function ErrorHandlingExample() {
       </h1>
 
       <div className="bg-[#f5f3ff] border-r-4 border-[#8B5FD6] p-4 mb-6">
-        <p className="text-blue-900">
+        <p className="text-[#1A0F35]">
           هذه الصفحة توضح كيفية استخدام نظام معالجة الأخطاء الجديد.
           جرب الأزرار أدناه لرؤية رسائل الأخطاء المترجمة.
         </p>
@@ -204,7 +204,7 @@ function ErrorHandlingExample() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
             onClick={showInformation}
-            className="bg-[#f5f3ff]0 hover:bg-[#8B5FD6] text-white px-4 py-2 rounded-lg transition-colors"
+            className="bg-[#8B5FD6] hover:bg-[#8B5FD6] text-white px-4 py-2 rounded-lg transition-colors"
           >
             رسالة معلومات
           </button>

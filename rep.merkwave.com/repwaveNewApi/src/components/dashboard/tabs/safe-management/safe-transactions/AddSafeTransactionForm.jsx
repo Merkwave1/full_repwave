@@ -83,6 +83,10 @@ const AddSafeTransactionForm = ({ safeId, safes, onClose, onSubmit }) => {
       newErrors.amount = "يجب أن يكون المبلغ رقم موجب";
     }
 
+    if (!formData.payment_method_id) {
+      newErrors.payment_method_id = "طريقة الدفع مطلوبة";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -100,7 +104,12 @@ const AddSafeTransactionForm = ({ safeId, safes, onClose, onSubmit }) => {
 
       const transactionData = {
         safe_id: safeId || formData.safe_id,
-        type: formData.type,
+        type:
+          formData.type === "deposit"
+            ? "credit"
+            : formData.type === "withdrawal"
+              ? "debit"
+              : formData.type,
         amount: parseFloat(formData.amount),
         description: formData.description,
         reference: formData.reference,
@@ -140,7 +149,7 @@ const AddSafeTransactionForm = ({ safeId, safes, onClose, onSubmit }) => {
         <div
           className={`px-5 py-4 flex items-center justify-between ${
             isDeposit
-              ? "bg-gradient-to-l from-[#8B5FD6] to-[#F97366]"
+              ? "bg-[#8B5FD6]"
               : "bg-gradient-to-l from-red-600 to-rose-500"
           }`}
         >
@@ -398,7 +407,7 @@ const AddSafeTransactionForm = ({ safeId, safes, onClose, onSubmit }) => {
               type="submit"
               className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                 isDeposit
-                  ? "bg-gradient-to-l from-[#8B5FD6] to-[#F97366] hover:from-[#7A52C2] hover:to-[#E8624F]"
+                  ? "bg-[#8B5FD6] hover:bg-[#7A52C2]"
                   : "bg-gradient-to-l from-red-600 to-rose-500 hover:from-red-700 hover:to-rose-600"
               }`}
               disabled={isSubmitting}

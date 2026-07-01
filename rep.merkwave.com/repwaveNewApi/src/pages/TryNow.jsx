@@ -17,6 +17,7 @@ export default function TryNow() {
     trial_email: "",
     trial_phone: "",
     trial_company: "",
+    trial_country: "",
   });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -38,6 +39,7 @@ export default function TryNow() {
       contact_email: formData.trial_email.trim(),
       contact_phone: formData.trial_phone.trim() || null,
       company_name: formData.trial_company.trim() || formData.trial_name.trim(),
+      country: formData.trial_country.trim() || "Other",
     });
 
     try {
@@ -163,10 +165,13 @@ export default function TryNow() {
             <button
               onClick={() =>
                 navigate("/login", {
-                  state: { prefillCompany: result.tenantId },
+                  state: {
+                    prefillCompany: result.tenant_id,
+                    prefillEmail: result.email,
+                  },
                 })
               }
-              className="mt-4 block w-full text-center bg-[#8B5FD6] text-white py-3 rounded-xl font-semibold hover:bg-[#7A52C2] transition shadow-lg shadow-blue-200"
+              className="mt-4 block w-full text-center bg-[#8B5FD6] text-white py-3 rounded-xl font-semibold hover:bg-[#7A52C2] transition shadow-lg shadow-[#C4A8F0]/40"
             >
               Go to Login →
             </button>
@@ -183,7 +188,7 @@ export default function TryNow() {
         {/* Header */}
         <div className="p-6 text-center" style={{ background: "linear-gradient(135deg, #8B5FD6 0%, #F97366 100%)" }}>
           <h1 className="text-2xl font-bold text-white">Try RepWave Free</h1>
-          <p className="text-blue-200 text-sm mt-2">
+          <p className="text-[#C4A8F0] text-sm mt-2">
             7-day demo · No credit card · Instant access
           </p>
         </div>
@@ -241,20 +246,37 @@ export default function TryNow() {
 
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-              Company Name{" "}
-              <span className="text-gray-400 normal-case font-normal">
-                (optional)
-              </span>
+              Company Name <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
               name="trial_company"
+              required
               maxLength={200}
               placeholder="Your company"
               value={formData.trial_company}
               onChange={handleChange}
               className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] focus:border-transparent"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              Country <span className="text-red-400">*</span>
+            </label>
+            <select
+              name="trial_country"
+              required
+              value={formData.trial_country}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B5FD6] focus:border-transparent"
+            >
+              <option value="">Select country</option>
+              <option value="Egypt">Egypt</option>
+              <option value="Saudi Arabia">Saudi Arabia</option>
+              <option value="United Arab Emirates">United Arab Emirates</option>
+              <option value="Other">Other</option>
+            </select>
           </div>
 
           {error && (
@@ -266,7 +288,7 @@ export default function TryNow() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#8B5FD6] text-white py-3 rounded-xl font-semibold hover:bg-[#7A52C2] disabled:opacity-50 disabled:cursor-not-allowed transition shadow-lg shadow-blue-200"
+            className="w-full bg-[#8B5FD6] text-white py-3 rounded-xl font-semibold hover:bg-[#7A52C2] disabled:opacity-50 disabled:cursor-not-allowed transition shadow-lg shadow-[#C4A8F0]/40"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">

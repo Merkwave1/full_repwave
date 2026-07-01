@@ -92,7 +92,7 @@ export default function SupplierListView({
     <>
       {!loading && !error && filtered.length === 0 && (
         <div className="bg-white rounded-xl shadow border border-gray-200 p-12 text-center animate-fadeIn">
-          <div className="text-4xl mb-4 text-blue-300">📂</div>
+          <div className="text-4xl mb-4 text-[#C4A8F0]">📂</div>
           <p className="text-gray-700 text-lg font-semibold">
             لا توجد موردين للعرض
           </p>

@@ -1,7 +1,12 @@
-// src/components/dashboard/tabs/inventory-management/Inventory/RepackModal.jsx
+﻿// src/components/dashboard/tabs/inventory-management/Inventory/RepackModal.jsx
 import React, { useState, useMemo, useEffect } from "react";
-import { PlusIcon, MinusIcon } from "@heroicons/react/24/outline";
-import Modal from "../../../../common/Modal/Modal";
+import { PlusIcon, MinusIcon, ArrowsRightLeftIcon } from "@heroicons/react/24/outline";
+import AppModalShell, {
+  modalPrimaryBtnClass,
+  modalSecondaryBtnClass,
+  modalSectionClass,
+  modalInputClass,
+} from "../../../../common/AppModalShell.jsx";
 import Alert from "../../../../common/Alert/Alert";
 
 // Helper function to calculate GCD (Greatest Common Divisor)
@@ -25,14 +30,6 @@ export default function RepackModal({
   baseUnits,
   allowedTargetPackagingTypeIds,
 }) {
-  // theme colors from your page
-  const THEME_DARK = "#1F2937";
-  const THEME_ACCENT = "#8DD8F5";
-  // rgb values (used for rgba backgrounds)
-  const THEME_ACCENT_RGB = "141,216,245";
-  const THEME_DARK_RGB = "31,41,55";
-
-  // Initialize quantityToConvert to 0, as the step will handle initial increment
   const [quantityToConvert, setQuantityToConvert] = useState(0);
   const [toPackagingTypeId, setToPackagingTypeId] = useState("");
   const [error, setError] = useState(null);
@@ -234,27 +231,28 @@ export default function RepackModal({
   if (!isOpen) return null;
 
   return (
-    <Modal
-      isOpen={isOpen}
+    <AppModalShell
+      open={isOpen}
       onClose={onClose}
       title={`تحويل تعبئة/تفكيك — ${inventoryItem?.variant_display_name}`}
+      icon={ArrowsRightLeftIcon}
+      size="lg"
+      footer={
+        <div className="flex flex-col sm:flex-row justify-between gap-3">
+          <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+            إلغاء
+          </button>
+          <button type="button" onClick={handleConfirm} className={modalPrimaryBtnClass}>
+            تنفيذ التحويل
+          </button>
+        </div>
+      }
     >
-      <div
-        className="p-3 sm:p-6 space-y-4 sm:space-y-6"
-        dir="rtl"
-        style={{ color: THEME_DARK }}
-      >
+      <div className="space-y-4 sm:space-y-6 text-[#2D1B69]" dir="rtl">
         {error && <Alert type="error" message={error} className="mb-2" />}
 
-        {/* ===== PRODUCT CARD ===== */}
-        <div
-          className="relative overflow-hidden rounded-2xl p-3 sm:p-5 shadow-lg"
-          style={{
-            background: `linear-gradient(135deg, rgba(${THEME_ACCENT_RGB},0.18), rgba(255,255,255,1))`,
-            border: `1px solid rgba(${THEME_ACCENT_RGB},0.45)`,
-          }}
-        >
-          <div className="absolute top-[-20px] right-[-20px] w-36 h-36 bg-blue-200 opacity-20 rounded-full filter blur-2xl" />
+        <div className={`${modalSectionClass} relative overflow-hidden p-3 sm:p-5 bg-gradient-to-br from-[#EDE7FF]/40 to-white`}>
+          <div className="absolute top-[-20px] right-[-20px] w-36 h-36 bg-[#C4A8F0]/30 opacity-20 rounded-full filter blur-2xl" />
 
           <p className="text-xs uppercase tracking-wide opacity-70 mb-1">
             العنصر الحالي
@@ -273,15 +271,13 @@ export default function RepackModal({
           </div>
         </div>
 
-        {/* ===== TARGET PACKAGING ===== */}
-        <div className="bg-white rounded-2xl shadow-md p-3 sm:p-5 border">
-          <p className="text-xs font-semibold opacity-70 mb-2">التحويل إلى</p>
+        <div className={`${modalSectionClass} p-3 sm:p-5`}>
+          <p className="text-xs font-semibold text-[#8B5FD6] mb-2">التحويل إلى</p>
 
           <select
             value={toPackagingTypeId}
             onChange={(e) => setToPackagingTypeId(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-blue-300 transition text-sm"
-            style={{ borderColor: THEME_ACCENT }}
+            className={modalInputClass}
           >
             <option value="">اختر نوع تعبئة</option>
             {compatiblePackagingTypes.map((pt) => (
@@ -303,8 +299,7 @@ export default function RepackModal({
           )}
         </div>
 
-        {/* ===== QUANTITY CONTROL ===== */}
-        <div className="bg-white rounded-2xl shadow-md p-4 sm:p-6 border space-y-4">
+        <div className={`${modalSectionClass} p-4 sm:p-6 space-y-4`}>
           <p className="text-xs font-semibold opacity-70 text-center">
             الكمية المراد تحويلها
           </p>
@@ -333,7 +328,7 @@ export default function RepackModal({
                 const val = Math.max(0, Math.min(snapped, max));
                 setQuantityToConvert(val);
               }}
-              className="px-6 sm:px-10 py-3 sm:py-4 rounded-2xl text-2xl sm:text-3xl font-extrabold shadow-inner min-w-[80px] text-center focus:outline-none focus:ring-2 focus:ring-blue-300"
+              className="px-6 sm:px-10 py-3 sm:py-4 rounded-2xl text-2xl sm:text-3xl font-extrabold shadow-inner min-w-[80px] text-center focus:outline-none focus:ring-2 focus:ring-[#8B5FD6]/30"
               style={{
                 background: "#f8fafc",
                 border: "1px solid rgba(0,0,0,0.05)",
@@ -351,13 +346,7 @@ export default function RepackModal({
           </div>
 
           {selectedToPackagingType && quantityToConvert > 0 && (
-            <div
-              className="text-center rounded-xl p-3 text-sm font-semibold"
-              style={{
-                background: `rgba(${THEME_ACCENT_RGB},0.12)`,
-                border: `1px solid rgba(${THEME_ACCENT_RGB},0.35)`,
-              }}
-            >
+            <div className="text-center rounded-xl p-3 text-sm font-semibold bg-[#EDE7FF]/50 border border-[#EDE7FF]">
               الناتج =
               {equivalentQuantityInTarget !== null ? (
                 <span className="mx-1 text-lg font-extrabold">
@@ -371,36 +360,12 @@ export default function RepackModal({
           )}
 
           {!selectedToPackagingType && (
-            <p
-              className="text-sm mt-2 text-center"
-              style={{ color: `rgba(${THEME_DARK_RGB},0.6)` }}
-            >
+            <p className="text-sm mt-2 text-center text-gray-500">
               الرجاء اختيار نوع تعبئة جديد لحساب الكمية المحولة.
             </p>
           )}
         </div>
-
-        {/* ===== ACTIONS ===== */}
-        <div className="flex flex-col sm:flex-row justify-between gap-3 pt-2 sm:pt-4">
-          <button
-            onClick={onClose}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl border hover:bg-gray-50 transition"
-          >
-            إلغاء
-          </button>
-
-          <button
-            onClick={handleConfirm}
-            className="w-full sm:w-auto px-8 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition"
-            style={{
-              background: `linear-gradient(135deg, ${THEME_DARK}, #0f172a)`,
-              color: "white",
-            }}
-          >
-            تنفيذ التحويل
-          </button>
-        </div>
       </div>
-    </Modal>
+    </AppModalShell>
   );
 }

@@ -10,7 +10,7 @@ function ClientsManagementTab() {
     `py-3 px-6 text-sm font-semibold rounded-xl transition-all duration-300 ml-2 rtl:mr-2 rtl:ml-0 flex items-center focus:outline-none shadow-sm ${
       isActive 
         ? 'bg-[#8B5FD6] text-white shadow-lg transform scale-105' 
-        : 'text-gray-700 hover:text-[#8B5FD6] hover:bg-indigo-50 hover:shadow-md bg-white border border-gray-200'
+        : 'text-gray-700 hover:text-[#8B5FD6] hover:bg-[#f5f3ff] hover:shadow-md bg-white border border-gray-200'
     }`;
 
   return (

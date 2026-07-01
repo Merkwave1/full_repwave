@@ -1,5 +1,7 @@
 ﻿// Refactored summary-only ClientAccountStatementModal
 import React, { useEffect, useState } from 'react';
+import { DocumentTextIcon } from '@heroicons/react/24/outline';
+import AppModalShell, { modalSecondaryBtnClass } from '../../../../common/AppModalShell.jsx';
 // Use unified API for client account statement
 import { getClientAccountStatement } from '../../../../../apis/client_account_statement.js';
 // Import currency formatting utility
@@ -63,7 +65,10 @@ export default function ClientAccountStatementModal({ client, open, onClose }) {
     const load = async () => {
       setLoading(true); setError('');
       try {
-        const resp = await getClientAccountStatement({ client_id: client.clients_id });
+        const resp = await getClientAccountStatement({
+          client_id: client.clients_id,
+          client_name: client.clients_company_name,
+        });
         if (!cancelled) setServer(resp || { entries: [], totals: { debit_total: 0, credit_total: 0, net_total: 0 }, net_total: 0 });
       } catch (e) {
         console.error('Account statement load error', e);
@@ -345,20 +350,34 @@ export default function ClientAccountStatementModal({ client, open, onClose }) {
   if (!isVisible) return null;
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm animate-fadeIn">
-        <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col print:max-h-none print:shadow-none print:rounded-none" id="account-statement-modal">
-          <style>{`@media print { body * { visibility: hidden; } #account-statement-modal, #account-statement-modal * { visibility: visible; } #account-statement-modal { position: absolute; inset: 0; height: auto; overflow: visible; } .no-print { display: none !important; } }`}</style>
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-t-xl print:bg-white print:border-b print:rounded-none">
-            <div>
-              <h3 className="text-lg font-bold text-gray-800">كشف حساب: <span className="text-[#8B5FD6]">{client.clients_company_name}</span></h3>
-              <p className="text-xs text-gray-500 mt-1">تاريخ الطباعة: {printableDate}</p>
-            </div>
-            <div className="flex gap-2 no-print">
-              <button onClick={handleDownloadPdf} className="px-3 py-1.5 text-xs font-semibold rounded-md bg-[#8B5FD6] hover:bg-[#7A52C2] text-white">طباعة</button>
-              <button onClick={onClose} className="px-3 py-1.5 text-xs font-semibold rounded-md bg-gray-200 hover:bg-gray-300 text-gray-700 transition">إغلاق ✕</button>
-            </div>
+      <AppModalShell
+        open={open}
+        onClose={onClose}
+        title="كشف حساب"
+        subtitle={`${client.clients_company_name} · ${printableDate}`}
+        icon={DocumentTextIcon}
+        size="2xl"
+        gradient="purple"
+        printClassName="account-statement-modal"
+        headerActions={
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            className="no-print px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-white/20 hover:bg-white/30 text-white"
+          >
+            طباعة
+          </button>
+        }
+        footer={
+          <div className="flex justify-end">
+            <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+              إغلاق
+            </button>
           </div>
-          <div className="overflow-y-auto p-6 space-y-6 text-sm">
+        }
+      >
+        <style>{`@media print { body * { visibility: hidden; } .account-statement-modal, .account-statement-modal * { visibility: visible; } .account-statement-modal { position: absolute; inset: 0; height: auto; overflow: visible; } .no-print { display: none !important; } }`}</style>
+        <div className="space-y-6 text-sm">
             {loading && <div className="text-center py-10 text-[#8B5FD6] font-semibold">جاري التحميل...</div>}
             {error && <div className="text-center py-4 text-red-600 font-semibold">{error}</div>}
             {!loading && !error && (
@@ -384,12 +403,8 @@ export default function ClientAccountStatementModal({ client, open, onClose }) {
                 />
               </>
             )}
-          </div>
-          <div className="px-6 py-3 border-t border-gray-200 flex justify-end bg-gray-50 rounded-b-xl no-print">
-            <button onClick={onClose} className="px-4 py-2 text-sm font-semibold rounded-md bg-gray-200 hover:bg-gray-300 text-gray-700 transition">إغلاق</button>
-          </div>
         </div>
-      </div>
+      </AppModalShell>
       {showOrders && <ClientOrdersModal open={showOrders} onClose={() => setShowOrders(false)} client={client} />}
       {showReturns && <ClientReturnsModal open={showReturns} onClose={() => setShowReturns(false)} client={client} />}
   {/* Deliveries modal intentionally removed */}
@@ -414,9 +429,9 @@ export default function ClientAccountStatementModal({ client, open, onClose }) {
 }
 
 function SummaryCard({ title, amount, count, color, onShow, active }) {
-  const colorMap = { indigo: 'bg-indigo-50 text-[#7A52C2]', green: 'bg-green-50 text-green-700', red: 'bg-red-50 text-red-700', orange: 'bg-orange-50 text-orange-700', blue: 'bg-[#f5f3ff] text-[#7A52C2]' };
+  const colorMap = { indigo: 'bg-[#f5f3ff] text-[#7A52C2]', green: 'bg-green-50 text-green-700', red: 'bg-red-50 text-red-700', orange: 'bg-orange-50 text-orange-700', blue: 'bg-[#f5f3ff] text-[#7A52C2]' };
   return (
-    <div className={`p-3 rounded-lg border ${active ? 'border-indigo-400 ring-2 ring-indigo-300' : 'border-gray-200'} flex flex-col gap-1 ${colorMap[color] || 'bg-gray-50 text-gray-700'}`}>      
+    <div className={`p-3 rounded-lg border ${active ? 'border-[#8B5FD6]/50 ring-2 ring-[#C4A8F0]/60' : 'border-gray-200'} flex flex-col gap-1 ${colorMap[color] || 'bg-gray-50 text-gray-700'}`}>      
       <div className="flex items-center justify-between">
         <span className="font-bold text-[13px]">{title}</span>
         <span className="text-[10px] bg-white/60 px-2 py-0.5 rounded-full border border-white/40 font-semibold">{count}</span>
@@ -428,7 +443,7 @@ function SummaryCard({ title, amount, count, color, onShow, active }) {
 }
 
 function OperationsTable({ title, color, rows, columns, emptyLabel }) {
-  const colorMap = { indigo: 'border-indigo-200', orange: 'border-orange-200', blue: 'border-[#C4A8F0]', green: 'border-green-200', red: 'border-red-200' };
+  const colorMap = { indigo: 'border-[#C4A8F0]/50', orange: 'border-orange-200', blue: 'border-[#C4A8F0]', green: 'border-green-200', red: 'border-red-200' };
   return (
     <div className={`rounded-lg border ${colorMap[color] || 'border-gray-200'} overflow-hidden`}>
       <div className="px-3 py-2 bg-gray-50 text-[12px] font-bold flex items-center justify-between">
@@ -519,8 +534,8 @@ function UnifiedOperationsServer({ entries, typeFilter, clearTypeFilter }) {
         <div className="flex flex-col"><label className="mb-0.5">إلى</label><input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} className="border rounded px-2 py-1" /></div>
         <div className="flex flex-col flex-1 min-w-[160px]"><label className="mb-0.5">بحث</label><input placeholder="بحث برقم الفاتورة" value={search} onChange={e=>setSearch(e.target.value)} className="border rounded px-2 py-1" /></div>
         {(dateFrom || dateTo || search) && <button onClick={()=>{setDateFrom('');setDateTo('');setSearch('');}} className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded">مسح</button>}
-        {typeFilter && <button onClick={clearTypeFilter} className="px-3 py-1 bg-indigo-100 text-[#7A52C2] hover:bg-indigo-200 rounded">إزالة تصفية النوع</button>}
-        <div className="ml-auto text-xs font-bold bg-indigo-50 text-[#7A52C2] px-3 py-1 rounded">عدد: {filtered.length}</div>
+        {typeFilter && <button onClick={clearTypeFilter} className="px-3 py-1 bg-[#EDE7FF] text-[#7A52C2] hover:bg-[#C4A8F0]/30 rounded">إزالة تصفية النوع</button>}
+        <div className="ml-auto text-xs font-bold bg-[#f5f3ff] text-[#7A52C2] px-3 py-1 rounded">عدد: {filtered.length}</div>
         <div className="text-xs font-bold bg-gray-100 px-3 py-1 rounded text-green-600">إجمالي دائن: {formatCurrency(creditTotal)}</div>
         <div className="text-xs font-bold bg-gray-100 px-3 py-1 rounded text-red-600">إجمالي مدين: {formatCurrency(debitTotal)}</div>
         <div className="text-xs font-bold bg-gray-200 px-3 py-1 rounded">صافي: {formatCurrency(total)}</div>
@@ -562,7 +577,7 @@ function UnifiedOperationsServer({ entries, typeFilter, clearTypeFilter }) {
             ))}
           </tbody>
           <tfoot>
-            <tr className="bg-indigo-50 font-bold">
+            <tr className="bg-[#f5f3ff] font-bold">
               <td colSpan={5} className="px-2 py-2 text-right">الإجماليات</td>
               <td className="px-2 py-2 text-green-600">{formatCurrency(creditTotal)}</td>
               <td className="px-2 py-2 text-red-600">{formatCurrency(debitTotal)}</td>

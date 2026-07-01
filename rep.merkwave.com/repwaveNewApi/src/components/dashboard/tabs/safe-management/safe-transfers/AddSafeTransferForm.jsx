@@ -156,7 +156,7 @@ const AddSafeTransferForm = ({ onClose, onSubmit }) => {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Premium Header */}
-        <div className="rounded-t-2xl px-4 py-4 sm:px-6" style={{ background: "linear-gradient(135deg, #8B5FD6 0%, #F97366 100%)" }}>
+        <div className="rounded-t-2xl px-4 py-4 sm:px-6" style={{ background: "linear-gradient(135deg, #8B5FD6 0%, #7A52C2 100%)" }}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
               <div className="p-2 bg-white/20 rounded-xl shrink-0">
@@ -166,7 +166,7 @@ const AddSafeTransferForm = ({ onClose, onSubmit }) => {
                 <h3 className="text-base sm:text-lg font-bold text-white truncate">
                   تحويل بين الخزائن
                 </h3>
-                <p className="text-blue-100 text-xs mt-0.5 hidden sm:block">
+                <p className="text-[#EDE7FF] text-xs mt-0.5 hidden sm:block">
                   نقل رصيد من خزنة إلى أخرى
                 </p>
               </div>
@@ -357,7 +357,7 @@ const AddSafeTransferForm = ({ onClose, onSubmit }) => {
 
             {/* Live Preview Strip */}
             {(sourceSafe || destinationSafe || formData.transfer_amount) && (
-              <div className="rounded-xl bg-gradient-to-l from-blue-50 to-indigo-50 border border-blue-100 px-4 py-3">
+              <div className="rounded-xl bg-gradient-to-l from-[#f5f3ff] to-[#f5f3ff] border border-[#EDE7FF] px-4 py-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-[#8B5FD6] mb-2">
                   معاينة التحويل
                 </p>
@@ -365,7 +365,7 @@ const AddSafeTransferForm = ({ onClose, onSubmit }) => {
                   <span className="font-medium text-gray-700">
                     {sourceSafe?.safes_name || "—"}
                   </span>
-                  <ArrowsRightLeftIcon className="h-4 w-4 text-blue-500 shrink-0" />
+                  <ArrowsRightLeftIcon className="h-4 w-4 text-[#8B5FD6] shrink-0" />
                   <span className="font-medium text-gray-700">
                     {destinationSafe?.safes_name || "—"}
                   </span>
@@ -384,7 +384,7 @@ const AddSafeTransferForm = ({ onClose, onSubmit }) => {
             <button
               type="submit"
               disabled={isSubmitting || loading || isOverBudget}
-              className="flex-1  hover:from-blue-700 hover:to-indigo-600 text-white py-2.5 px-4 rounded-xl font-semibold text-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all" style={{ background: "linear-gradient(135deg, #8B5FD6 0%, #F97366 100%)" }}
+              className="flex-1  hover:from-[#7A52C2] hover:to-[#6B45B0] text-white py-2.5 px-4 rounded-xl font-semibold text-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all" style={{ background: "linear-gradient(135deg, #8B5FD6 0%, #7A52C2 100%)" }}
             >
               {isSubmitting ? (
                 <>

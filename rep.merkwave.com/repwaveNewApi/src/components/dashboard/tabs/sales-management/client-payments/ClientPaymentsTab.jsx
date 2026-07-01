@@ -167,7 +167,7 @@ const ClientPaymentListView = ({
 
   return (
     <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden animate-fadeIn">
-      <div className="bg-gradient-to-r from-indigo-100 to-blue-100 px-6 py-4 border-b border-gray-300 flex items-center justify-between">
+      <div className="bg-gradient-to-r from-[#EDE7FF] to-[#EDE7FF] px-6 py-4 border-b border-gray-300 flex items-center justify-between">
         <div className="text-sm text-gray-800">
           إجمالي مدفوعات العملاء:{" "}
           <span className="font-bold text-[#7A52C2] ml-1">
@@ -222,7 +222,7 @@ const ClientPaymentListView = ({
                 className="hover:bg-gray-50 transition-all duration-150"
               >
                 <td className="text-center px-4 py-3 border-r border-gray-200">
-                  <span className="bg-indigo-100 text-[#7A52C2] text-xs px-2 py-1 rounded-full font-semibold">
+                  <span className="bg-[#EDE7FF] text-[#7A52C2] text-xs px-2 py-1 rounded-full font-semibold">
                     #{item.client_payments_id || item.payments_id || item.id}
                   </span>
                 </td>
@@ -269,7 +269,7 @@ const ClientPaymentListView = ({
                     <button
                       title="تعديل"
                       onClick={() => onEdit(item)}
-                      className="p-2 rounded-md border border-gray-200 hover:bg-gray-50 text-[#8B5FD6] hover:text-indigo-800"
+                      className="p-2 rounded-md border border-gray-200 hover:bg-gray-50 text-[#8B5FD6] hover:text-[#2D1B69]"
                     >
                       <PencilSquareIcon className="h-5 w-5" />
                     </button>

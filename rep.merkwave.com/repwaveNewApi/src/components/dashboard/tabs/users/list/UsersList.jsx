@@ -75,7 +75,7 @@ function UsersList() {
         cellClassName: "w-16 text-center",
         sortAccessor: (user) => Number(user.users_id) || 0,
         render: (user) => (
-          <span className="inline-flex items-center justify-center bg-indigo-100 text-[#7A52C2] text-xs px-2 py-1 rounded-full font-semibold">
+          <span className="inline-flex items-center justify-center bg-[#EDE7FF] text-[#7A52C2] text-xs px-2 py-1 rounded-full font-semibold">
             {user.users_id}
           </span>
         ),

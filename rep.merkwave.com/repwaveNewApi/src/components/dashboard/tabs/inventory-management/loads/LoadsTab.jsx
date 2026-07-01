@@ -25,6 +25,7 @@ import {
   getAllTransferRequests,
   updateTransferRequestStatus,
 } from "../../../../../apis/transfer_requests";
+import { addTransfer } from "../../../../../apis/transfers";
 import { getAllInventory } from "../../../../../apis/inventory";
 import {
   getAppWarehouses,
@@ -65,6 +66,34 @@ export default function LoadsTab() {
 
   const tabName = "loads";
 
+  const unwrapList = (response) => {
+    if (Array.isArray(response)) return response;
+    if (Array.isArray(response?.data)) return response.data;
+    if (Array.isArray(response?.data?.data)) return response.data.data;
+    return [];
+  };
+
+  const getRequestDate = (request) =>
+    request?.request_created_at || request?.request_date || null;
+
+  const getSourceWarehouseName = (request) =>
+    request?.source_warehouse_name ||
+    warehouses.find(
+      (w) =>
+        String(w.warehouse_id) ===
+        String(request?.request_source_warehouse_id),
+    )?.warehouse_name ||
+    "غير محدد";
+
+  const getDestinationWarehouseName = (request) =>
+    request?.destination_warehouse_name ||
+    warehouses.find(
+      (w) =>
+        String(w.warehouse_id) ===
+        String(request?.request_destination_warehouse_id),
+    )?.warehouse_name ||
+    "غير محدد";
+
   // Function to load all necessary data
   const loadAllLoadsData = useCallback(
     async (forceApiRefresh = false) => {
@@ -78,41 +107,27 @@ export default function LoadsTab() {
       setError("");
       try {
         const [
-          requestsData,
-          warehousesData,
-          inventoryData,
-          productsData,
-          unitsData,
-          packagingTypesData,
+          requestsResponse,
+          warehousesResponse,
+          inventoryResponse,
+          productsResponse,
+          unitsResponse,
+          packagingTypesResponse,
         ] = await Promise.all([
-          getAllTransferRequests({ status: "" }), // Get all requests across all statuses
-          getAppWarehouses(forceApiRefresh, true),
+          getAllTransferRequests({ status: "" }),
+          getAppWarehouses(),
           getAllInventory(),
-          getAppProducts(forceApiRefresh),
-          getAppBaseUnits(forceApiRefresh),
-          getAppPackagingTypes(forceApiRefresh),
+          getAppProducts(),
+          getAppBaseUnits(),
+          getAppPackagingTypes(),
         ]);
 
-        // Handle requests data structure correctly
-        if (requestsData?.success && Array.isArray(requestsData.data)) {
-          setRequests(requestsData.data);
-        } else if (Array.isArray(requestsData)) {
-          // Handle case where API returns array directly
-          setRequests(requestsData);
-        } else {
-          console.error(
-            "❌ LoadsTab - Invalid requests data structure:",
-            requestsData,
-          );
-          setError("فشل في تحميل طلبات التحميل - بنية بيانات غير صحيحة");
-          setRequests([]);
-        }
-
-        setWarehouses(warehousesData?.data || []);
-        setAllInventoryItems(inventoryData?.data || []);
-        setProducts(productsData?.data || []);
-        setBaseUnits(unitsData?.data || []);
-        setPackagingTypes(packagingTypesData?.data || []);
+        setRequests(unwrapList(requestsResponse));
+        setWarehouses(unwrapList(warehousesResponse));
+        setAllInventoryItems(unwrapList(inventoryResponse));
+        setProducts(unwrapList(productsResponse));
+        setBaseUnits(unwrapList(unitsResponse));
+        setPackagingTypes(unwrapList(packagingTypesResponse));
 
         if (forceApiRefresh) {
           setGlobalMessage({
@@ -156,26 +171,33 @@ export default function LoadsTab() {
   // Enrich inventory items with product and warehouse information
   const enrichedInventoryForForm = useMemo(() => {
     return allInventoryItems.map((item) => {
-      const product = products.find((p) => p.product_id === item.product_id);
+      const product = products.find(
+        (p) =>
+          String(p.products_id) === String(item.products_id ?? item.product_id),
+      );
       const variant = product?.variants?.find(
-        (v) => v.variant_id === item.variant_id,
+        (v) => String(v.variant_id) === String(item.variant_id),
       );
       const warehouse = warehouses.find(
-        (w) => w.warehouse_id === item.warehouse_id,
+        (w) => String(w.warehouse_id) === String(item.warehouse_id),
       );
       const packaging = packagingTypes.find(
-        (pt) => pt.packaging_types_id === item.packaging_type_id,
+        (pt) =>
+          String(pt.packaging_types_id) === String(item.packaging_type_id),
       );
-      const unit = baseUnits.find((u) => u.base_unit_id === item.base_unit_id);
+      const unit = baseUnits.find(
+        (u) => String(u.base_units_id ?? u.base_unit_id) === String(item.base_unit_id),
+      );
 
       return {
         ...item,
-        product_name: product?.product_name || "Unknown Product",
-        variant_name: variant?.variant_name || "Unknown Variant",
-        warehouse_name: warehouse?.warehouse_name || "Unknown Warehouse",
+        product_name:
+          product?.products_name || product?.product_name || "منتج غير معروف",
+        variant_name: variant?.variant_name || "متغير غير معروف",
+        warehouse_name: warehouse?.warehouse_name || "مخزن غير معروف",
         packaging_type_name:
-          packaging?.packaging_types_name || "Unknown Packaging",
-        unit_name: unit?.unit_name || "Unknown Unit",
+          packaging?.packaging_types_name || "تعبئة غير محددة",
+        unit_name: unit?.base_units_name || unit?.unit_name || "وحدة غير محددة",
       };
     });
   }, [allInventoryItems, products, warehouses, packagingTypes, baseUnits]);
@@ -261,16 +283,41 @@ export default function LoadsTab() {
     allocations,
     adminNote,
   ) => {
+    if (!requestId) return;
+    setLoading(true);
     try {
-      // Update request status to Approved - the backend will automatically create transfers and set them to Completed
-      await updateTransferRequestStatus(
-        requestId,
-        "Approved",
-        adminNote,
-        allocations,
-      );
+      if (!Array.isArray(allocations) || allocations.length === 0) {
+        throw new Error("برجاء اختيار الدُفعات والكميات قبل إنشاء التحويل.");
+      }
 
-      // Invalidate inventory cache since approving affects inventory quantities
+      const items = allocations
+        .map((a) => {
+          const inv = allInventoryItems.find(
+            (i) => i.inventory_id === a.inventory_id,
+          );
+          return {
+            variant_id: inv?.variant_id,
+            packaging_type_id: inv?.packaging_type_id,
+            quantity: a.quantity,
+          };
+        })
+        .filter((item) => item.variant_id);
+
+      if (items.length === 0) {
+        throw new Error(
+          "لم يتم العثور على بيانات المنتجات للدُفعات المختارة.",
+        );
+      }
+
+      await addTransfer({
+        from_warehouse_id: selectedRequest?.request_source_warehouse_id,
+        to_warehouse_id: selectedRequest?.request_destination_warehouse_id,
+        status: "Completed",
+        notes: `From Request REQ-${requestId}${adminNote ? " - " + adminNote : ""}`,
+        items,
+      });
+      await updateTransferRequestStatus(requestId, "Approved", adminNote);
+
       invalidateInventoryCache();
       setGlobalMessage({
         type: "success",
@@ -284,6 +331,8 @@ export default function LoadsTab() {
         type: "error",
         message: error.message || "حدث خطأ أثناء معالجة الطلب",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -498,25 +547,14 @@ export default function LoadsTab() {
               title: "المخزن المصدر",
               className: "",
               sortable: true,
-              render: (req) => {
-                const wh = warehouses.find(
-                  (w) => w.warehouse_id === req.request_source_warehouse_id,
-                );
-                return wh?.warehouse_name || "غير محدد";
-              },
+              render: (req) => getSourceWarehouseName(req),
             },
             {
               key: "destinationWarehouse",
               title: "المخزن الوجهة",
               className: "",
               sortable: true,
-              render: (req) => {
-                const wh = warehouses.find(
-                  (w) =>
-                    w.warehouse_id === req.request_destination_warehouse_id,
-                );
-                return wh?.warehouse_name || "غير محدد";
-              },
+              render: (req) => getDestinationWarehouseName(req),
             },
             {
               key: "created_by_name",
@@ -537,12 +575,16 @@ export default function LoadsTab() {
               title: "تاريخ الإنشاء",
               className: "min-w-[180px]",
               sortable: true,
-              render: (req) => (
+              render: (req) => {
+                const dateValue = getRequestDate(req);
+                if (!dateValue) return "غير محدد";
+                return (
                 <div className="flex items-center">
                   <CalendarIcon className="h-4 w-4 ml-1 text-gray-400" />
-                  {new Date(req.request_created_at).toLocaleDateString("ar-EG")}
+                  {new Date(dateValue).toLocaleDateString("ar-EG")}
                 </div>
-              ),
+                );
+              },
             },
             {
               key: "actions",
@@ -563,25 +605,16 @@ export default function LoadsTab() {
               ),
             },
           ]}
-          renderRow={(request) => {
-            const sourceWarehouse = warehouses.find(
-              (w) => w.warehouse_id === request.request_source_warehouse_id,
-            );
-            const destinationWarehouse = warehouses.find(
-              (w) =>
-                w.warehouse_id === request.request_destination_warehouse_id,
-            );
-
-            return (
+          renderRow={(request) => (
               <>
                 <td className="px-4 py-4 text-sm font-medium text-[#1A0F35] ">
                   #{request.request_id}
                 </td>
                 <td className="px-4 py-4 text-sm text-gray-500 ">
-                  {sourceWarehouse?.warehouse_name || "غير محدد"}
+                  {getSourceWarehouseName(request)}
                 </td>
                 <td className="px-4 py-4 text-sm text-gray-500 ">
-                  {destinationWarehouse?.warehouse_name || "غير محدد"}
+                  {getDestinationWarehouseName(request)}
                 </td>
                 <td className="px-4 py-4 text-sm text-gray-500 ">
                   {request.created_by_name || "غير محدد"}
@@ -590,12 +623,16 @@ export default function LoadsTab() {
                   {getStatusBadge(request.request_status)}
                 </td>
                 <td className="px-4 py-4 text-sm text-gray-500 ">
+                  {getRequestDate(request) ? (
                   <div className="flex items-center">
                     <CalendarIcon className="h-4 w-4 ml-1 text-gray-400" />
-                    {new Date(request.request_created_at).toLocaleDateString(
+                    {new Date(getRequestDate(request)).toLocaleDateString(
                       "ar-EG",
                     )}
                   </div>
+                  ) : (
+                    "غير محدد"
+                  )}
                 </td>
                 <td className="px-4 py-4 text-sm font-medium text-center ">
                   <div className="flex items-center justify-center gap-2">
@@ -613,8 +650,7 @@ export default function LoadsTab() {
                   </div>
                 </td>
               </>
-            );
-          }}
+          )}
         />
       </div>
 

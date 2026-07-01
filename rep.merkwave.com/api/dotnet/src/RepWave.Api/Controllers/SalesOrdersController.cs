@@ -12,6 +12,9 @@ namespace RepWave.Api.Controllers;
 public class SalesOrdersController(IMediator mediator) : BaseApiController
 {
     [HttpGet] public async Task<IActionResult> GetAll([FromQuery] GetAllSalesOrdersQuery q) => Ok(await mediator.Send(q));
+    [HttpGet("pending-for-delivery")]
+    public async Task<IActionResult> GetPendingForDelivery()
+        => Ok(await mediator.Send(new GetPendingSalesOrdersForDeliveryQuery()));
     [HttpGet("{id:int}")] public async Task<IActionResult> GetById(int id) => Ok(await mediator.Send(new GetSalesOrderByIdQuery(id)));
     [HttpPost] public async Task<IActionResult> Create([FromBody] CreateSalesOrderRequest req) => Ok(await mediator.Send(new CreateSalesOrderCommand(CurrentUserId, req)));
     [HttpPut("{id:int}")] public async Task<IActionResult> Update(int id, [FromBody] UpdateSalesOrderRequest req) => Ok(await mediator.Send(new UpdateSalesOrderCommand(id, req)));

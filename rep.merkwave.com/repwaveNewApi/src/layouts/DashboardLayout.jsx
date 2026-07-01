@@ -4,6 +4,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import NotificationBell from "../components/common/NotificationBell";
 import ConfirmationDialog from "../components/common/ConfirmationDialog/ConfirmationDialog.jsx";
 import RepWaveLogo from "../components/common/RepWaveLogo/RepWaveLogo.jsx";
+import { BRAND } from "../constants/brandColors.js";
 import {
   logout,
   getAppSettings,
@@ -44,6 +45,22 @@ import {
   ArrowPathIcon,
   ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
+
+const ROLE_LABELS = {
+  admin: "مدير",
+  rep: "مندوب",
+  store_keeper: "أمين مخزن",
+  cash: "محاسب",
+};
+
+function getUserInitials(name) {
+  if (!name || name === "غير متوفر" || name === "خطأ") return "؟";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
 
 function DashboardLayout({ setGlobalMessage }) {
   const navigate = useNavigate();
@@ -357,27 +374,40 @@ function DashboardLayout({ setGlobalMessage }) {
           ${sidebarOpen ? "w-64 translate-x-0" : "w-64 translate-x-full lg:translate-x-0 lg:w-20"}
         `}
       >
+        {/* YouTube-style: [toggle] [wordmark] — same px-4 as nav items */}
         <div
-          className={`p-4 flex items-center justify-between ${sidebarOpen ? "flex-row" : "flex-col-reverse gap-4"} h-18 border-b border-gray-700`}
+          className={`flex items-center shrink-0 border-b border-gray-700/80 ${
+            sidebarOpen
+              ? "gap-3 px-4 py-3 h-14"
+              : "flex-col justify-center gap-3 py-4 min-h-[4.5rem]"
+          }`}
+          dir="ltr"
         >
           {sidebarOpen ? (
-            <div className="flex items-center gap-3">
-              <RepWaveLogo size={44} showText={true} showTag={false} />
-            </div>
+            <>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="shrink-0 p-1.5 rounded-full text-[#C4A8F0] hover:bg-[#2D1B69] transition-colors"
+                title="طي القائمة"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+              <div className="flex-1 min-w-0 flex items-center justify-center overflow-hidden py-0.5">
+                <RepWaveLogo variant="wordmark" size={34} className="w-full max-w-[200px]" />
+              </div>
+            </>
           ) : (
-            <RepWaveLogo size={32} showText={false} />
+            <>
+              <RepWaveLogo variant="icon" size={32} />
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="shrink-0 p-1.5 rounded-full text-[#C4A8F0] hover:bg-[#2D1B69] transition-colors"
+                title="فتح القائمة"
+              >
+                <Bars3Icon className="h-5 w-5" />
+              </button>
+            </>
           )}
-          <button
-            onClick={() => setSidebarOpen((v) => !v)}
-            className="text-[#C4A8F0] bg-[#2D1B69] rounded-lg p-1 transition-colors duration-200 hover:bg-[#3D2A8A]"
-            title={sidebarOpen ? "طي القائمة الجانبية" : "فتح القائمة الجانبية"}
-          >
-            {sidebarOpen ? (
-              <XMarkIcon className="h-8 w-8" />
-            ) : (
-              <Bars3Icon className="h-8 w-8" />
-            )}
-          </button>
         </div>
         <nav className="flex-1 overflow-y-auto text-l font-medium leading-relaxed sidebar-scrollbar">
           <ul className="h-full flex flex-col justify-evenly py-4">
@@ -1327,66 +1357,84 @@ function DashboardLayout({ setGlobalMessage }) {
 
       <div className="flex-1 flex flex-col overflow-hidden bg">
         <header
-          className="flex-shrink-0 h-16 bg-white shadow p-4 flex justify-between items-center"
+          className="flex-shrink-0 relative z-20 border-b border-[#EDE7FF]/80 bg-[#FAFAFE]/90 backdrop-blur-xl shadow-[0_8px_32px_-12px_rgba(139,95,214,0.22)]"
           dir="rtl"
         >
-          <div className="flex items-center gap-3">
-            {/* Mobile hamburger */}
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden text-gray-600 p-1 rounded-md hover:bg-gray-100 transition-colors"
-              title="فتح القائمة"
-            >
-              <Bars3Icon className="h-6 w-6" />
-            </button>
-            <h1 className="hidden md:block text-2xl font-bold text-[#7A52C2]">
-              {companyName || "لوحة التحكم"}
-            </h1>
-          </div>
-          <div className="flex items-center space-x-4 rtl:space-x-reverse">
-            <div className="flex items-center justify-center p-4 rounded-lg w-8 h-8 md:w-12 md:h-12 bg-[#1A0F35]  ">
-              <NotificationBell />
+          {/* subtle brand gradient line */}
+          <div
+            className="absolute inset-x-0 top-0 h-[3px]"
+            style={{
+              background: `linear-gradient(90deg, ${BRAND.primaryDeep} 0%, ${BRAND.primary} 35%, ${BRAND.lavender} 65%, #F97366 100%)`,
+            }}
+          />
+
+          <div className="h-[4rem] px-3 sm:px-5 flex justify-between items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0 flex-1" dir="ltr">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden shrink-0 p-2 rounded-xl text-[#6B45B0] bg-[#EDE7FF]/50 hover:bg-[#EDE7FF] border border-[#C4A8F0]/30 transition-colors"
+                title="فتح القائمة"
+              >
+                <Bars3Icon className="h-5 w-5" />
+              </button>
+              <RepWaveLogo variant="wordmark" size={28} className="hidden sm:block max-w-[140px] shrink-0" />
+              <RepWaveLogo variant="icon" size={32} className="sm:hidden shrink-0" />
+              <div className="min-w-0 flex-1">
+                <h1 className="text-base sm:text-lg font-bold text-[#2D1B69] truncate leading-tight text-right">
+                  {companyName || "لوحة التحكم"}
+                </h1>
+                <p className="text-[11px] sm:text-xs text-[#8B5FD6]/80 font-medium truncate text-right hidden sm:block">
+                  RepWave · إدارة المبيعات والمخزون
+                </p>
+              </div>
             </div>
-            {userName && (
-              <span className="hidden sm:inline text-gray-700 text-sm">
-                المستخدم:{" "}
-                <span className="font-semibold text-gray-800">{userName}</span>{" "}
-                (
-                <span className="font-semibold text-purple-700">
-                  {userRole}
-                </span>
-                )
-              </span>
-            )}
-            {expirationDate && (
-              <span className="hidden md:block  text-gray-700 text-sm">
-                تاريخ الانتهاء:{" "}
-                <span className="font-semibold text-red-600">
-                  {expirationDate}
-                </span>
-              </span>
-            )}
-            {/* Refresh icon button removed */}
-            <button
-              onClick={handleLogout}
-              className="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-150 ease-in-out"
-            >
-              <ArrowRightOnRectangleIcon className="h-5 w-5" />
-            </button>
-            <ConfirmationDialog
-              isOpen={showLogoutConfirm}
-              title="تأكيد تسجيل الخروج"
-              message={
-                <div>
-                  هل أنت متأكد أنك تريد تسجيل الخروج؟ سيتم إنهاء الجلسة الحالية.
+
+            {/* Right: actions toolbar */}
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              <NotificationBell />
+
+              {userName && (
+                <div
+                  className="hidden sm:flex items-center gap-2.5 pl-1 pr-3 py-1.5 rounded-2xl bg-white/80 border border-[#EDE7FF] shadow-sm hover:shadow-md hover:border-[#C4A8F0]/50 transition-all max-w-[220px] lg:max-w-[280px]"
+                  title={`${userName} · ${ROLE_LABELS[userRole?.toLowerCase()] || userRole}`}
+                >
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-sm"
+                    style={{
+                      background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.primaryHover} 100%)`,
+                    }}
+                  >
+                    {getUserInitials(userName)}
+                  </div>
+                  <div className="min-w-0 text-right leading-tight">
+                    <p className="text-sm font-semibold text-[#2D1B69] truncate">
+                      {userName}
+                    </p>
+                    <span className="inline-flex mt-0.5 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-[#EDE7FF] text-[#6B45B0]">
+                      {ROLE_LABELS[userRole?.toLowerCase()] || userRole}
+                    </span>
+                  </div>
                 </div>
-              }
-              confirmText="تسجيل الخروج"
-              cancelText="إلغاء"
-              danger={true}
-              onCancel={() => setShowLogoutConfirm(false)}
-              onConfirm={performLogout}
-            />
+              )}
+
+              {expirationDate && (
+                <div className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200/80 text-xs text-amber-800">
+                  <ClockIcon className="h-4 w-4 shrink-0 text-amber-600" />
+                  <span className="font-medium">{expirationDate}</span>
+                </div>
+              )}
+
+              <button
+                onClick={handleLogout}
+                className="group flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-[#6B45B0] bg-[#EDE7FF]/40 hover:bg-[#EDE7FF] border border-[#C4A8F0]/30 hover:border-[#8B5FD6]/40 transition-all"
+                title="تسجيل الخروج"
+              >
+                <ArrowRightOnRectangleIcon className="h-5 w-5 group-hover:scale-105 transition-transform" />
+                <span className="hidden lg:inline text-xs font-semibold">
+                  خروج
+                </span>
+              </button>
+            </div>
           </div>
         </header>
 
@@ -1402,6 +1450,17 @@ function DashboardLayout({ setGlobalMessage }) {
           />
         </main>
       </div>
+
+      <ConfirmationDialog
+        isOpen={showLogoutConfirm}
+        title="تأكيد تسجيل الخروج"
+        message="هل أنت متأكد أنك تريد تسجيل الخروج؟ سيتم إنهاء الجلسة الحالية."
+        confirmText="تسجيل الخروج"
+        cancelText="إلغاء"
+        danger
+        onCancel={() => setShowLogoutConfirm(false)}
+        onConfirm={performLogout}
+      />
     </div>
   );
 }

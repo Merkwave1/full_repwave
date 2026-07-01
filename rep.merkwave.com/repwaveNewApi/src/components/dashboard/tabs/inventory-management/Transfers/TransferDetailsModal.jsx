@@ -1,5 +1,6 @@
 ﻿// src/components/dashboard/tabs/inventory-management/Transfers/TransferDetailsModal.jsx
 import React, { useState, useMemo, useEffect, useCallback } from "react";
+import AppModalShell, { modalPrimaryBtnClass, modalSecondaryBtnClass } from "../../../../common/AppModalShell.jsx";
 import {
   TruckIcon,
   TagIcon,
@@ -34,7 +35,7 @@ const DetailItem = ({
 }) => (
   <div className="flex items-start justify-between py-2 px-3 bg-white rounded-lg border border-gray-200">
     <div className="flex items-center gap-2">
-      {React.cloneElement(icon, { className: "h-5 w-5 text-blue-500" })}
+      {React.cloneElement(icon, { className: "h-5 w-5 text-[#8B5FD6]" })}
       <span className="font-medium text-gray-700">{label}:</span>
     </div>
     {children || (
@@ -46,26 +47,6 @@ const DetailItem = ({
     )}
   </div>
 );
-
-// Basic Modal component (can be reused from common/Modal/Modal if available)
-const Modal = ({
-  isOpen,
-  dir = "rtl",
-  modalWidthClass = "max-w-2xl",
-  children,
-}) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 backdrop-blur-sm bg-black/40 flex justify-center items-center p-2 sm:p-4 z-50">
-      <div
-        className={`bg-white rounded-xl shadow-2xl p-2 sm:p-6 ${modalWidthClass} w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col`}
-        dir={dir}
-      >
-        {children}
-      </div>
-    </div>
-  );
-};
 
 function TransferDetailsModal({
   isOpen,
@@ -467,28 +448,95 @@ function TransferDetailsModal({
   if (!isOpen || !transfer) return null;
 
   return (
-    <Modal
-      isOpen={isOpen}
+    <AppModalShell
+      open={isOpen}
       onClose={onClose}
-      dir="rtl"
-      modalWidthClass="max-w-4xl"
+      title="تفاصيل التحويل"
+      subtitle={`#${transfer.transfer_id}`}
+      icon={TruckIcon}
+      size="3xl"
+      gradient="purple"
+      footer={
+        <div className="flex flex-wrap justify-center gap-3">
+          {isEditing ? (
+            <>
+              <button
+                type="button"
+                onClick={handleSaveChanges}
+                className={`${modalPrimaryBtnClass} flex items-center justify-center gap-2`}
+                disabled={isSaving}
+              >
+                {isSaving ? "جاري الحفظ..." : "حفظ التغييرات"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className={modalSecondaryBtnClass}
+                disabled={isSaving}
+              >
+                إلغاء
+              </button>
+            </>
+          ) : (
+            <>
+              {transfer.status === "Pending" && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className={`${modalPrimaryBtnClass} flex items-center justify-center gap-2`}
+                >
+                  <PencilIcon className="h-5 w-5" />
+                  تعديل التحويل
+                </button>
+              )}
+              {transfer.status === "Pending" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdateStatus(transfer, "Completed");
+                    onClose();
+                  }}
+                  className={`${modalPrimaryBtnClass} bg-green-600 hover:bg-green-700 flex items-center justify-center gap-2`}
+                >
+                  <CheckCircleIcon className="h-5 w-5" />
+                  تأكيد الاكتمال
+                </button>
+              )}
+              {transfer.status === "In Transit" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdateStatus(transfer, "Completed");
+                    onClose();
+                  }}
+                  className={`${modalPrimaryBtnClass} bg-green-600 hover:bg-green-700 flex items-center justify-center gap-2`}
+                >
+                  <CheckCircleIcon className="h-5 w-5" />
+                  تحويل إلى مكتمل
+                </button>
+              )}
+              {(transfer.status === "Pending" || transfer.status === "In Transit") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdateStatus(transfer, "Cancelled");
+                    onClose();
+                  }}
+                  className={`${modalPrimaryBtnClass} bg-red-600 hover:bg-red-700 flex items-center justify-center gap-2`}
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                  إلغاء التحويل
+                </button>
+              )}
+              <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+                إغلاق
+              </button>
+            </>
+          )}
+        </div>
+      }
     >
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white rounded-t-xl sticky top-0 z-10">
-        <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-          <Bars3BottomLeftIcon className="h-7 w-7 text-[#8B5FD6]" />
-          تفاصيل التحويل رقم {transfer.transfer_id}
-        </h3>
-        <button
-          onClick={onClose}
-          className="p-2 rounded-full text-gray-500 hover:bg-red-100 hover:text-red-600 transition-colors"
-        >
-          <XMarkIcon className="h-6 w-6" />
-        </button>
-      </div>
-
-      {/* Body */}
-      <div className="p-3 sm:p-6 flex-grow overflow-y-auto bg-gray-50">
+      <div className="space-y-6">
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h4 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
             معلومات التحويل الأساسية
@@ -713,92 +761,7 @@ function TransferDetailsModal({
           )}
         </div>
       </div>
-
-      {/* Footer */}
-      <div className="p-4 bg-gray-100 border-t border-gray-200 rounded-b-xl sticky bottom-0">
-        <div className="flex flex-wrap justify-center gap-3">
-          {isEditing ? (
-            <>
-              <button
-                onClick={handleSaveChanges}
-                className="w-full sm:w-auto px-4 py-3 sm:px-6 sm:py-2.5 bg-[#8B5FD6] text-white rounded-md hover:bg-[#7A52C2] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8B5FD6] transition duration-150 ease-in-out shadow-md flex items-center justify-center gap-2 text-base sm:text-sm"
-                disabled={isSaving}
-              >
-                {isSaving ? "جاري الحفظ..." : "حفظ التغييرات"}
-              </button>
-              <button
-                onClick={() => setIsEditing(false)} // Simply exit edit mode without saving
-                className="w-full sm:w-auto px-4 py-3 sm:px-6 sm:py-2.5 border border-gray-300 rounded-md shadow-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8B5FD6] transition duration-150 ease-in-out text-base sm:text-sm"
-                disabled={isSaving}
-              >
-                إلغاء
-              </button>
-            </>
-          ) : (
-            <>
-              {/* Edit Button - Only for Pending transfers */}
-              {transfer.status === "Pending" && (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="w-full sm:w-auto px-4 py-3 sm:px-6 sm:py-2.5 bg-[#8B5FD6] text-white rounded-md hover:bg-[#7A52C2] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8B5FD6] transition duration-150 ease-in-out shadow-md flex items-center justify-center gap-2 text-base sm:text-sm"
-                >
-                  <PencilIcon className="h-5 w-5" />
-                  تعديل التحويل
-                </button>
-              )}
-
-              {/* Conditionally render status change buttons */}
-              {/* Allow direct completion from Pending */}
-              {transfer.status === "Pending" && (
-                <button
-                  onClick={() => {
-                    onUpdateStatus(transfer, "Completed");
-                    onClose();
-                  }}
-                  className="w-full sm:w-auto px-4 py-3 sm:px-6 sm:py-2.5 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out shadow-md flex items-center justify-center gap-2 text-base sm:text-sm"
-                >
-                  <CheckCircleIcon className="h-5 w-5" />
-                  تأكيد الاكتمال
-                </button>
-              )}
-              {/* Keep 'In Transit' to 'Completed' transition */}
-              {transfer.status === "In Transit" && (
-                <button
-                  onClick={() => {
-                    onUpdateStatus(transfer, "Completed");
-                    onClose();
-                  }}
-                  className="w-full sm:w-auto px-4 py-3 sm:px-6 sm:py-2.5 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out shadow-md flex items-center justify-center gap-2 text-base sm:text-sm"
-                >
-                  <CheckCircleIcon className="h-5 w-5" />
-                  تحويل إلى مكتمل
-                </button>
-              )}
-              {/* Cancel button remains for Pending or In Transit */}
-              {(transfer.status === "Pending" ||
-                transfer.status === "In Transit") && (
-                <button
-                  onClick={() => {
-                    onUpdateStatus(transfer, "Cancelled");
-                    onClose();
-                  }}
-                  className="w-full sm:w-auto px-4 py-3 sm:px-6 sm:py-2.5 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-150 ease-in-out shadow-md flex items-center justify-center gap-2 text-base sm:text-sm"
-                >
-                  <XMarkIcon className="h-5 w-5" />
-                  إلغاء التحويل
-                </button>
-              )}
-              <button
-                onClick={onClose}
-                className="w-full sm:w-auto px-4 py-3 sm:px-6 sm:py-2.5 border border-gray-300 rounded-md shadow-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8B5FD6] transition duration-150 ease-in-out text-base sm:text-sm"
-              >
-                إغلاق
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </Modal>
+    </AppModalShell>
   );
 }
 

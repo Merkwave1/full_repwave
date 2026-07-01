@@ -22,7 +22,9 @@ const SalesDeliveryRecordsWrapper = () => {
       const [warehousesRes] = await Promise.all([getAppWarehouses()]);
 
       // Handle warehouses data
-      if (warehousesRes.success || warehousesRes.data) {
+      if (Array.isArray(warehousesRes)) {
+        setWarehouses(warehousesRes);
+      } else if (warehousesRes?.success || warehousesRes?.data) {
         setWarehouses(warehousesRes.data || []);
       } else {
         setWarehouses([]);

@@ -1,7 +1,6 @@
 ﻿// src/components/dashboard/tabs/inventory-management/Transfers/RequestDetailsModal.jsx
 import React, { useMemo, useState, useEffect } from "react";
 import {
-  XMarkIcon,
   BuildingOffice2Icon,
   CalendarDaysIcon,
   InformationCircleIcon,
@@ -10,33 +9,14 @@ import {
   TrashIcon,
   PencilSquareIcon,
   PlusCircleIcon,
+  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 import SearchableSelect from "../../../../common/SearchableSelect/SearchableSelect";
-// No extra API calls for inventory; use allInventoryItems passed from parent
+import AppModalShell, {
+  modalPrimaryBtnClass,
+} from "../../../../common/AppModalShell.jsx";
 
-const THEME_DARK = "#1F2937";
-const THEME_ACCENT = "#8DD8F5";
-
-const Modal = ({
-  isOpen,
-  onClose,
-  dir = "rtl",
-  modalWidthClass = "max-w-3xl",
-  children,
-}) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 backdrop-blur-sm bg-black/40 flex justify-center items-center p-2 sm:p-4 z-50">
-      <div
-        className={`bg-white rounded-2xl shadow-2xl p-2 sm:p-6 ${modalWidthClass} w-full max-h-[95vh] sm:max-h-[90vh] flex flex-col`}
-        dir={dir}
-        style={{ overflow: "visible" }}
-      >
-        {children}
-      </div>
-    </div>
-  );
-};
+const THEME_ACCENT = "#8B5FD6";
 
 export default function RequestDetailsModal({
   isOpen,
@@ -62,6 +42,7 @@ export default function RequestDetailsModal({
   const [selectedSourceWarehouseId, setSelectedSourceWarehouseId] =
     useState(null);
   const [allocInventoryByItem, setAllocInventoryByItem] = useState({}); // { request_item_id: inventory_id }
+  const [actionLoading, setActionLoading] = useState(false);
 
   // Dropdown styles for proper layering (used by SearchableSelect only)
   const dropdownStyles = {
@@ -95,26 +76,26 @@ export default function RequestDetailsModal({
   useEffect(() => {
     setLocalItems(Array.isArray(request?.items) ? request.items : []);
     setSelectedSourceWarehouseId(request?.request_source_warehouse_id || null);
+  }, [request]);
 
-    // Auto-select default batch for existing items (biggest quantity)
-    if (Array.isArray(request?.items) && selectedSourceWarehouseId) {
-      const defaultAllocations = {};
-      request.items.forEach((item) => {
-        const batches = allInventoryItems.filter(
-          (inv) =>
-            inv.warehouse_id === Number(selectedSourceWarehouseId) &&
-            inv.variant_id === Number(item.variant_id) &&
-            inv.packaging_type_id === Number(item.packaging_type_id),
-        );
-        batches.sort(
-          (a, b) => Number(b.inventory_quantity) - Number(a.inventory_quantity),
-        );
-        if (batches[0]) {
-          defaultAllocations[item.request_item_id] = batches[0].inventory_id;
-        }
-      });
-      setAllocInventoryByItem(defaultAllocations);
-    }
+  useEffect(() => {
+    if (!Array.isArray(request?.items) || !selectedSourceWarehouseId) return;
+    const defaultAllocations = {};
+    request.items.forEach((item) => {
+      const batches = allInventoryItems.filter(
+        (inv) =>
+          inv.warehouse_id === Number(selectedSourceWarehouseId) &&
+          inv.variant_id === Number(item.variant_id) &&
+          inv.packaging_type_id === Number(item.packaging_type_id),
+      );
+      batches.sort(
+        (a, b) => Number(b.inventory_quantity) - Number(a.inventory_quantity),
+      );
+      if (batches[0]) {
+        defaultAllocations[item.request_item_id] = batches[0].inventory_id;
+      }
+    });
+    setAllocInventoryByItem(defaultAllocations);
   }, [request, selectedSourceWarehouseId, allInventoryItems]);
 
   const sourceWarehouse = warehouses.find(
@@ -372,36 +353,97 @@ export default function RequestDetailsModal({
 
   if (!isOpen || !request) return null;
 
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      dir="rtl"
-      modalWidthClass="max-w-6xl"
-    >
-      <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200 bg-white rounded-t-xl sticky top-0 z-10">
-        <h3
-          className="text-base sm:text-2xl font-bold"
-          style={{ color: THEME_DARK }}
-        >
-          تفاصيل طلب REQ-{request.request_id}
-        </h3>
-        <button
-          onClick={onClose}
-          className="p-2 rounded-full text-gray-500 hover:bg-red-100 hover:text-red-600 transition-colors"
-        >
-          <XMarkIcon className="h-6 w-6" />
-        </button>
-      </div>
+  const insufficientItems = items.filter((item) => {
+    const available = getAvailableForRow(item);
+    return available < Number(item.requested_quantity || 0);
+  });
+  const canApprove =
+    items.length > 0 &&
+    insufficientItems.length === 0 &&
+    items.every((it) => allocInventoryByItem[it.request_item_id]);
 
-      <div
-        className="p-3 sm:p-6 flex-grow overflow-y-auto bg-gray-50 space-y-4"
-        style={{
-          maxHeight: "calc(90vh - 200px)",
-          overflowY: "auto",
-          position: "relative",
-        }}
-      >
+  const handleApproveClick = async () => {
+    if (!canApprove || actionLoading) return;
+    const allocations = items
+      .filter((it) => allocInventoryByItem[it.request_item_id])
+      .map((it) => ({
+        request_item_id: it.request_item_id,
+        inventory_id: allocInventoryByItem[it.request_item_id],
+        quantity: it.requested_quantity,
+      }));
+    setActionLoading(true);
+    try {
+      await onApproveAllocate?.(request.request_id, allocations, adminNote);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRejectClick = async () => {
+    if (actionLoading) return;
+    setActionLoading(true);
+    try {
+      await onReject?.(request.request_id, adminNote);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  return (
+    <AppModalShell
+      open={isOpen}
+      onClose={onClose}
+      portal
+      zIndex="z-[9999]"
+      title={`تفاصيل طلب REQ-${request.request_id}`}
+      icon={ClipboardDocumentListIcon}
+      size="3xl"
+      bodyClassName="p-3 sm:p-6 overflow-y-auto flex-1 min-h-0 bg-[#FAFAFE] space-y-4"
+      footer={
+        <>
+          {insufficientItems.length > 0 && (
+            <div className="mb-3 px-1">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-red-700 text-sm font-medium mb-2">
+                  ⚠️ لا يمكن إنشاء التحويل - الكميات المطلوبة تتجاوز المتاح:
+                </p>
+                <ul className="text-red-600 text-xs space-y-1">
+                  {insufficientItems.map((item) => (
+                    <li key={item.request_item_id}>
+                      •{" "}
+                      {item.products_name
+                        ? `${item.products_name} - ${item.variant_name}`
+                        : item.variant_name}{" "}
+                      ({item.packaging_types_name}): مطلوب{" "}
+                      {item.requested_quantity} - متاح{" "}
+                      {getAvailableForRow(item)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+          <div className="flex justify-center gap-4">
+            <button
+              type="button"
+              disabled={!canApprove || actionLoading}
+              onClick={handleApproveClick}
+              className={`${modalPrimaryBtnClass} disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {actionLoading ? "جاري التنفيذ..." : "إنشاء التحويل"}
+            </button>
+            <button
+              type="button"
+              disabled={actionLoading}
+              onClick={handleRejectClick}
+              className="px-8 py-2.5 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              رفض الطلب
+            </button>
+          </div>
+        </>
+      }
+    >
         <div
           className="bg-white rounded-2xl p-4 border"
           style={{ boxShadow: "0 6px 20px rgba(15,23,42,0.04)" }}
@@ -472,7 +514,7 @@ export default function RequestDetailsModal({
 
         <div className="bg-white rounded-2xl p-4 border">
           <div className="mb-3">
-            <h4 className="text-lg font-semibold" style={{ color: THEME_DARK }}>
+            <h4 className="text-lg font-semibold text-[#2D1B69]">
               العناصر المطلوبة
             </h4>
           </div>
@@ -1313,87 +1355,6 @@ export default function RequestDetailsModal({
             placeholder="أضف ملاحظة..."
           />
         </div>
-      </div>
-
-      {/* Validation warning before buttons */}
-      {(() => {
-        const insufficientItems = items.filter((item) => {
-          const available = getAvailableForRow(item);
-          return available < Number(item.requested_quantity || 0);
-        });
-
-        const hasInsufficientQuantity = insufficientItems.length > 0;
-
-        if (hasInsufficientQuantity) {
-          return (
-            <div className="px-4 pb-2">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-red-700 text-sm font-medium mb-2">
-                  ⚠️ لا يمكن إنشاء التحويل - الكميات المطلوبة تتجاوز المتاح:
-                </p>
-                <ul className="text-red-600 text-xs space-y-1">
-                  {insufficientItems.map((item) => (
-                    <li key={item.request_item_id}>
-                      •{" "}
-                      {item.products_name
-                        ? `${item.products_name} - ${item.variant_name}`
-                        : item.variant_name}{" "}
-                      ({item.packaging_types_name}): مطلوب{" "}
-                      {item.requested_quantity} - متاح{" "}
-                      {getAvailableForRow(item)}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          );
-        }
-        return null;
-      })()}
-
-      {/* Premium action bar */}
-      <div
-        className="
-          sticky bottom-0
-          bg-white/90 backdrop-blur-md
-          border-t px-6 py-4
-          flex justify-center gap-4
-          shadow-[0_-8px_30px_rgba(15,23,42,0.06)]
-        "
-        style={{ zIndex: 60 }}
-      >
-        <button
-          onClick={() => {
-            const allocations = items
-              .filter((it) => allocInventoryByItem[it.request_item_id])
-              .map((it) => ({
-                request_item_id: it.request_item_id,
-                inventory_id: allocInventoryByItem[it.request_item_id],
-                quantity: it.requested_quantity,
-              }));
-            onApproveAllocate(request.request_id, allocations, adminNote);
-          }}
-          className="
-            px-2 py-2 text-xs md:text-base md:px-8 md:py-3 rounded-xl md:font-bold text-white
-            bg-[#1A0F35]
-            shadow-[0_0_20px_rgba(141,216,245,.22)]
-            hover:scale-105 transition
-          "
-        >
-          إنشاء التحويل
-        </button>
-
-        <button
-          onClick={() => onReject(request.request_id, adminNote)}
-          className="
-            px-2 py-2 text-xs md:text-base md:px-8 md:py-3 rounded-xl font-bold text-white
-            bg-red-600 hover:bg-red-700
-            shadow-md hover:scale-105 transition
-          "
-        >
-          رفض الطلب
-        </button>
-      </div>
-    </Modal>
+    </AppModalShell>
   );
 }

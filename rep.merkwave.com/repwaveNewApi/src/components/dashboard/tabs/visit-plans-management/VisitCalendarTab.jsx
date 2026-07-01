@@ -59,7 +59,7 @@ function VisitCalendarTab() {
   return (
     <div className="space-y-6" dir="rtl">
       <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-        <CalendarDaysIcon className="w-7 h-7 text-blue-500" />
+        <CalendarDaysIcon className="w-7 h-7 text-[#8B5FD6]" />
         عرض التقويم
       </h3>
       <div className="bg-white p-6 rounded-lg shadow">

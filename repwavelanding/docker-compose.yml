@@ -1,0 +1,11 @@
+services:
+  repwave-landing:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: repwave-landing
+    ports:
+      - "3004:3000"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production

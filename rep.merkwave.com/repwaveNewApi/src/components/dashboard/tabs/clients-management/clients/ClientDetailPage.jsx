@@ -46,10 +46,10 @@ import {
 } from "../../../../../constants/clientStatus";
 import { formatCurrency } from "../../../../../utils/currency";
 import { formatLocalDateTime } from "../../../../../utils/dateUtils";
+import { buildGoogleMapsLink } from "../../../../../utils/googleMapsLink.js";
 import useCurrency from "../../../../../hooks/useCurrency";
 import Loader from "../../../../common/Loader/Loader";
 import Alert from "../../../../common/Alert/Alert";
-import Modal from "../../../../common/Modal/Modal";
 import DeleteConfirmationModal from "../../../../common/DeleteConfirmationModal";
 import UpdateClientForm from "./UpdateClientForm";
 import ClientAccountStatementModal from "./ClientAccountStatementModal";
@@ -105,10 +105,10 @@ function CreditBar({ balance, limit }) {
 // ── KPI card ────────────────────────────────────────────────────────────────
 function KpiCard({ icon, label, value, color, onClick }) {
   const palette = {
-    cyan: "from-cyan-400   to-cyan-600   shadow-cyan-200/60",
+    cyan: "from-[#8B5FD6]   to-[#7A52C2]   shadow-[#8B5FD6]/25",
     green: "from-emerald-400 to-emerald-600 shadow-emerald-200/60",
-    blue: "from-blue-400   to-blue-700   shadow-blue-200/60",
-    indigo: "from-indigo-400 to-indigo-700 shadow-indigo-200/60",
+    blue: "from-[#8B5FD6] to-[#7A52C2] shadow-[#8B5FD6]/20",
+    indigo: "from-[#8B5FD6] to-[#7A52C2] shadow-[#8B5FD6]/20",
     amber: "from-amber-400  to-amber-600  shadow-amber-200/60",
     red: "from-red-400    to-red-600    shadow-red-200/60",
     purple: "from-purple-400 to-purple-700 shadow-purple-200/60",
@@ -136,14 +136,14 @@ function KpiCard({ icon, label, value, color, onClick }) {
 // ── Action button ───────────────────────────────────────────────────────────
 function ActionBtn({ icon, label, color, onClick }) {
   const cols = {
-    blue: "from-blue-500   to-blue-700   shadow-blue-200/70",
-    emerald: "from-emerald-500 to-emerald-700 shadow-emerald-200/70",
+    blue: "from-[#8B5FD6] to-[#7A52C2] shadow-[#8B5FD6]/25",
+    emerald: "from-[#8B5FD6] to-[#7A52C2] shadow-[#8B5FD6]/25",
     amber: "from-amber-400  to-amber-600  shadow-amber-200/70",
-    indigo: "from-indigo-500 to-indigo-700 shadow-indigo-200/70",
+    indigo: "from-[#8B5FD6] to-[#7A52C2] shadow-[#8B5FD6]/25",
     teal: "from-[#8B5FD6] to-[#7A52C2] shadow-[#8B5FD6]/20",
     rose: "from-rose-500   to-rose-700   shadow-rose-200/70",
     purple: "from-purple-500 to-purple-700 shadow-purple-200/70",
-    cyan: "from-cyan-500   to-cyan-700   shadow-cyan-200/70",
+    cyan: "from-[#8B5FD6] to-[#6B45B0] shadow-[#8B5FD6]/25",
   };
   return (
     <button
@@ -373,7 +373,7 @@ export default function ClientDetailPage() {
         <Alert message={error} type="error" />
         <button
           onClick={() => navigate("/dashboard/clients")}
-          className="mt-4 px-4 py-2 bg-cyan-600 text-white rounded-lg"
+          className="mt-4 px-4 py-2 bg-[#8B5FD6] text-white rounded-lg"
         >
           {
             "\u0627\u0644\u0639\u0648\u062f\u0629 \u0644\u0644\u0639\u0645\u0644\u0627\u0621"
@@ -426,7 +426,7 @@ export default function ClientDetailPage() {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-cyan-50/30"
+      className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-[#f5f3ff]/30"
       dir="rtl"
     >
       {/* Sticky top bar */}
@@ -434,7 +434,7 @@ export default function ClientDetailPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           <button
             onClick={() => navigate("/dashboard/clients")}
-            className="flex items-center gap-2 text-gray-500 hover:text-cyan-600 transition-colors text-sm font-semibold bg-gray-100 hover:bg-cyan-50 px-3 py-1.5 rounded-xl"
+            className="flex items-center gap-2 text-gray-500 hover:text-[#8B5FD6] transition-colors text-sm font-semibold bg-gray-100 hover:bg-[#f5f3ff] px-3 py-1.5 rounded-xl"
           >
             <ArrowRightIcon className="h-4 w-4" />
             <span className="hidden sm:inline">
@@ -447,7 +447,7 @@ export default function ClientDetailPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setStatementOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-indigo-50 text-[#7A52C2] hover:bg-indigo-100 text-sm font-semibold flex items-center gap-1.5 border border-indigo-200 transition-colors"
+              className="px-3 py-1.5 rounded-xl bg-[#f5f3ff] text-[#7A52C2] hover:bg-[#EDE7FF] text-sm font-semibold flex items-center gap-1.5 border border-[#C4A8F0]/50 transition-colors"
             >
               <ChartBarIcon className="h-4 w-4" />
               <span className="hidden sm:inline">
@@ -456,7 +456,7 @@ export default function ClientDetailPage() {
             </button>
             <button
               onClick={() => setEditOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white text-sm font-semibold flex items-center gap-1.5 shadow-sm shadow-cyan-200 transition-all"
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#8B5FD6] to-[#7A52C2] hover:from-[#7A52C2] hover:to-[#6B45B0] text-white text-sm font-semibold flex items-center gap-1.5 shadow-sm shadow-[#C4A8F0]/40 transition-all"
             >
               <PencilSquareIcon className="h-4 w-4" />
               {"\u062a\u0639\u062f\u064a\u0644"}
@@ -520,10 +520,10 @@ export default function ClientDetailPage() {
                     src={client.clients_image}
                     alt={client.clients_company_name}
                     onError={() => setImgError(true)}
-                    className="w-36 h-36 rounded-3xl object-cover border-4 border-white shadow-2xl ring-4 ring-cyan-100"
+                    className="w-36 h-36 rounded-3xl object-cover border-4 border-white shadow-2xl ring-4 ring-[#C4A8F0]/30"
                   />
                 ) : (
-                  <div className="w-36 h-36 rounded-3xl bg-gradient-to-br from-cyan-400 via-cyan-500 to-[#02415A] border-4 border-white shadow-2xl ring-4 ring-cyan-100 flex items-center justify-center text-white text-4xl font-extrabold select-none">
+                  <div className="w-36 h-36 rounded-3xl bg-gradient-to-br from-[#8B5FD6] via-[#8B5FD6] to-[#2D1B69] border-4 border-white shadow-2xl ring-4 ring-[#C4A8F0]/30 flex items-center justify-center text-white text-4xl font-extrabold select-none">
                     {initials}
                   </div>
                 )}
@@ -572,7 +572,7 @@ export default function ClientDetailPage() {
                   {client.clients_contact_phone1 && (
                     <a
                       href={`tel:${client.clients_contact_phone1}`}
-                      className="flex items-center gap-1.5 bg-cyan-50 border border-cyan-200 text-cyan-800 px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-cyan-100 transition-colors"
+                      className="flex items-center gap-1.5 bg-[#f5f3ff] border border-[#C4A8F0]/50 text-[#2D1B69] px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-[#EDE7FF] transition-colors"
                     >
                       <PhoneIcon className="h-3.5 w-3.5" />
                       {client.clients_contact_phone1}
@@ -581,7 +581,7 @@ export default function ClientDetailPage() {
                   {client.clients_contact_phone2 && (
                     <a
                       href={`tel:${client.clients_contact_phone2}`}
-                      className="flex items-center gap-1.5 bg-teal-50 border border-teal-200 text-teal-800 px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-teal-100 transition-colors"
+                      className="flex items-center gap-1.5 bg-[#f5f3ff] border border-[#C4A8F0]/50 text-[#2D1B69] px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-[#EDE7FF] transition-colors"
                     >
                       <PhoneIcon className="h-3.5 w-3.5" />
                       {client.clients_contact_phone2}
@@ -738,7 +738,7 @@ export default function ClientDetailPage() {
                 className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold whitespace-nowrap rounded-xl transition-all
                   ${
                     activeTab === tab.key
-                      ? "bg-white text-cyan-600 shadow-sm border border-gray-200"
+                      ? "bg-white text-[#8B5FD6] shadow-sm border border-gray-200"
                       : "text-gray-500 hover:text-gray-700 hover:bg-white/60"
                   }`}
               >
@@ -843,8 +843,8 @@ export default function ClientDetailPage() {
             {activeTab === "contact" && (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="bg-gradient-to-br from-cyan-50 to-cyan-100/60 border border-cyan-200 rounded-2xl p-5 flex flex-col gap-3">
-                    <span className="text-xs font-extrabold text-cyan-600 uppercase tracking-widest">
+                  <div className="bg-gradient-to-br from-[#f5f3ff] to-[#EDE7FF] border border-[#C4A8F0]/50 rounded-2xl p-5 flex flex-col gap-3">
+                    <span className="text-xs font-extrabold text-[#8B5FD6] uppercase tracking-widest">
                       {
                         "\u0647\u0627\u062a\u0641 \u0631\u0626\u064a\u0633\u064a"
                       }
@@ -852,9 +852,9 @@ export default function ClientDetailPage() {
                     {client.clients_contact_phone1 ? (
                       <a
                         href={`tel:${client.clients_contact_phone1}`}
-                        className="text-xl font-extrabold text-gray-900 hover:text-cyan-700 flex items-center gap-2 transition-colors"
+                        className="text-xl font-extrabold text-gray-900 hover:text-[#7A52C2] flex items-center gap-2 transition-colors"
                       >
-                        <div className="w-9 h-9 bg-cyan-500 rounded-xl flex items-center justify-center shadow-sm">
+                        <div className="w-9 h-9 bg-[#8B5FD6] rounded-xl flex items-center justify-center shadow-sm">
                           <PhoneIcon className="h-5 w-5 text-white" />
                         </div>
                         {client.clients_contact_phone1}
@@ -879,7 +879,7 @@ export default function ClientDetailPage() {
                     {client.clients_contact_phone2 ? (
                       <a
                         href={`tel:${client.clients_contact_phone2}`}
-                        className="text-xl font-extrabold text-gray-900 hover:text-teal-700 flex items-center gap-2 transition-colors"
+                        className="text-xl font-extrabold text-gray-900 hover:text-[#7A52C2] flex items-center gap-2 transition-colors"
                       >
                         <div className="w-9 h-9 bg-[#8B5FD6] rounded-xl flex items-center justify-center shadow-sm">
                           <PhoneIcon className="h-5 w-5 text-white" />
@@ -899,7 +899,7 @@ export default function ClientDetailPage() {
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100/60 border border-[#C4A8F0] rounded-2xl p-5 flex flex-col gap-3">
+                <div className="bg-gradient-to-br from-[#f5f3ff] to-[#EDE7FF]/60 border border-[#C4A8F0] rounded-2xl p-5 flex flex-col gap-3">
                   <span className="text-xs font-extrabold text-[#8B5FD6] uppercase tracking-widest">
                     {
                       "\u0627\u0644\u0628\u0631\u064a\u062f \u0627\u0644\u0625\u0644\u0643\u062a\u0631\u0648\u0646\u064a"
@@ -910,7 +910,7 @@ export default function ClientDetailPage() {
                       href={`mailto:${client.clients_email}`}
                       className="text-lg font-bold text-gray-900 hover:text-[#7A52C2] flex items-center gap-2 transition-colors break-all"
                     >
-                      <div className="w-9 h-9 bg-[#f5f3ff]0 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
+                      <div className="w-9 h-9 bg-[#8B5FD6] rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
                         <EnvelopeIcon className="h-5 w-5 text-white" />
                       </div>
                       {client.clients_email}
@@ -974,7 +974,10 @@ export default function ClientDetailPage() {
               <div className="space-y-4">
                 {client.clients_latitude && client.clients_longitude && (
                   <a
-                    href={`https://maps.google.com/?q=${client.clients_latitude},${client.clients_longitude}`}
+                    href={buildGoogleMapsLink(
+                      client.clients_latitude,
+                      client.clients_longitude,
+                    )}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-4 bg-gradient-to-l from-[#f5f3ff] to-[#EDE7FF] border border-[#C4A8F0] rounded-2xl p-5 hover:shadow-md transition-shadow group"
@@ -984,16 +987,17 @@ export default function ClientDetailPage() {
                     </div>
                     <div>
                       <p className="text-sm font-extrabold text-green-700">
-                        {
-                          "\u0639\u0631\u0636 \u0639\u0644\u0649 \u062e\u0631\u0627\u0626\u0637 Google"
-                        }
+                        عرض على خرائط Google
                       </p>
-                      <p className="text-xs text-green-600 font-mono mt-0.5">
-                        {client.clients_latitude}, {client.clients_longitude}
+                      <p className="text-xs text-green-600 mt-0.5 truncate max-w-[280px]" dir="ltr">
+                        {buildGoogleMapsLink(
+                          client.clients_latitude,
+                          client.clients_longitude,
+                        )}
                       </p>
                     </div>
                     <div className="mr-auto text-green-400 text-xs font-bold">
-                      {"\u0627\u0641\u062a\u062d \u2190"}
+                      افتح ←
                     </div>
                   </a>
                 )}
@@ -1084,7 +1088,7 @@ export default function ClientDetailPage() {
                     <p className="text-2xl font-extrabold text-[#7A52C2]">
                       {fmt(lim)}
                     </p>
-                    <p className="text-[11px] text-blue-500 mt-1">{symbol}</p>
+                    <p className="text-[11px] text-[#8B5FD6] mt-1">{symbol}</p>
                   </div>
                   <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center">
                     <p className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-1">
@@ -1187,15 +1191,15 @@ export default function ClientDetailPage() {
                   </div>
                 )}
                 {client.clients_source && (
-                  <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 flex items-center gap-3">
-                    <IdentificationIcon className="h-5 w-5 text-indigo-400 flex-shrink-0" />
+                  <div className="bg-[#f5f3ff] border border-[#C4A8F0]/50 rounded-2xl p-4 flex items-center gap-3">
+                    <IdentificationIcon className="h-5 w-5 text-[#C4A8F0] flex-shrink-0" />
                     <div>
-                      <p className="text-xs font-bold text-indigo-500 uppercase tracking-wide">
+                      <p className="text-xs font-bold text-[#8B5FD6] uppercase tracking-wide">
                         {
                           "\u0645\u0635\u062f\u0631 \u0627\u0644\u0639\u0645\u064a\u0644"
                         }
                       </p>
-                      <p className="text-sm font-semibold text-indigo-800">
+                      <p className="text-sm font-semibold text-[#2D1B69]">
                         {client.clients_source}
                       </p>
                     </div>
@@ -1229,7 +1233,7 @@ export default function ClientDetailPage() {
                       </p>
                       <button
                         onClick={() => setEditOpen(true)}
-                        className="mt-3 text-cyan-600 text-sm font-semibold hover:underline"
+                        className="mt-3 text-[#8B5FD6] text-sm font-semibold hover:underline"
                       >
                         {
                           "\u0623\u0636\u0641 \u0645\u0644\u0627\u062d\u0638\u0627\u062a \u2190"
@@ -1246,14 +1250,6 @@ export default function ClientDetailPage() {
       {/* Modals */}
 
       {editOpen && (
-        <Modal
-          isOpen={editOpen}
-          onClose={() => setEditOpen(false)}
-          title={
-            "\u062a\u0639\u062f\u064a\u0644 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0639\u0645\u064a\u0644"
-          }
-          size="xlarge"
-        >
           <UpdateClientForm
             client={client}
             onUpdate={handleUpdate}
@@ -1262,7 +1258,6 @@ export default function ClientDetailPage() {
             clientIndustries={clientIndustries}
             allUsers={allUsers}
           />
-        </Modal>
       )}
 
       <DeleteConfirmationModal

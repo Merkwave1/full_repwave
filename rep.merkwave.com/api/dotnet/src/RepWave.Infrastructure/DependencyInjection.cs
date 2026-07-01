@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RepWave.Application.Common.Interfaces;
 using RepWave.Infrastructure.Persistence;
 using RepWave.Infrastructure.Services;
+using RepWave.Infrastructure.Storage;
 namespace RepWave.Infrastructure;
 
 public static class DependencyInjection
@@ -31,6 +32,7 @@ public static class DependencyInjection
         // ── Tenant services ──────────────────────────────────────────────────
         services.AddScoped<ITenantService, TenantService>();
         services.AddScoped<ITenantDbContextFactory, TenantDbContextFactory>();
+        services.AddScoped<ITenantProvisioningHelper, PostgresTenantProvisioningHelper>();
 
         // ── Tenant DbContext (per-request, determined by JWT "tenant" claim) ─
         services.AddScoped<ApplicationDbContext>(sp =>
@@ -46,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
 
         services.AddScoped<ITokenService, TokenService>();
+        services.AddScoped<IClientDocumentStorage, ClientDocumentStorage>();
 
         return services;
     }

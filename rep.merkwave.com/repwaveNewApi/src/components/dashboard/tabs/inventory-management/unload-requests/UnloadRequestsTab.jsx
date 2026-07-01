@@ -50,7 +50,7 @@ function DetailsModal({ request, warehouses, onClose }) {
       >
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <ArrowUpTrayIcon className="h-5 w-5 text-blue-500" />
+            <ArrowUpTrayIcon className="h-5 w-5 text-[#8B5FD6]" />
             تفاصيل طلب التفريغ #{request.request_id}
           </h3>
           <button
@@ -217,7 +217,7 @@ function UnloadRequestsTab() {
   return (
     <div className="p-4" dir="rtl">
       <div className="flex items-center gap-3 mb-6">
-        <ArrowUpTrayIcon className="h-7 w-7 text-blue-500" />
+        <ArrowUpTrayIcon className="h-7 w-7 text-[#8B5FD6]" />
         <h3 className="text-2xl font-bold text-gray-800">طلبات التفريغ</h3>
         <span className="bg-[#EDE7FF] text-[#7A52C2] text-sm font-medium px-2.5 py-0.5 rounded-full">
           {requests.length}

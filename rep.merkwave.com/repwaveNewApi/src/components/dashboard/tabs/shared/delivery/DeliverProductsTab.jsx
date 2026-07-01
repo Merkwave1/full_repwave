@@ -13,10 +13,18 @@ import {
 
 import {
   getAppWarehouses,
-  getAppClients,
-  getAppDeliverableSalesOrders,
+  getAppProducts,
 } from "../../../../../apis/auth";
-import { addSalesDelivery } from "../../../../../apis/sales_deliveries";
+import {
+  resolveClientId,
+  resolveClientName,
+  getAllClients,
+} from "../../../../../apis/clients.js";
+import {
+  addSalesDelivery,
+  getPendingSalesOrdersForDelivery,
+  unwrapApiList,
+} from "../../../../../apis/sales_deliveries";
 import Loader from "../../../../common/Loader/Loader";
 import Alert from "../../../../common/Alert/Alert";
 import CustomPageHeader from "../../../../common/CustomPageHeader/CustomPageHeader";
@@ -32,6 +40,128 @@ const formatNumber = (val) => {
   return hasDecimal
     ? n.toLocaleString("en-US", { maximumFractionDigits: 2 })
     : n.toLocaleString("en-US");
+};
+
+const normalizePackagingId = (value) =>
+  value === null || value === undefined || value === "" ? null : Number(value);
+
+const formatBatchDateValue = (date) => {
+  if (!date) return "";
+  return String(date).split("T")[0];
+};
+
+const normalizeInventoryList = (response) => {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  return [];
+};
+
+const buildVariantIndex = (products = []) => {
+  const map = new Map();
+  for (const product of products) {
+    for (const variant of product?.variants || []) {
+      map.set(String(variant.variant_id), { product, variant });
+    }
+  }
+  return map;
+};
+
+const getItemPendingQty = (item) => {
+  const fromApi = parseFloat(item?.quantity_pending);
+  if (Number.isFinite(fromApi)) return fromApi;
+  const delivered = parseFloat(
+    item?.delivered_quantity ?? item?.sales_order_items_quantity_delivered ?? 0,
+  );
+  const returned = parseFloat(
+    item?.returned_quantity ?? item?.sales_order_items_quantity_returned ?? 0,
+  );
+  const total = parseFloat(
+    item?.sales_order_items_quantity ?? item?.quantity ?? 0,
+  );
+  return total - delivered - returned;
+};
+
+const enrichDeliveryItem = (item, variantIndex) => {
+  const meta = variantIndex.get(String(item.sales_order_items_variant_id));
+  const delivered =
+    item.delivered_quantity ?? item.sales_order_items_quantity_delivered ?? 0;
+  const productName = item.products_name || meta?.product?.products_name;
+  const variantName = item.variant_name || meta?.variant?.variant_name;
+  return {
+    ...item,
+    products_name: productName,
+    variant_name: variantName,
+    variant_sku: item.variant_sku || meta?.variant?.variant_sku,
+    packaging_types_name:
+      item.packaging_types_name ||
+      item.base_units_name ||
+      meta?.product?.products_unit ||
+      null,
+    delivered_quantity: delivered,
+    sales_order_items_quantity_delivered: delivered,
+  };
+};
+
+const getItemDisplayName = (item) => {
+  const product = item?.products_name || item?.product_name;
+  const variant = item?.variant_name;
+  if (product && variant) return `${product} - ${variant}`;
+  return (
+    variant ||
+    product ||
+    (item?.sales_order_items_variant_id
+      ? `منتج #${item.sales_order_items_variant_id}`
+      : "غير محدد")
+  );
+};
+
+const filterInventoryBatches = (inventoryData, variantId, packagingTypeId, warehouseId) => {
+  const pkgId = normalizePackagingId(packagingTypeId);
+  const variantNum = Number(variantId);
+  const warehouseNum = Number(warehouseId);
+
+  const baseFilter = (inv, pkgMatch) =>
+    Number(inv.variant_id) === variantNum &&
+    Number(inv.warehouse_id) === warehouseNum &&
+    parseFloat(inv.inventory_quantity || 0) > 0 &&
+    pkgMatch(normalizePackagingId(inv.packaging_type_id));
+
+  let batches = inventoryData.filter((inv) =>
+    baseFilter(inv, (invPkg) =>
+      pkgId === null ? invPkg === null : invPkg === pkgId,
+    ),
+  );
+
+  if (batches.length === 0 && pkgId !== null) {
+    batches = inventoryData.filter((inv) =>
+      baseFilter(inv, (invPkg) => invPkg === null),
+    );
+  }
+
+  if (batches.length === 0) {
+    batches = inventoryData.filter(
+      (inv) =>
+        Number(inv.variant_id) === variantNum &&
+        Number(inv.warehouse_id) === warehouseNum &&
+        parseFloat(inv.inventory_quantity || 0) > 0,
+    );
+  }
+
+  return batches
+    .map((inv) => ({
+      inventory_id: inv.inventory_id,
+      inventory_production_date: formatBatchDateValue(inv.inventory_production_date),
+      inventory_quantity: parseFloat(inv.inventory_quantity || 0),
+      warehouse_id: inv.warehouse_id,
+      packaging_type_id: inv.packaging_type_id,
+      product_name: inv.product_name,
+      variant_name: inv.variant_name,
+    }))
+    .sort(
+      (a, b) =>
+        new Date(b.inventory_production_date || 0) -
+        new Date(a.inventory_production_date || 0),
+    );
 };
 
 const STATUS_CONFIG = {
@@ -190,7 +320,7 @@ const OrderItemRow = ({
       </td>
       {/* Product column: constrained to avoid expanding other columns */}
       <td className="w-40 min-w-0 max-w-[180px] truncate text-right text-gray-900">
-        {item.variant_name || item.products_name}
+        {getItemDisplayName(item)}
       </td>
       <td className="text-center text-gray-500 w-16">{displaySku}</td>
       <td className="text-center text-gray-500 w-16">
@@ -233,9 +363,9 @@ const OrderItemRow = ({
           {availableBatches.map((batch) => (
             <option
               key={batch.inventory_id}
-              value={batch.inventory_production_date}
+              value={formatBatchDateValue(batch.inventory_production_date)}
             >
-              {batch.inventory_production_date || "غير محدد"} (متاح:{" "}
+              {formatBatchDateValue(batch.inventory_production_date) || "غير محدد"} (متاح:{" "}
               {formatNumber(batch.inventory_quantity)})
             </option>
           ))}
@@ -284,86 +414,69 @@ export default function DeliverProductsTab() {
 
   // Load initial data
   const loadData = useCallback(
-    async (forceRefresh = false) => {
+    async (_forceRefresh = false) => {
       try {
         setLoading(true);
         setError(null);
 
-        let cachedClients = [];
-        try {
-          const rawClients = JSON.parse(
-            localStorage.getItem("appClients") || "[]",
-          );
-          cachedClients = Array.isArray(rawClients)
-            ? rawClients
-            : rawClients?.data || [];
-        } catch (cacheErr) {
-          console.warn("Failed to parse clients from localStorage:", cacheErr);
-          cachedClients = [];
-        }
+        const [
+          ordersResponse,
+          warehousesResponse,
+          clientsResponse,
+          productsResponse,
+        ] = await Promise.all([
+          getPendingSalesOrdersForDelivery(),
+          getAppWarehouses(),
+          getAllClients(),
+          getAppProducts(),
+        ]);
 
-        const [ordersResponse, warehousesResponse, clientsResponse] =
-          await Promise.all([
-            getAppDeliverableSalesOrders(forceRefresh), // Force refresh when needed
-            getAppWarehouses(),
-            getAppClients(),
-          ]);
+        const warehouseList = unwrapApiList(warehousesResponse);
+        const clientList = unwrapApiList(clientsResponse);
+        const productsList = unwrapApiList(productsResponse);
 
-        if (ordersResponse?.data) {
-          // Sort by order date (new to old) using correct field sales_orders_order_date
-          const sortedOrders = [...ordersResponse.data].sort((a, b) => {
-            const da = new Date(
-              a.sales_orders_order_date || a.created_at || 0,
-            ).getTime();
-            const db = new Date(
-              b.sales_orders_order_date || b.created_at || 0,
-            ).getTime();
-            if (db !== da) return db - da;
-            return (b.sales_orders_id || 0) - (a.sales_orders_id || 0);
-          });
-          setOrders(sortedOrders);
-        } else if (Array.isArray(ordersResponse)) {
-          // Sort by order date (new to old)
-          const sortedOrders = [...ordersResponse].sort((a, b) => {
-            const da = new Date(
-              a.sales_orders_order_date || a.created_at || 0,
-            ).getTime();
-            const db = new Date(
-              b.sales_orders_order_date || b.created_at || 0,
-            ).getTime();
-            if (db !== da) return db - da;
-            return (b.sales_orders_id || 0) - (a.sales_orders_id || 0);
-          });
-          setOrders(sortedOrders);
-        } else {
-          setOrders([]);
-        }
+        setWarehouses(warehouseList);
+        setClients(clientList);
 
-        if (warehousesResponse?.data) {
-          setWarehouses(warehousesResponse.data);
-        } else {
-          setWarehouses([]);
-        }
+        const variantIndex = buildVariantIndex(productsList);
+        const warehouseNameById = new Map(
+          warehouseList.map((w) => [String(w.warehouse_id), w.warehouse_name]),
+        );
 
-        if (
-          Array.isArray(clientsResponse?.data) &&
-          clientsResponse.data.length > 0
-        ) {
-          setClients(clientsResponse.data);
-        } else if (
-          Array.isArray(clientsResponse) &&
-          clientsResponse.length > 0
-        ) {
-          setClients(clientsResponse);
-        } else if (Array.isArray(cachedClients) && cachedClients.length > 0) {
-          setClients(cachedClients);
-        } else {
-          setClients([]);
-        }
+        const enrichOrders = (list) =>
+          list.map((order) => ({
+            ...order,
+            clients_id: order.clients_id ?? order.sales_orders_client_id,
+            warehouse_name:
+              order.warehouse_name ||
+              warehouseNameById.get(String(order.sales_orders_warehouse_id)) ||
+              null,
+            items: (order.items || []).map((item) =>
+              enrichDeliveryItem(item, variantIndex),
+            ),
+          }));
+
+        const allOrders = unwrapApiList(ordersResponse);
+        const sortedOrders = enrichOrders(allOrders).sort((a, b) => {
+          const da = new Date(
+            a.sales_orders_order_date || a.created_at || 0,
+          ).getTime();
+          const db = new Date(
+            b.sales_orders_order_date || b.created_at || 0,
+          ).getTime();
+          if (db !== da) return db - da;
+          return (b.sales_orders_id || 0) - (a.sales_orders_id || 0);
+        });
+
+        setOrders(sortedOrders);
       } catch (err) {
         console.error("Error loading data:", err);
-        setError("حدث خطأ في تحميل البيانات");
-        setGlobalMessage({ type: "error", message: "فشل في تحميل البيانات" });
+        setError(err.message || "حدث خطأ في تحميل البيانات");
+        setGlobalMessage({
+          type: "error",
+          message: err.message || "فشل في تحميل البيانات",
+        });
+        setOrders([]);
       } finally {
         setLoading(false);
       }
@@ -403,15 +516,18 @@ export default function DeliverProductsTab() {
 
       // Apply client filter
       if (selectedClient) {
-        const orderClientId = order.clients_id || order.sales_orders_client_id;
-        if (orderClientId !== parseInt(selectedClient)) {
+        const orderClientId =
+          order.clients_id ?? order.sales_orders_client_id;
+        if (String(orderClientId) !== String(selectedClient)) {
           return false;
         }
       }
 
       // Apply warehouse filter
       if (selectedWarehouse) {
-        if (order.sales_orders_warehouse_id !== parseInt(selectedWarehouse)) {
+        if (
+          String(order.sales_orders_warehouse_id) !== String(selectedWarehouse)
+        ) {
           return false;
         }
       }
@@ -441,44 +557,41 @@ export default function DeliverProductsTab() {
     return filteredOrders.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredOrders, currentPage, itemsPerPage]);
 
-  // Load available batches for an item
+  const paginatedOrdersWithItems = useMemo(
+    () =>
+      paginatedOrders
+        .map((order) => ({
+          order,
+          deliverableItems: (order.items || []).filter(
+            (item) => getItemPendingQty(item) > 0,
+          ),
+        }))
+        .filter((entry) => entry.deliverableItems.length > 0),
+    [paginatedOrders],
+  );
+
   const loadAvailableBatches = async (
     variantId,
     packagingTypeId,
     warehouseId,
   ) => {
+    if (!variantId || !warehouseId) return [];
+
     try {
-      // Import getAllInventory here to avoid circular imports
       const { getAllInventory } = await import("../../../../../apis/inventory");
-      const inventoryResponse = await getAllInventory(warehouseId);
+      const inventoryResponse = await getAllInventory({
+        warehouseId: Number(warehouseId),
+        variantId: Number(variantId),
+        pageSize: 500,
+      });
 
-      // Extract the data array from the API response
-      const inventoryData = inventoryResponse?.data || [];
-
-      if (!Array.isArray(inventoryData)) {
-        return [];
-      }
-
-      const batches = inventoryData
-        .filter(
-          (inv) =>
-            inv.variant_id == variantId &&
-            inv.packaging_type_id == packagingTypeId &&
-            parseFloat(inv.inventory_quantity || 0) > 0,
-        )
-        .map((inv) => ({
-          inventory_id: inv.inventory_id,
-          inventory_production_date: inv.inventory_production_date,
-          inventory_quantity: parseFloat(inv.inventory_quantity || 0),
-          warehouse_id: inv.warehouse_id,
-        }))
-        .sort(
-          (a, b) =>
-            new Date(b.inventory_production_date || 0) -
-            new Date(a.inventory_production_date || 0),
-        );
-
-      return batches;
+      const inventoryData = normalizeInventoryList(inventoryResponse);
+      return filterInventoryBatches(
+        inventoryData,
+        variantId,
+        packagingTypeId,
+        warehouseId,
+      );
     } catch (error) {
       console.error("Error loading batches:", error);
       return [];
@@ -507,8 +620,11 @@ export default function DeliverProductsTab() {
         options: [
           { value: "", label: "جميع العملاء" },
           ...clients.map((client) => ({
-            value: client.clients_id.toString(),
-            label: client.clients_company_name || client.clients_contact_name,
+            value: String(resolveClientId(client) ?? ""),
+            label:
+              resolveClientName(client) ||
+              client.clients_contact_name ||
+              `عميل #${resolveClientId(client)}`,
           })),
         ],
       },
@@ -648,50 +764,47 @@ export default function DeliverProductsTab() {
 
       setActiveOrderId(orderId);
 
+      const order = orders.find((o) => o.sales_orders_id == orderId);
+
       if (
         item &&
         item.sales_order_items_variant_id &&
-        item.sales_order_items_packaging_type_id
+        order?.sales_orders_warehouse_id
       ) {
-        const order = orders.find((o) => o.sales_orders_id == orderId);
-        if (order?.sales_orders_warehouse_id) {
-          const batches = await loadAvailableBatches(
-            item.sales_order_items_variant_id,
-            item.sales_order_items_packaging_type_id,
-            order.sales_orders_warehouse_id,
+        const batches = await loadAvailableBatches(
+          item.sales_order_items_variant_id,
+          item.sales_order_items_packaging_type_id,
+          order.sales_orders_warehouse_id,
+        );
+
+        setAvailableBatches((prev) => ({
+          ...keepEntriesForOrder(prev, orderId),
+          [key]: batches,
+        }));
+
+        if (batches && batches.length > 0) {
+          const deliveredQuantity = parseFloat(
+            item.delivered_quantity ||
+              item.sales_order_items_quantity_delivered ||
+              0,
           );
-
-          setAvailableBatches((prev) => ({
+          const returnedQuantity = parseFloat(
+            item.returned_quantity ||
+              item.sales_order_items_quantity_returned ||
+              0,
+          );
+          const totalQuantity = parseFloat(item.sales_order_items_quantity || 0);
+          const remainingQuantity =
+            totalQuantity - deliveredQuantity - returnedQuantity;
+          const firstSufficientBatch = batches.find(
+            (batch) =>
+              parseFloat(batch.inventory_quantity || 0) >= remainingQuantity,
+          );
+          const batchToSelect = firstSufficientBatch || batches[0];
+          setSelectedBatches((prev) => ({
             ...keepEntriesForOrder(prev, orderId),
-            [key]: batches,
+            [key]: formatBatchDateValue(batchToSelect?.inventory_production_date),
           }));
-
-          if (batches && batches.length > 0) {
-            const deliveredQuantity = parseFloat(
-              item.delivered_quantity ||
-                item.sales_order_items_quantity_delivered ||
-                0,
-            );
-            const returnedQuantity = parseFloat(
-              item.returned_quantity ||
-                item.sales_order_items_quantity_returned ||
-                0,
-            );
-            const totalQuantity = parseFloat(
-              item.sales_order_items_quantity || 0,
-            );
-            const remainingQuantity =
-              totalQuantity - deliveredQuantity - returnedQuantity;
-            const firstSufficientBatch = batches.find(
-              (batch) =>
-                parseFloat(batch.inventory_quantity || 0) >= remainingQuantity,
-            );
-            const batchToSelect = firstSufficientBatch || batches[0];
-            setSelectedBatches((prev) => ({
-              ...keepEntriesForOrder(prev, orderId),
-              [key]: batchToSelect?.inventory_production_date || "",
-            }));
-          }
         }
       }
     } else {
@@ -831,11 +944,7 @@ export default function DeliverProductsTab() {
 
       for (const item of deliverableItems) {
         const key = `${order.sales_orders_id}-${item.sales_order_items_id}`;
-        if (
-          item.sales_order_items_variant_id &&
-          item.sales_order_items_packaging_type_id &&
-          order.sales_orders_warehouse_id
-        ) {
+        if (item.sales_order_items_variant_id && order.sales_orders_warehouse_id) {
           const batches = await loadAvailableBatches(
             item.sales_order_items_variant_id,
             item.sales_order_items_packaging_type_id,
@@ -843,7 +952,6 @@ export default function DeliverProductsTab() {
           );
           newBatches[key] = batches;
 
-          // Automatically select the first batch with sufficient quantity
           if (batches && batches.length > 0) {
             const deliveredQuantity = parseFloat(
               item.delivered_quantity ||
@@ -866,9 +974,10 @@ export default function DeliverProductsTab() {
                 parseFloat(batch.inventory_quantity || 0) >= remainingQuantity,
             );
 
-            // If found a batch with sufficient quantity, use it; otherwise use the first batch
             const batchToSelect = firstSufficientBatch || batches[0];
-            newSelectedBatches[key] = batchToSelect.inventory_production_date;
+            newSelectedBatches[key] = formatBatchDateValue(
+              batchToSelect.inventory_production_date,
+            );
           }
         }
       }
@@ -1214,7 +1323,7 @@ export default function DeliverProductsTab() {
 
     if (itemsWithoutBatch.length > 0) {
       const itemNames = itemsWithoutBatch
-        .map((item) => item.variant_name || item.products_name)
+        .map((item) => getItemDisplayName(item))
         .join("، ");
 
       setGlobalMessage({
@@ -1270,21 +1379,18 @@ export default function DeliverProductsTab() {
       const deliveryItems = selectedOrderItems.map((item) => {
         const key = `${orderId}-${item.sales_order_items_id}`;
         const details = deliveryDetails[key] || {};
-        const batchDate = selectedBatches[key];
 
         return {
-          sales_order_items_id: item.sales_order_items_id,
-          quantity: details.quantity || 0,
-          notes: details.notes || "",
-          batch_date: batchDate || null,
+          sales_order_item_id: item.sales_order_items_id,
+          quantity_delivered: parseInt(details.quantity || 0, 10) || 0,
         };
       });
 
       const requestData = {
         sales_order_id: orderId,
-        warehouse_id: order.sales_orders_warehouse_id,
-        delivery_notes: deliveryData.notes || "",
-        delivery_address: deliveryData.address || "",
+        delivery_status: "Preparing",
+        delivery_date: new Date().toISOString(),
+        notes: deliveryData.notes || deliveryData.address || "",
         items: deliveryItems,
       };
 
@@ -1363,7 +1469,7 @@ export default function DeliverProductsTab() {
 
       {/* Orders List */}
       <div className="space-y-4">
-        {paginatedOrders.length === 0 ? (
+        {paginatedOrdersWithItems.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
             <InboxArrowDownIcon className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">
@@ -1371,34 +1477,12 @@ export default function DeliverProductsTab() {
             </h3>
             <p className="mt-1 text-sm text-gray-500">
               {filteredOrders.length === 0
-                ? "لا توجد طلبات تطابق معايير البحث المحددة"
+                ? "لا توجد أوامر بيع جاهزة للتسليم. تأكد من وجود أوامر بحالة مؤكدة/مفوترة ولم تُسلّم بالكامل."
                 : "لا توجد طلبات في هذه الصفحة"}
             </p>
           </div>
         ) : (
-          paginatedOrders.map((order) => {
-            const orderItems = order.items || [];
-            const deliverableItems = orderItems.filter((item) => {
-              const deliveredQuantity = parseFloat(
-                item.delivered_quantity ||
-                  item.sales_order_items_quantity_delivered ||
-                  0,
-              );
-              const returnedQuantity = parseFloat(
-                item.returned_quantity ||
-                  item.sales_order_items_quantity_returned ||
-                  0,
-              );
-              const totalQuantity = parseFloat(
-                item.sales_order_items_quantity || 0,
-              );
-              const remaining =
-                totalQuantity - deliveredQuantity - returnedQuantity;
-              return remaining > 0;
-            });
-
-            if (deliverableItems.length === 0) return null;
-
+          paginatedOrdersWithItems.map(({ order, deliverableItems }) => {
             const isActiveOrder = activeOrderId === order.sales_orders_id;
             const hasSelectedItems =
               isActiveOrder &&
@@ -1442,6 +1526,11 @@ export default function DeliverProductsTab() {
                       "غير محدد"}
                   </span>
                   <span>المخزن: {order.warehouse_name || "غير محدد"}</span>
+                  {!order.warehouse_name && order.sales_orders_warehouse_id && (
+                    <span className="text-amber-600">
+                      (معرف: {order.sales_orders_warehouse_id})
+                    </span>
+                  )}
                   {deliverableItems.length > 0 && (
                     <div className="ms-auto flex flex-wrap items-center gap-2">
                       <button
@@ -1506,7 +1595,7 @@ export default function DeliverProductsTab() {
                         key={item.sales_order_items_id}
                         className={`border rounded-lg p-2.5 text-xs transition-colors ${
                           isSelected
-                            ? "border-blue-400 bg-[#f5f3ff]"
+                            ? "border-[#8B5FD6]/50 bg-[#f5f3ff]"
                             : "border-gray-200 bg-white"
                         }`}
                       >
@@ -1527,7 +1616,7 @@ export default function DeliverProductsTab() {
                           />
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-gray-900 truncate">
-                              {item.variant_name || item.products_name}
+                              {getItemDisplayName(item)}
                             </p>
                             <p className="text-gray-400 truncate">
                               {displaySku} ·{" "}
@@ -1612,12 +1701,17 @@ export default function DeliverProductsTab() {
                                 {batches.map((b) => (
                                   <option
                                     key={b.inventory_id}
-                                    value={b.inventory_production_date}
+                                    value={formatBatchDateValue(b.inventory_production_date)}
                                   >
-                                    {b.inventory_production_date || "غير محدد"}{" "}
+                                    {formatBatchDateValue(b.inventory_production_date) || "غير محدد"}{" "}
                                     (متاح: {formatNumber(b.inventory_quantity)})
                                   </option>
                                 ))}
+                                {batches.length === 0 && (
+                                  <option value="" disabled>
+                                    لا توجد دفعات في مخزن الطلب
+                                  </option>
+                                )}
                               </select>
                             </div>
                           </div>

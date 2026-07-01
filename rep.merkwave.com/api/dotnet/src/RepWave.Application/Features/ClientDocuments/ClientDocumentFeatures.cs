@@ -20,6 +20,8 @@ public record ClientDocumentDto(
     string? ClientDocumentNotes,
     DateTime? ClientDocumentCreatedAt);
 
+public record ClientDocumentTypeDto(int DocumentTypeId, string DocumentTypeName);
+
 public record CreateClientDocumentRequest(
     int ClientId,
     int? DocumentTypeId,
@@ -30,7 +32,34 @@ public record CreateClientDocumentRequest(
     int? UploadedByUserId,
     string? Notes);
 
+public record UploadClientDocumentCommand(
+    int ClientId,
+    int? DocumentTypeId,
+    string Title,
+    string? Notes,
+    int? UploadedByUserId,
+    Stream FileStream,
+    string OriginalFileName,
+    string? ContentType,
+    string TenantKey) : IRequest<ApiResponse<ClientDocumentDto>>;
+
 public record GetClientDocumentsQuery(int ClientId) : IRequest<ApiResponse<List<ClientDocumentDto>>>;
+
+public record GetClientDocumentTypesQuery() : IRequest<ApiResponse<List<ClientDocumentTypeDto>>>;
+
+public class GetClientDocumentTypesQueryHandler(IApplicationDbContext db)
+    : IRequestHandler<GetClientDocumentTypesQuery, ApiResponse<List<ClientDocumentTypeDto>>>
+{
+    public async Task<ApiResponse<List<ClientDocumentTypeDto>>> Handle(GetClientDocumentTypesQuery request, CancellationToken ct)
+    {
+        await ClientDocumentSupport.EnsureDefaultDocumentTypesAsync(db, ct);
+        var list = await db.ClientDocumentTypes.AsNoTracking()
+            .OrderBy(t => t.DocumentTypeId)
+            .Select(t => new ClientDocumentTypeDto(t.DocumentTypeId, t.DocumentTypeName))
+            .ToListAsync(ct);
+        return ApiResponse<List<ClientDocumentTypeDto>>.Success(list);
+    }
+}
 
 public class GetClientDocumentsQueryHandler(IApplicationDbContext db)
     : IRequestHandler<GetClientDocumentsQuery, ApiResponse<List<ClientDocumentDto>>>
@@ -62,11 +91,23 @@ public class CreateClientDocumentCommandHandler(IApplicationDbContext db)
     public async Task<ApiResponse<ClientDocumentDto>> Handle(CreateClientDocumentCommand request, CancellationToken ct)
     {
         var r = request.Req;
+        if (r.ClientId <= 0)
+            return ApiResponse<ClientDocumentDto>.Failure("Client ID is required.");
+        if (string.IsNullOrWhiteSpace(r.Title))
+            return ApiResponse<ClientDocumentDto>.Failure("Document title is required.");
+
+        var clientExists = await db.Clients.AnyAsync(c => c.ClientsId == r.ClientId, ct);
+        if (!clientExists)
+            return ApiResponse<ClientDocumentDto>.Failure("Client not found.");
+
+        await ClientDocumentSupport.EnsureDefaultDocumentTypesAsync(db, ct);
+        var typeId = await ClientDocumentSupport.ResolveDocumentTypeIdAsync(db, r.DocumentTypeId, ct);
+
         var doc = new ClientDocument
         {
             ClientDocumentClientId = r.ClientId,
-            ClientDocumentTypeId = r.DocumentTypeId,
-            ClientDocumentTitle = r.Title,
+            ClientDocumentTypeId = typeId,
+            ClientDocumentTitle = r.Title.Trim(),
             ClientDocumentFilePath = r.FilePath,
             ClientDocumentFileMimeType = r.FileMimeType,
             ClientDocumentFileSizeKb = r.FileSizeKb,
@@ -76,6 +117,66 @@ public class CreateClientDocumentCommandHandler(IApplicationDbContext db)
         };
         db.ClientDocuments.Add(doc);
         await db.SaveChangesAsync(ct);
+        return ApiResponse<ClientDocumentDto>.Success(new ClientDocumentDto(
+            doc.ClientDocumentId, doc.ClientDocumentClientId, null,
+            doc.ClientDocumentTypeId, null, doc.ClientDocumentTitle,
+            doc.ClientDocumentFilePath, doc.ClientDocumentFileMimeType,
+            doc.ClientDocumentFileSizeKb, doc.ClientDocumentUploadedByUserId,
+            doc.ClientDocumentNotes, doc.ClientDocumentCreatedAt));
+    }
+}
+
+public class UploadClientDocumentCommandHandler(IApplicationDbContext db, IClientDocumentStorage storage)
+    : IRequestHandler<UploadClientDocumentCommand, ApiResponse<ClientDocumentDto>>
+{
+    public async Task<ApiResponse<ClientDocumentDto>> Handle(UploadClientDocumentCommand request, CancellationToken ct)
+    {
+        if (request.ClientId <= 0)
+            return ApiResponse<ClientDocumentDto>.Failure("Client ID is required.");
+        if (string.IsNullOrWhiteSpace(request.Title))
+            return ApiResponse<ClientDocumentDto>.Failure("Document title is required.");
+        if (request.FileStream is null || request.FileStream.Length == 0)
+            return ApiResponse<ClientDocumentDto>.Failure("Document file is required.");
+
+        var clientExists = await db.Clients.AnyAsync(c => c.ClientsId == request.ClientId, ct);
+        if (!clientExists)
+            return ApiResponse<ClientDocumentDto>.Failure("Client not found.");
+
+        string relativePath;
+        string mimeType;
+        int sizeKb;
+        try
+        {
+            (relativePath, mimeType, sizeKb) = await storage.SaveClientDocumentAsync(
+                request.FileStream,
+                request.OriginalFileName,
+                request.ContentType,
+                request.TenantKey,
+                ct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ApiResponse<ClientDocumentDto>.Failure(ex.Message);
+        }
+
+        await ClientDocumentSupport.EnsureDefaultDocumentTypesAsync(db, ct);
+        var typeId = await ClientDocumentSupport.ResolveDocumentTypeIdAsync(db, request.DocumentTypeId, ct);
+
+        var doc = new ClientDocument
+        {
+            ClientDocumentClientId = request.ClientId,
+            ClientDocumentTypeId = typeId,
+            ClientDocumentTitle = request.Title.Trim(),
+            ClientDocumentFilePath = relativePath,
+            ClientDocumentFileMimeType = mimeType,
+            ClientDocumentFileSizeKb = sizeKb,
+            ClientDocumentUploadedByUserId = request.UploadedByUserId,
+            ClientDocumentNotes = request.Notes,
+            ClientDocumentCreatedAt = DateTime.UtcNow
+        };
+        db.ClientDocuments.Add(doc);
+        await db.SaveChangesAsync(ct);
+
         return ApiResponse<ClientDocumentDto>.Success(new ClientDocumentDto(
             doc.ClientDocumentId, doc.ClientDocumentClientId, null,
             doc.ClientDocumentTypeId, null, doc.ClientDocumentTitle,
@@ -100,4 +201,37 @@ public class DeleteClientDocumentCommandHandler(IApplicationDbContext db)
     }
 }
 
+internal static class ClientDocumentSupport
+{
+    private static readonly string[] DefaultTypeNames = ["عام", "عقد", "فاتورة", "شهادة", "أخرى"];
+
+    public static async Task EnsureDefaultDocumentTypesAsync(IApplicationDbContext db, CancellationToken ct)
+    {
+        if (await db.ClientDocumentTypes.AnyAsync(ct)) return;
+
+        foreach (var name in DefaultTypeNames)
+            db.ClientDocumentTypes.Add(new ClientDocumentType { DocumentTypeName = name });
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    public static async Task<int?> ResolveDocumentTypeIdAsync(IApplicationDbContext db, int? requestedTypeId, CancellationToken ct)
+    {
+        if (!requestedTypeId.HasValue || requestedTypeId.Value <= 0)
+            return null;
+
+        var exists = await db.ClientDocumentTypes.AnyAsync(t => t.DocumentTypeId == requestedTypeId.Value, ct);
+        if (exists) return requestedTypeId.Value;
+
+        var types = await db.ClientDocumentTypes.AsNoTracking()
+            .OrderBy(t => t.DocumentTypeId)
+            .Select(t => t.DocumentTypeId)
+            .ToListAsync(ct);
+
+        if (types.Count == 0) return null;
+
+        var index = requestedTypeId.Value - 1;
+        return index >= 0 && index < types.Count ? types[index] : types[0];
+    }
+}
 

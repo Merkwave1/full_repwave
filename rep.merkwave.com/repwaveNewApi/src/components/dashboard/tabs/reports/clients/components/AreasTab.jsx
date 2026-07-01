@@ -22,7 +22,7 @@ const AreasTab = ({ data, loading }) => {
       {/* Geographic Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white rounded-lg shadow-sm border p-6 text-center">
-          <div className="p-2 rounded-lg bg-teal-100 text-[#8B5FD6] inline-block mb-3">
+          <div className="p-2 rounded-lg bg-[#EDE7FF] text-[#8B5FD6] inline-block mb-3">
             <MapPinIcon className="w-6 h-6" />
           </div>
           <p className="text-2xl font-bold text-[#8B5FD6] mb-2">{areas.total_cities?.toLocaleString() || 0}</p>
@@ -116,7 +116,7 @@ const AreasTab = ({ data, loading }) => {
       {/* Geographic Distribution Summary */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <div className="flex items-center space-x-3 space-x-reverse mb-6">
-          <div className="p-2 rounded-lg bg-teal-100 text-[#8B5FD6]">
+          <div className="p-2 rounded-lg bg-[#EDE7FF] text-[#8B5FD6]">
             <MapPinIcon className="w-5 h-5" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900">ملخص التوزيع الجغرافي</h3>

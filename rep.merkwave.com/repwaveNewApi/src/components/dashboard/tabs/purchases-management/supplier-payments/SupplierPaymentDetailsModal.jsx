@@ -1,8 +1,6 @@
 ﻿// src/components/dashboard/tabs/purchases-management/supplier-payments/SupplierPaymentDetailsModal.jsx
 import React, { useState, useEffect } from "react";
 import {
-  XMarkIcon,
-  EyeIcon,
   BanknotesIcon,
   UserIcon,
   CalendarIcon,
@@ -11,6 +9,7 @@ import {
   ArchiveBoxIcon,
   PrinterIcon,
 } from "@heroicons/react/24/outline";
+import AppModalShell, { modalPrimaryBtnClass, modalSecondaryBtnClass } from "../../../../common/AppModalShell.jsx";
 import Loader from "../../../../common/Loader/Loader";
 import { getSupplierPaymentDetails } from "../../../../../apis/supplier_payments";
 import useCurrency from "../../../../../hooks/useCurrency";
@@ -85,46 +84,23 @@ const SupplierPaymentDetailsModal = ({ paymentId, onClose, onPrint }) => {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center z-50 p-2 sm:p-4">
-        <div className="bg-white rounded-xl shadow-xl p-4 sm:p-6">
-          <Loader />
-          <p className="text-center mt-4 text-gray-600">
-            جاري تحميل تفاصيل الدفعة...
-          </p>
-        </div>
-      </div>
+      <AppModalShell open onClose={onClose} title="تفاصيل دفعة المورد" icon={BanknotesIcon} size="lg" gradient="green" zIndex="z-[9999]" portal>
+        <Loader />
+        <p className="text-center mt-4 text-gray-600">جاري تحميل تفاصيل الدفعة...</p>
+      </AppModalShell>
     );
   }
 
   if (error) {
     return (
-      <div
-        className="fixed inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center z-50 p-2 sm:p-4"
-        onClick={onClose}
-      >
-        <div
-          className="bg-white rounded-xl shadow-xl max-w-md w-full mx-2 sm:mx-4"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="p-6">
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                <XMarkIcon className="h-6 w-6 text-red-600" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                خطأ في تحميل البيانات
-              </h3>
-              <p className="text-sm text-gray-500 mb-4">{error}</p>
-              <button
-                onClick={onClose}
-                className="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-              >
-                إغلاق
-              </button>
-            </div>
-          </div>
+      <AppModalShell open onClose={onClose} title="خطأ في تحميل البيانات" icon={BanknotesIcon} size="sm" gradient="danger" zIndex="z-[9999]" portal>
+        <div className="text-center">
+          <p className="text-sm text-gray-500 mb-4">{error}</p>
+          <button type="button" onClick={onClose} className={`${modalPrimaryBtnClass} w-full bg-red-600 hover:bg-red-700`}>
+            إغلاق
+          </button>
         </div>
-      </div>
+      </AppModalShell>
     );
   }
 
@@ -133,38 +109,31 @@ const SupplierPaymentDetailsModal = ({ paymentId, onClose, onPrint }) => {
   }
 
   return (
-    <div
-      className="fixed inset-0 backdrop-blur-sm bg-black/40 flex items-center justify-center z-50 p-2 sm:p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-xl flex flex-col shadow-xl max-w-5xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden mx-2 sm:mx-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-[#f5f3ff] to-[#E8DFFF] px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-300">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base sm:text-xl font-bold text-gray-800 flex items-center gap-2 truncate">
-              <EyeIcon className="h-6 w-6 text-[#8B5FD6]" />
-              تفاصيل دفعة المورد #{payment.supplier_payments_id}
-            </h3>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-all"
-            >
-              <XMarkIcon className="h-5 w-5 text-gray-600" />
-            </button>
-          </div>
+    <AppModalShell
+      open
+      onClose={onClose}
+      title={`تفاصيل دفعة المورد #${payment.supplier_payments_id}`}
+      subtitle={payment.supplier_name}
+      icon={BanknotesIcon}
+      size="3xl"
+      gradient="green"
+      zIndex="z-[9999]"
+      portal
+      footer={
+        <div className="flex justify-end gap-3">
+          <button type="button" onClick={() => onPrint?.(payment)} className={`${modalPrimaryBtnClass} bg-green-600 hover:bg-green-700 flex items-center gap-2`}>
+            <PrinterIcon className="h-4 w-4" />
+            طباعة
+          </button>
+          <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+            إغلاق
+          </button>
         </div>
-
-        {/* Content */}
-        <div
-          className="overflow-y-auto max-h-[calc(95vh-110px)] sm:max-h-[calc(90vh-140px)]"
-          dir="rtl"
-        >
-          <div className="p-3 sm:p-6 space-y-6">
+      }
+    >
+          <div className="space-y-6">
             {/* Payment Status & Amount */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-[#C4A8F0]">
+            <div className="bg-gradient-to-r from-[#f5f3ff] to-[#f5f3ff] p-6 rounded-lg border border-[#C4A8F0]">
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-4">
                   <div className="bg-[#8B5FD6] p-3 rounded-full">
@@ -412,7 +381,7 @@ const SupplierPaymentDetailsModal = ({ paymentId, onClose, onPrint }) => {
 
             {/* Purchase Order Information (if linked) */}
             {payment.purchase_order_id && payment.purchase_order_total && (
-              <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-200">
+              <div className="bg-[#f5f3ff] p-6 rounded-lg border border-[#C4A8F0]/50">
                 <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                   <ClipboardDocumentListIcon className="h-5 w-5 text-[#8B5FD6]" />
                   معلومات أمر الشراء المرتبط
@@ -451,28 +420,7 @@ const SupplierPaymentDetailsModal = ({ paymentId, onClose, onPrint }) => {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={() => onPrint?.(payment)}
-              className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center gap-2"
-            >
-              <PrinterIcon className="h-4 w-4" />
-              طباعة
-            </button>
-            <button
-              onClick={onClose}
-              className="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
-            >
-              إغلاق
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </AppModalShell>
   );
 };
 

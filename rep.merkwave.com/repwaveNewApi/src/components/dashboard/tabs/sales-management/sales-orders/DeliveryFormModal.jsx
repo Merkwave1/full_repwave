@@ -1,12 +1,17 @@
 ﻿// src/components/dashboard/tabs/sales-management/sales-orders/DeliveryFormModal.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
-  XMarkIcon,
   TruckIcon,
   InformationCircleIcon,
   PrinterIcon,
 } from "@heroicons/react/24/outline";
+import AppModalShell, {
+  modalPrimaryBtnClass,
+  modalSecondaryBtnClass,
+  modalSectionClass,
+} from "../../../../common/AppModalShell.jsx";
 import { addSalesDelivery } from "../../../../../apis/sales_deliveries";
+import { getSalesOrderDetails } from "../../../../../apis/sales_orders";
 import NumberInput from "../../../../common/NumberInput/NumberInput.jsx";
 import {
   getCurrentLocalDateTime,
@@ -183,10 +188,14 @@ const DeliveryFormModal = ({
     items: [],
   });
   const [loading, setLoading] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const submitLockRef = useRef(false);
+  const [resolvedOrder, setResolvedOrder] = useState(null);
 
   // Reset form state whenever modal closes to avoid stale data
   useEffect(() => {
     if (!isOpen) {
+      setResolvedOrder(null);
       setDeliveryData({
         delivery_date: getCurrentLocalDateTime(),
         delivery_address: "",
@@ -196,110 +205,174 @@ const DeliveryFormModal = ({
     }
   }, [isOpen]);
 
-  // Initialize delivery data from cached inventory when modal opens
+  const buildDeliveryItems = async (orderData) => {
+    const orderItems = orderData?.items || orderData?.sales_order_items || [];
+    const warehouseId =
+      orderData?.sales_orders_warehouse_id ||
+      orderData?.warehouse_id ||
+      orderData?.warehouses_id ||
+      orderData?.warehouse?.warehouses_id ||
+      null;
+
+    let inventoryCache = readInventoryCache(warehouseId);
+    if (warehouseId) {
+      try {
+        const { getAllInventory } = await import("../../../../../apis/inventory");
+        const inventoryResponse = await getAllInventory({
+          warehouseId: Number(warehouseId),
+          pageSize: 500,
+        });
+        const liveInventory = Array.isArray(inventoryResponse)
+          ? inventoryResponse
+          : Array.isArray(inventoryResponse?.data)
+            ? inventoryResponse.data
+            : [];
+        if (liveInventory.length > 0) {
+          inventoryCache = liveInventory;
+        }
+      } catch (error) {
+        console.warn("[DeliveryFormModal] Live inventory fetch failed:", error);
+      }
+    }
+
+    return orderItems.map((item) => {
+      const productName =
+        item.products_name ||
+        item.product_name ||
+        item.productName ||
+        item.name ||
+        "منتج غير محدد";
+
+      const variantName =
+        item.variant_name || item.product_variant_name || item.variantName || "";
+
+      const packagingType =
+        item.packaging_types_name ||
+        item.packaging_type_name ||
+        item.packaging_name ||
+        item.packagingType ||
+        "";
+
+      const totalOrderedQuantity = parseFloat(
+        item.sales_order_items_quantity ??
+          item.quantity ??
+          item.ordered_quantity ??
+          0,
+      );
+
+      const alreadyDeliveredQuantity = parseFloat(
+        item.delivered_quantity ??
+          item.quantity_delivered ??
+          item.sales_order_items_quantity_delivered ??
+          0,
+      );
+
+      const pendingFromApi = parseFloat(item.quantity_pending);
+      const availableQuantity = Number.isFinite(pendingFromApi)
+        ? Math.max(0, pendingFromApi)
+        : Math.max(0, totalOrderedQuantity - alreadyDeliveredQuantity);
+
+      const unitPrice = parseFloat(
+        item.sales_order_items_unit_price ??
+          item.unit_price ??
+          item.price ??
+          item.unitPrice ??
+          item.item_price ??
+          0,
+      );
+
+      const variantId =
+        item.sales_order_items_variant_id ||
+        item.product_variant_id ||
+        item.productVariantId ||
+        item.variant_id;
+
+      const packagingTypeId =
+        item.sales_order_items_packaging_type_id ||
+        item.packaging_type_id ||
+        item.packagingTypeId;
+
+      const availableBatches = collectBatchesFromCache(
+        inventoryCache,
+        variantId,
+        packagingTypeId,
+      );
+
+      return {
+        sales_order_items_id: item.sales_order_items_id || item.id,
+        product_variant_id: variantId,
+        sales_order_items_packaging_type_id: packagingTypeId,
+        quantity: availableQuantity > 0 ? availableQuantity : 0,
+        unit_price: unitPrice,
+        product_name: productName,
+        variant_name: variantName,
+        packaging_type: packagingType,
+        max_quantity: availableQuantity,
+        total_ordered: totalOrderedQuantity,
+        already_delivered: alreadyDeliveredQuantity,
+        original_item: item,
+        available_batches: availableBatches,
+      };
+    });
+  };
+
+  // Load full order details + inventory when modal opens
   useEffect(() => {
     if (!isOpen || !order) {
       return;
     }
 
-    const orderItems = order.items || order.sales_order_items || [];
-    const warehouseId =
-      order?.sales_orders_warehouse_id ||
-      order?.warehouse_id ||
-      order?.warehouses_id ||
-      order?.warehouse?.warehouses_id ||
-      null;
+    let cancelled = false;
 
-    const inventoryCache = readInventoryCache(warehouseId);
+    async function initDeliveryForm() {
+      setDetailsLoading(true);
+      try {
+        const orderId = order.sales_orders_id || order.id;
+        let orderData = order;
 
-    setDeliveryData({
-      delivery_date: getCurrentLocalDateTime(),
-      delivery_address: order.clients_address || order.client_address || "",
-      delivery_notes: "",
-      items: orderItems.map((item) => {
-        const productName =
-          item.product_name ||
-          item.products_name ||
-          item.productName ||
-          item.name ||
-          "منتج غير محدد";
+        if (
+          (!order.items || order.items.length === 0) &&
+          (!order.sales_order_items || order.sales_order_items.length === 0) &&
+          orderId
+        ) {
+          orderData = await getSalesOrderDetails(orderId);
+        }
 
-        const variantName =
-          item.variant_name ||
-          item.product_variant_name ||
-          item.variantName ||
-          "";
+        if (cancelled) return;
 
-        const packagingType =
-          item.packaging_type_name ||
-          item.packaging_name ||
-          item.packagingType ||
-          item.packaging_types_name ||
-          "";
+        setResolvedOrder(orderData);
+        const items = await buildDeliveryItems(orderData);
+        if (cancelled) return;
 
-        const totalOrderedQuantity = parseFloat(
-          item.quantity ||
-            item.sales_order_items_quantity ||
-            item.ordered_quantity ||
-            0,
-        );
+        setDeliveryData({
+          delivery_date: getCurrentLocalDateTime(),
+          delivery_address:
+            orderData.clients_address ||
+            orderData.client_address ||
+            order.clients_address ||
+            "",
+          delivery_notes: "",
+          items,
+        });
+      } catch (error) {
+        console.error("[DeliveryFormModal] Failed to load order items:", error);
+        if (!cancelled) {
+          setGlobalMessage?.({
+            type: "error",
+            message: "فشل في تحميل منتجات أمر البيع",
+          });
+          setDeliveryData((prev) => ({ ...prev, items: [] }));
+        }
+      } finally {
+        if (!cancelled) setDetailsLoading(false);
+      }
+    }
 
-        const alreadyDeliveredQuantity = parseFloat(
-          item.quantity_delivered ||
-            item.sales_order_items_quantity_delivered ||
-            item.delivered_quantity ||
-            0,
-        );
-
-        const availableQuantity = Math.max(
-          0,
-          totalOrderedQuantity - alreadyDeliveredQuantity,
-        );
-
-        const unitPrice = parseFloat(
-          item.unit_price ||
-            item.sales_order_items_unit_price ||
-            item.price ||
-            item.unitPrice ||
-            item.item_price ||
-            0,
-        );
-
-        const variantId =
-          item.product_variant_id ||
-          item.productVariantId ||
-          item.sales_order_items_variant_id ||
-          item.variant_id;
-
-        const packagingTypeId =
-          item.sales_order_items_packaging_type_id ||
-          item.packaging_type_id ||
-          item.packagingTypeId;
-
-        const availableBatches = collectBatchesFromCache(
-          inventoryCache,
-          variantId,
-          packagingTypeId,
-        );
-
-        return {
-          sales_order_items_id: item.sales_order_items_id || item.id,
-          product_variant_id: variantId,
-          sales_order_items_packaging_type_id: packagingTypeId,
-          quantity: 0,
-          unit_price: unitPrice,
-          product_name: productName,
-          variant_name: variantName,
-          packaging_type: packagingType,
-          max_quantity: availableQuantity,
-          total_ordered: totalOrderedQuantity,
-          already_delivered: alreadyDeliveredQuantity,
-          original_item: item,
-          available_batches: availableBatches,
-        };
-      }),
-    });
-  }, [isOpen, order]);
+    initDeliveryForm();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, order, setGlobalMessage]);
 
   const handleInputChange = (field, value) => {
     setDeliveryData((prev) => ({
@@ -336,6 +409,8 @@ const DeliveryFormModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitLockRef.current || loading) return;
+    submitLockRef.current = true;
     setLoading(true);
 
     try {
@@ -351,22 +426,15 @@ const DeliveryFormModal = ({
         return;
       }
 
+      const orderRef = resolvedOrder || order;
       const deliveryPayload = {
-        sales_order_id: order.sales_orders_id,
-        warehouse_id:
-          order.warehouse_id ||
-          order.sales_orders_warehouse_id ||
-          order.warehouses_id,
-        delivery_date: localDateTimeToISOString(deliveryData.delivery_date),
+        sales_order_id: orderRef.sales_orders_id || orderRef.id,
         delivery_status: "Preparing",
-        delivery_notes: deliveryData.delivery_notes,
-        delivery_address: deliveryData.delivery_address,
+        delivery_date: localDateTimeToISOString(deliveryData.delivery_date),
+        notes: deliveryData.delivery_notes || deliveryData.delivery_address || null,
         items: itemsToDeliver.map((item) => ({
-          sales_order_items_id: item.sales_order_items_id,
-          product_variant_id: item.product_variant_id,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          batch_date: item.batch_date || null,
+          sales_order_item_id: item.sales_order_items_id,
+          quantity_delivered: item.quantity,
         })),
       };
 
@@ -404,6 +472,7 @@ const DeliveryFormModal = ({
       });
     } finally {
       setLoading(false);
+      submitLockRef.current = false;
     }
   };
 
@@ -703,33 +772,57 @@ const DeliveryFormModal = ({
   );
 
   return (
-    <div className="fixed inset-0 backdrop-blur-sm bg-black/40 overflow-y-auto h-full w-full z-50 flex items-start sm:items-center justify-center p-2 sm:p-4">
-      <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-3 sm:p-6 border-b border-gray-200 bg-green-50">
-          <div className="flex items-center">
-            <div className="bg-green-100 rounded-full p-2 ml-3">
-              <TruckIcon className="h-6 w-6 text-green-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-green-900">
-                تسليم المنتجات
-              </h3>
-              <p className="text-sm text-green-600">
-                أمر بيع #{order.sales_orders_id}
-              </p>
+    <AppModalShell
+      open={isOpen}
+      onClose={onClose}
+      title="تسليم المنتجات"
+      subtitle={`أمر بيع #${order.sales_orders_id}`}
+      icon={TruckIcon}
+      size="2xl"
+      footer={
+          <div className="flex flex-wrap items-center justify-between gap-2 w-full">
+            <button
+              type="button"
+              onClick={handlePrintDeliveryItems}
+              disabled={totalQuantityToDeliver === 0}
+              className={`flex items-center gap-2 px-4 py-2 border rounded-xl text-sm font-medium transition-colors ${
+                totalQuantityToDeliver === 0
+                  ? "border-[#EDE7FF] text-gray-400 bg-gray-100 cursor-not-allowed"
+                  : "border-[#EDE7FF] text-[#7A52C2] bg-[#f5f3ff] hover:bg-[#EDE7FF]"
+              }`}
+            >
+              <PrinterIcon className="h-4 w-4" />
+              طباعة التسليم
+            </button>
+
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+                إلغاء
+              </button>
+              <button
+                type="submit"
+                form="delivery-form"
+                disabled={loading || totalQuantityToDeliver === 0}
+                className={`${modalPrimaryBtnClass} flex items-center gap-2`}
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                    جاري التسليم...
+                  </>
+                ) : (
+                  <>
+                    <TruckIcon className="h-4 w-4" />
+                    تأكيد التسليم
+                  </>
+                )}
+              </button>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <XMarkIcon className="h-6 w-6" />
-          </button>
-        </div>
-
+      }
+    >
         {/* Order Info */}
-        <div className="p-3 sm:p-6 bg-gray-50 border-b">
+        <div className={`${modalSectionClass} p-3 sm:p-6 mb-4`}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-sm">
             <div>
               <span className="text-gray-500">العميل:</span>
@@ -754,7 +847,7 @@ const DeliveryFormModal = ({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form id="delivery-form" onSubmit={handleSubmit}>
           {/* Delivery Details */}
           <div className="p-3 sm:p-6 border-b">
             <h4 className="text-md font-semibold text-gray-900 mb-3 sm:mb-4">
@@ -822,7 +915,12 @@ const DeliveryFormModal = ({
               </button>
             </div>
 
-            {deliveryData.items.length === 0 ? (
+            {detailsLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#8B5FD6] mx-auto mb-4" />
+                <p className="text-gray-500">جاري تحميل منتجات أمر البيع...</p>
+              </div>
+            ) : deliveryData.items.length === 0 ? (
               <div className="text-center py-8">
                 <InformationCircleIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">لا توجد منتجات في هذا الأمر</p>
@@ -949,11 +1047,11 @@ const DeliveryFormModal = ({
             {/* Enhanced Summary */}
             {totalQuantityToDeliver > 0 && (
               <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-green-50 p-4 rounded-lg border border-[#C4A8F0]">
-                  <div className="text-sm text-green-600 font-medium">
+                <div className="bg-[#EDE7FF]/30 p-4 rounded-lg border border-[#EDE7FF]">
+                  <div className="text-sm text-[#8B5FD6] font-medium">
                     إجمالي الكمية
                   </div>
-                  <div className="text-2xl font-bold text-green-700">
+                  <div className="text-2xl font-bold text-[#7A52C2]">
                     {totalQuantityToDeliver.toLocaleString("en-US")}
                   </div>
                 </div>
@@ -998,57 +1096,8 @@ const DeliveryFormModal = ({
                 </div>
               )}
           </div>
-
-          {/* Footer */}
-          <div className="flex flex-wrap items-center justify-between gap-2 p-3 sm:p-6 border-t bg-gray-50">
-            <button
-              type="button"
-              onClick={handlePrintDeliveryItems}
-              disabled={totalQuantityToDeliver === 0}
-              className={`flex items-center gap-2 px-4 py-2 border rounded-md shadow-sm text-sm font-medium transition-colors ${
-                totalQuantityToDeliver === 0
-                  ? "border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed"
-                  : "border-blue-300 text-[#7A52C2] bg-[#f5f3ff] hover:bg-[#EDE7FF] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8B5FD6]"
-              }`}
-            >
-              <PrinterIcon className="h-4 w-4" />
-              طباعة التسليم
-            </button>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
-              >
-                إلغاء
-              </button>
-              <button
-                type="submit"
-                disabled={loading || totalQuantityToDeliver === 0}
-                className={`px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors ${
-                  loading || totalQuantityToDeliver === 0
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-green-600 hover:bg-green-700"
-                }`}
-              >
-                {loading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white ml-2"></div>
-                    جاري التسليم...
-                  </div>
-                ) : (
-                  <>
-                    <TruckIcon className="h-4 w-4 ml-2 inline" />
-                    تأكيد التسليم
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
         </form>
-      </div>
-    </div>
+    </AppModalShell>
   );
 };
 

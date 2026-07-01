@@ -199,7 +199,7 @@ const VisitsListTable = ({
           align: "center",
           headerAlign: "center",
           render: (item) => (
-            <span className="bg-indigo-100 text-[#7A52C2] text-xs px-2 py-1 rounded-full font-semibold">
+            <span className="bg-[#EDE7FF] text-[#7A52C2] text-xs px-2 py-1 rounded-full font-semibold">
               {item.visits_id}
             </span>
           ),
@@ -301,7 +301,7 @@ const VisitsListTable = ({
           render: (item) => (
             <div className="flex space-x-4 space-x-reverse text-sm">
               <span className="flex items-center">
-                <ChatBubbleLeftRightIcon className="h-4 w-4 text-blue-500 ml-1" />
+                <ChatBubbleLeftRightIcon className="h-4 w-4 text-[#8B5FD6] ml-1" />
                 {(() => {
                   const cached = summaryTotalsByVisit[item.visits_id];
                   if (cached) return cached.total_activities;

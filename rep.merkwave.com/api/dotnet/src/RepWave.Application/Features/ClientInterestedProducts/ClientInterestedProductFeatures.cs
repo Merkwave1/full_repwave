@@ -7,10 +7,13 @@ using RepWave.Domain.Entities;
 namespace RepWave.Application.Features.ClientInterestedProducts;
 
 public record ClientInterestedProductDto(
-    int ClientId,
-    string? ClientName,
     int ProductsId,
-    string? ProductName);
+    string? ProductsName,
+    string? ProductsBrand,
+    string? ProductsCategory,
+    string? ProductsDescription,
+    string? ProductsImageUrl,
+    bool ProductsIsActive);
 
 public record GetClientInterestedProductsQuery(int ClientId) : IRequest<ApiResponse<List<ClientInterestedProductDto>>>;
 
@@ -21,12 +24,17 @@ public class GetClientInterestedProductsQueryHandler(IApplicationDbContext db)
         GetClientInterestedProductsQuery request, CancellationToken ct)
     {
         var list = await db.ClientInterestedProducts.AsNoTracking()
-            .Include(x => x.Client)
-            .Include(x => x.Product)
+            .Include(x => x.Product!)
+                .ThenInclude(p => p.Category)
             .Where(x => x.ClientId == request.ClientId)
             .Select(x => new ClientInterestedProductDto(
-                x.ClientId, x.Client != null ? x.Client.ClientsCompanyName : null,
-                x.ProductsId, x.Product != null ? x.Product.ProductsName : null))
+                x.ProductsId,
+                x.Product != null ? x.Product.ProductsName : null,
+                x.Product != null ? x.Product.ProductsBrand : null,
+                x.Product != null && x.Product.Category != null ? x.Product.Category.CategoriesName : null,
+                x.Product != null ? x.Product.ProductsDescription : null,
+                x.Product != null ? x.Product.ProductsImageUrl : null,
+                x.Product != null && x.Product.ProductsIsActive))
             .ToListAsync(ct);
 
         return ApiResponse<List<ClientInterestedProductDto>>.Success(list);
@@ -51,8 +59,18 @@ public class AddClientInterestedProductCommandHandler(IApplicationDbContext db)
         db.ClientInterestedProducts.Add(item);
         await db.SaveChangesAsync(ct);
 
-        return ApiResponse<ClientInterestedProductDto>.Success(
-            new ClientInterestedProductDto(item.ClientId, null, item.ProductsId, null));
+        var product = await db.Products.AsNoTracking()
+            .Include(p => p.Category)
+            .FirstOrDefaultAsync(p => p.ProductsId == request.ProductId, ct);
+
+        return ApiResponse<ClientInterestedProductDto>.Success(new ClientInterestedProductDto(
+            request.ProductId,
+            product?.ProductsName,
+            product?.ProductsBrand,
+            product?.Category?.CategoriesName,
+            product?.ProductsDescription,
+            product?.ProductsImageUrl,
+            product?.ProductsIsActive ?? true));
     }
 }
 
@@ -73,5 +91,3 @@ public class RemoveClientInterestedProductCommandHandler(IApplicationDbContext d
         return ApiResponse<object>.Success(null!, "Removed.");
     }
 }
-
-

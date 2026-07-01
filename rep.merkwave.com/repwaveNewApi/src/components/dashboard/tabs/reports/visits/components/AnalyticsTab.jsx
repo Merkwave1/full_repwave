@@ -204,7 +204,7 @@ const AnalyticsTab = ({ dailyData, hourlyData }) => {
                               ? "bg-gray-400"
                               : index === 2
                                 ? "bg-orange-400"
-                                : "bg-blue-400"
+                                : "bg-[#C4A8F0]"
                         }`}
                       >
                         {index + 1}

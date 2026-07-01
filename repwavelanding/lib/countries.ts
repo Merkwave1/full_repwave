@@ -1,0 +1,27 @@
+export const COUNTRIES = [
+  { code: "EG", en: "Egypt", ar: "مصر" },
+  { code: "SA", en: "Saudi Arabia", ar: "السعودية" },
+  { code: "AE", en: "United Arab Emirates", ar: "الإمارات" },
+  { code: "KW", en: "Kuwait", ar: "الكويت" },
+  { code: "QA", en: "Qatar", ar: "قطر" },
+  { code: "BH", en: "Bahrain", ar: "البحرين" },
+  { code: "OM", en: "Oman", ar: "عُمان" },
+  { code: "JO", en: "Jordan", ar: "الأردن" },
+  { code: "LB", en: "Lebanon", ar: "لبنان" },
+  { code: "IQ", en: "Iraq", ar: "العراق" },
+  { code: "LY", en: "Libya", ar: "ليبيا" },
+  { code: "MA", en: "Morocco", ar: "المغرب" },
+  { code: "TN", en: "Tunisia", ar: "تونس" },
+  { code: "DZ", en: "Algeria", ar: "الجزائر" },
+  { code: "SD", en: "Sudan", ar: "السودان" },
+  { code: "YE", en: "Yemen", ar: "اليمن" },
+  { code: "PS", en: "Palestine", ar: "فلسطين" },
+  { code: "TR", en: "Turkey", ar: "تركيا" },
+  { code: "US", en: "United States", ar: "الولايات المتحدة" },
+  { code: "GB", en: "United Kingdom", ar: "المملكة المتحدة" },
+  { code: "DE", en: "Germany", ar: "ألمانيا" },
+  { code: "FR", en: "France", ar: "فرنسا" },
+  { code: "OTHER", en: "Other", ar: "أخرى" },
+] as const;
+
+export type CountryCode = (typeof COUNTRIES)[number]["code"];

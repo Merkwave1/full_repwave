@@ -41,7 +41,7 @@ function Alert({ message, type = 'info', onClose, duration = 5000, className = '
     default:
       bgColor = 'bg-[#EDE7FF]';
       textColor = 'text-[#2D1B69]';
-      borderColor = 'border-blue-400';
+      borderColor = 'border-[#8B5FD6]/50';
       Icon = Info;
       break;
   }

@@ -386,7 +386,7 @@ export default function GlobalTable({
         </div>
       ) : displayedData.length === 0 ? (
         <div className="py-14 text-center">
-          <div className="text-4xl mb-4 text-blue-300">
+          <div className="text-4xl mb-4 text-[#C4A8F0]">
             {resolvedEmptyState.icon}
           </div>
           <p className="font-semibold text-gray-700">

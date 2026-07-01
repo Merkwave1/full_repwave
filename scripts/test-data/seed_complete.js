@@ -7,8 +7,8 @@
  *   - More sales returns linked to real sales orders
  *   - Supplier payments
  *
- * Prerequisites: seed_data.js already run (products, variants, clients, sales orders, safes exist)
- * Run: node seed_complete.js
+ * Prerequisites: scripts/test-data/seed_data.js already run (products, variants, clients, sales orders, safes exist)
+ * Run: node scripts/test-data/seed_complete.js
  */
 
 const http = require('http');

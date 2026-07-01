@@ -21,7 +21,13 @@ function GlobalMessage({ message, onClear }) {
 
   // Support both string and object shapes for backward compatibility
   const isObjectMessage = typeof message === 'object' && message !== null;
-  const displayText = isObjectMessage ? (message.message || '') : String(message || '');
+  const rawText = isObjectMessage ? message.message : message;
+  const displayText =
+    typeof rawText === 'string'
+      ? rawText
+      : rawText && typeof rawText === 'object'
+        ? 'تمت العملية بنجاح'
+        : String(rawText || '');
   const messageType = isObjectMessage ? (message.type || 'success') : 'success';
   const messageTypeClass = messageType === 'error' ? 'bg-red-500' : 'bg-green-500';
 

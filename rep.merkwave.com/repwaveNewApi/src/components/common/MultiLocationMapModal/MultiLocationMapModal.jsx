@@ -1,9 +1,13 @@
 ﻿import React, { useEffect, useRef, useState } from "react";
 import {
-  XMarkIcon,
   MapPinIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
+import AppModalShell, {
+  modalPrimaryBtnClass,
+  modalSecondaryBtnClass,
+  modalHeaderActionClass,
+} from "../AppModalShell.jsx";
 
 function MultiLocationMapModal({
   isOpen,
@@ -306,34 +310,54 @@ function MultiLocationMapModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] overflow-y-auto" dir="rtl">
-      <div className="flex items-center justify-center min-h-screen px-4 py-8">
-        {/* Background overlay */}
-        <div
-          className="fixed inset-0 transition-opacity backdrop-blur-sm bg-black/40"
-          onClick={onClose}
-        ></div>
-
-        {/* Modal panel - with max height */}
-        <div className="relative w-full max-w-6xl overflow-hidden text-right align-middle transition-all transform bg-white shadow-xl rounded-2xl max-h-[90vh] flex flex-col">
-          {/* Header */}
-          <div className="px-6 py-4  text-white flex-shrink-0" style={{ background: "linear-gradient(135deg, #8B5FD6 0%, #F97366 100%)" }}>
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                <MapPinIcon className="h-6 w-6" />
-                {title || "عرض جميع المواقع"}
-              </h3>
-              <button
-                onClick={onClose}
-                className="text-white hover:text-gray-200 transition-colors"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-          </div>
-
-          {/* Content - scrollable */}
-          <div className="px-6 py-6 overflow-y-auto flex-1">
+    <AppModalShell
+      open={isOpen}
+      onClose={onClose}
+      title={title || "عرض جميع المواقع"}
+      icon={MapPinIcon}
+      size="3xl"
+      zIndex="z-[60]"
+      headerActions={
+        onRefresh ? (
+          <button
+            type="button"
+            onClick={async () => {
+              setIsRefreshing(true);
+              await onRefresh();
+              setIsRefreshing(false);
+            }}
+            disabled={isRefreshing}
+            className={modalHeaderActionClass}
+            title="تحديث البيانات"
+          >
+            <ArrowPathIcon className={`h-4 w-4 inline ml-1 ${isRefreshing ? "animate-spin" : ""}`} />
+            {isRefreshing ? "جاري..." : "تحديث"}
+          </button>
+        ) : null
+      }
+      footer={
+        <div className="flex items-center justify-end gap-3">
+          {onRefresh && (
+            <button
+              type="button"
+              onClick={async () => {
+                setIsRefreshing(true);
+                await onRefresh();
+                setIsRefreshing(false);
+              }}
+              disabled={isRefreshing}
+              className={modalPrimaryBtnClass}
+            >
+              <ArrowPathIcon className={`h-5 w-5 inline ml-1 ${isRefreshing ? "animate-spin" : ""}`} />
+              {isRefreshing ? "جاري التحديث..." : "تحديث البيانات"}
+            </button>
+          )}
+          <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+            إغلاق
+          </button>
+        </div>
+      }
+    >
             {/* Map Container - responsive height */}
             <div
               ref={mapRef}
@@ -351,37 +375,7 @@ function MultiLocationMapModal({
                 💡 انقر على أي علامة لعرض تفاصيل المندوب
               </p>
             </div>
-          </div>
-
-          {/* Footer */}
-          <div className="px-6 py-4 bg-gray-50 flex items-center justify-end gap-3 flex-shrink-0">
-            {onRefresh && (
-              <button
-                onClick={async () => {
-                  setIsRefreshing(true);
-                  await onRefresh();
-                  setIsRefreshing(false);
-                }}
-                disabled={isRefreshing}
-                className="px-6 py-2 bg-[#8B5FD6] hover:bg-[#7A52C2] disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium flex items-center gap-2"
-                title="تحديث البيانات"
-              >
-                <ArrowPathIcon
-                  className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""}`}
-                />
-                {isRefreshing ? "جاري التحديث..." : "تحديث البيانات"}
-              </button>
-            )}
-            <button
-              onClick={onClose}
-              className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-            >
-              إغلاق
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </AppModalShell>
   );
 }
 

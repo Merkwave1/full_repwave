@@ -12,7 +12,7 @@ import {
   PlusCircleIcon,
   TrashIcon,
   ExclamationTriangleIcon,
-  XMarkIcon,
+  ShoppingCartIcon,
 } from "@heroicons/react/24/outline";
 import SearchableSelect from "../../../../common/SearchableSelect/SearchableSelect";
 import NumberInput from "../../../../common/NumberInput/NumberInput";
@@ -20,6 +20,36 @@ import { formatCurrency } from "../../../../../utils/currency";
 import { formatDateTimeForApi } from "../../../../../utils/dateUtils";
 import useCurrency from "../../../../../hooks/useCurrency";
 import { getUserData } from "../../../../../apis/auth";
+import {
+  getAllClients,
+  normalizeClientList,
+  resolveClientId,
+  resolveClientName,
+} from "../../../../../apis/clients.js";
+import AppModalShell, {
+  modalPrimaryBtnClass,
+  modalSecondaryBtnClass,
+  modalSectionClass,
+  modalSectionHeaderClass,
+} from "../../../../common/AppModalShell.jsx";
+import ConfirmOrderModal from "../../purchases-management/purchase-orders/ConfirmOrderModal";
+
+function resolveUserId(user) {
+  if (!user) return "";
+  const id = user.users_id ?? user.user_id;
+  return id != null && id !== "" ? String(id) : "";
+}
+
+function getStoredUserId() {
+  try {
+    const raw = localStorage.getItem("userData");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return resolveUserId(parsed) || null;
+  } catch {
+    return null;
+  }
+}
 
 // Utility function to get unique packaging types from inventory
 // Removed - packaging_inventory is already unique
@@ -344,15 +374,7 @@ export default function AddSalesOrderForm({
 
   // Get current user's ID to set as default representative
   const currentUser = getUserData();
-  const currentUserId = currentUser?.users_id || "";
-
-  // Debug: Log current user ID
-  console.log(
-    "🔵 AddSalesOrderForm - Current User ID:",
-    currentUserId,
-    "Full User:",
-    currentUser,
-  );
+  const currentUserId = resolveUserId(currentUser);
 
   const [formData, setFormData] = useState({
     sales_orders_client_id: "",
@@ -376,6 +398,46 @@ export default function AddSalesOrderForm({
   const [isConfirmOrderModalOpen, setIsConfirmOrderModalOpen] = useState(false);
   const [representatives, setRepresentatives] = useState([]);
   const [appProductsData, setAppProductsData] = useState(null);
+  const [formClients, setFormClients] = useState([]);
+  const [clientsLoading, setClientsLoading] = useState(true);
+  const [clientsLoadError, setClientsLoadError] = useState(null);
+
+  const loadFormClients = useCallback(async () => {
+    setClientsLoading(true);
+    setClientsLoadError(null);
+
+    const fromProps = normalizeClientList(clients);
+    if (fromProps.length > 0) {
+      setFormClients(fromProps);
+      setClientsLoading(false);
+      return;
+    }
+
+    try {
+      const freshClients = await getAllClients();
+      setFormClients(Array.isArray(freshClients) ? freshClients : []);
+    } catch (error) {
+      console.error("Failed to load clients for sales order:", error);
+      setFormClients([]);
+      setClientsLoadError(
+        error?.message || "تعذر تحميل قائمة العملاء من الخادم.",
+      );
+    } finally {
+      setClientsLoading(false);
+    }
+  }, [clients]);
+
+  useEffect(() => {
+    loadFormClients();
+  }, [loadFormClients]);
+
+  useEffect(() => {
+    const fromProps = normalizeClientList(clients);
+    if (fromProps.length > 0) {
+      setFormClients(fromProps);
+      setClientsLoadError(null);
+    }
+  }, [clients]);
 
   // Cleanup debounced timeout on unmount
   useEffect(() => {
@@ -439,19 +501,6 @@ export default function AddSalesOrderForm({
                 (inv) => String(inv.variant_id) === String(variant.variant_id),
               )
             : [];
-
-          // Debug logging for variant 689
-          if (String(variant.variant_id) === "689") {
-            console.log("🔴 DEBUG variant 689:", {
-              variant_id: variant.variant_id,
-              variant_name: variant.variant_name,
-              warehouse_id: formData.sales_orders_warehouse_id,
-              availableInventory_count: availableInventory.length,
-              availableInventory_sample: availableInventory.slice(0, 3),
-              variantInventory_count: variantInventory.length,
-              variantInventory: variantInventory,
-            });
-          }
 
           // Create packaging inventory with availability status
           const packagingMap = new Map();
@@ -876,11 +925,18 @@ export default function AddSalesOrderForm({
   window.clearWarehousesCache = clearWarehousesCache;
 
   // Safe array processing - using correct field names from backend
-  const safeClients = Array.isArray(clients)
-    ? clients.filter(
-        (client) => client && client.clients_id && client.clients_company_name,
-      )
-    : [];
+  const activeClients =
+    formClients.length > 0
+      ? formClients
+      : Array.isArray(clients)
+        ? clients
+        : [];
+
+  const safeClients = activeClients.filter((client) => {
+    const id = resolveClientId(client);
+    const name = resolveClientName(client);
+    return Boolean(id && name);
+  });
   const safeWarehouses = useMemo(
     () =>
       Array.isArray(warehouses)
@@ -902,9 +958,25 @@ export default function AddSalesOrderForm({
 
   // Create options for SearchableSelect components
   const clientOptions = safeClients.map((client) => ({
-    value: client.clients_id,
-    label: client.clients_company_name,
+    value: String(resolveClientId(client)),
+    label: resolveClientName(client),
   }));
+
+  const resolveSelectedClientId = () => {
+    const parsed = parseInt(String(formData.sales_orders_client_id ?? ""), 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) return null;
+    const exists = safeClients.some(
+      (client) => resolveClientId(client) === parsed,
+    );
+    return exists ? parsed : null;
+  };
+
+  useEffect(() => {
+    if (!formData.sales_orders_client_id || safeClients.length === 0) return;
+    if (resolveSelectedClientId() === null) {
+      setFormData((prev) => ({ ...prev, sales_orders_client_id: "" }));
+    }
+  }, [formClients, safeClients.length, formData.sales_orders_client_id]);
 
   const warehouseOptions = safeWarehouses.map((warehouse) => ({
     value: warehouse.warehouse_id,
@@ -916,7 +988,7 @@ export default function AddSalesOrderForm({
     if (!formData.sales_orders_warehouse_id) {
       // If no warehouse is selected, show all representatives
       return representatives.map((rep) => ({
-        value: rep.users_id,
+        value: rep.users_id ?? rep.user_id,
         label:
           rep.users_full_name ||
           rep.users_name ||
@@ -971,14 +1043,14 @@ export default function AddSalesOrderForm({
   // Effect to mark data as loaded
   useEffect(() => {
     if (
-      Array.isArray(clients) &&
-      clients.length > 0 &&
+      !clientsLoading &&
+      safeClients.length > 0 &&
       Array.isArray(warehouses) &&
       warehouses.length > 0
     ) {
       setDataLoaded(true);
     }
-  }, [clients, warehouses]);
+  }, [clientsLoading, safeClients, warehouses]);
 
   // Item management functions
   const calculateItemTotals = (item) => {
@@ -1204,6 +1276,61 @@ export default function AddSalesOrderForm({
     }));
   };
 
+  const buildSubmitPayload = (status) => {
+    const clientId = resolveSelectedClientId();
+    if (!clientId) {
+      alert(
+        "العميل المحدد غير صالح. يرجى تحديث القائمة واختيار عميل موجود.",
+      );
+      loadFormClients();
+      return null;
+    }
+
+    const representativeId =
+      formData.sales_orders_representative_id || getStoredUserId();
+
+    const itemsToSubmit = formData.sales_order_items.map((item) => ({
+      sales_order_items_variant_id: item.variant_id,
+      sales_order_items_packaging_type_id: item.packaging_type_id,
+      sales_order_items_quantity: item.quantity_ordered,
+      sales_order_items_unit_price: item.unit_cost,
+      sales_order_items_subtotal: (
+        parseFloat(item.quantity_ordered || 0) * parseFloat(item.unit_cost || 0)
+      ).toFixed(2),
+      sales_order_items_discount_amount: (
+        (parseFloat(item.discount_amount || 0) || 0) *
+        (parseFloat(item.quantity_ordered || 0) || 0)
+      ).toFixed(2),
+      sales_order_items_tax_amount: Number(
+        calculateItemTotals(item).tax_amount || 0,
+      ).toFixed(2),
+      sales_order_items_tax_rate: item.tax_rate || 0,
+      sales_order_items_has_tax: item.has_tax || false,
+      sales_order_items_total_price: calculateItemTotals(item).total,
+      sales_order_items_notes: item.item_notes || null,
+    }));
+
+    return {
+      client_id: clientId,
+      sales_orders_client_id: clientId,
+      sales_orders_order_date: resolveOrderDateForSubmission(
+        formData.sales_order_date,
+      ),
+      sales_orders_status: status,
+      sales_orders_delivery_status: formData.sales_orders_delivery_status,
+      sales_orders_notes: formData.sales_orders_notes,
+      sales_orders_warehouse_id: formData.sales_orders_warehouse_id,
+      sales_orders_representative_id: representativeId,
+      sales_orders_expected_delivery_date:
+        formData.sales_orders_expected_delivery_date || null,
+      sales_orders_subtotal: orderTotals.subtotal,
+      sales_orders_discount_amount: formData.sales_orders_discount_amount,
+      sales_orders_tax_amount: formData.sales_orders_tax_amount,
+      sales_orders_total_amount: orderTotals.total,
+      items: itemsToSubmit,
+    };
+  };
+
   const handleSaveAsDraft = (e) => {
     e.preventDefault();
 
@@ -1224,73 +1351,8 @@ export default function AddSalesOrderForm({
       return;
     }
 
-    // Get current user from localStorage if no representative is selected
-    const getCurrentUserId = () => {
-      try {
-        const userData = localStorage.getItem("userData");
-        if (userData) {
-          const parsedData = JSON.parse(userData);
-          return parsedData.users_id;
-        }
-      } catch (error) {
-        console.error("Error parsing userData from localStorage:", error);
-      }
-      return null;
-    };
-
-    const representativeId =
-      formData.sales_orders_representative_id || getCurrentUserId();
-
-    // Debug: Log representative ID before submission
-    console.log("🔵 handleSaveAsDraft - Representative ID:", representativeId);
-    console.log(
-      "🔵 handleSaveAsDraft - formData.sales_orders_representative_id:",
-      formData.sales_orders_representative_id,
-    );
-    console.log("🔵 handleSaveAsDraft - Full formData:", formData);
-
-    const itemsToSubmit = formData.sales_order_items.map((item) => ({
-      sales_order_items_variant_id: item.variant_id,
-      sales_order_items_packaging_type_id: item.packaging_type_id,
-      sales_order_items_quantity: item.quantity_ordered,
-      sales_order_items_unit_price: item.unit_cost,
-      sales_order_items_subtotal: (
-        parseFloat(item.quantity_ordered || 0) * parseFloat(item.unit_cost || 0)
-      ).toFixed(2),
-      // Discount entered in the UI is per-unit; submit total line discount
-      sales_order_items_discount_amount: (
-        (parseFloat(item.discount_amount || 0) || 0) *
-        (parseFloat(item.quantity_ordered || 0) || 0)
-      ).toFixed(2),
-      // Submit calculated tax amount (respect manual tax rate even if has_tax is false)
-      sales_order_items_tax_amount: Number(
-        calculateItemTotals(item).tax_amount || 0,
-      ).toFixed(2),
-      sales_order_items_tax_rate: item.tax_rate || 0,
-      sales_order_items_has_tax: item.has_tax || false,
-      sales_order_items_total_price: calculateItemTotals(item).total,
-      sales_order_items_notes: item.item_notes || null,
-    }));
-
-    // Transform data to match API expectations
-    const transformedData = {
-      sales_orders_client_id: formData.sales_orders_client_id,
-      sales_orders_order_date: resolveOrderDateForSubmission(
-        formData.sales_order_date,
-      ),
-      sales_orders_status: "Draft",
-      sales_orders_delivery_status: formData.sales_orders_delivery_status,
-      sales_orders_notes: formData.sales_orders_notes,
-      sales_orders_warehouse_id: formData.sales_orders_warehouse_id,
-      sales_orders_representative_id: representativeId,
-      sales_orders_expected_delivery_date:
-        formData.sales_orders_expected_delivery_date || null,
-      sales_orders_subtotal: orderTotals.subtotal,
-      sales_orders_discount_amount: formData.sales_orders_discount_amount,
-      sales_orders_tax_amount: formData.sales_orders_tax_amount,
-      sales_orders_total_amount: orderTotals.total,
-      items: itemsToSubmit,
-    };
+    const transformedData = buildSubmitPayload("Draft");
+    if (!transformedData) return;
 
     onSubmit(transformedData);
   };
@@ -1319,76 +1381,11 @@ export default function AddSalesOrderForm({
       return;
     }
 
-    // Get current user from localStorage if no representative is selected
-    const getCurrentUserId = () => {
-      try {
-        const userData = localStorage.getItem("userData");
-        if (userData) {
-          const parsedData = JSON.parse(userData);
-          return parsedData.users_id;
-        }
-      } catch (error) {
-        console.error("Error parsing userData from localStorage:", error);
-      }
-      return null;
-    };
-
-    const representativeId =
-      formData.sales_orders_representative_id || getCurrentUserId();
-
-    // Debug: Log representative ID before submission
-    console.log(
-      "🟢 handleFinalConfirmOrder - Representative ID:",
-      representativeId,
-    );
-    console.log(
-      "🟢 handleFinalConfirmOrder - formData.sales_orders_representative_id:",
-      formData.sales_orders_representative_id,
-    );
-    console.log("🟢 handleFinalConfirmOrder - Full formData:", formData);
-
-    const itemsToSubmit = formData.sales_order_items.map((item) => ({
-      sales_order_items_variant_id: item.variant_id,
-      sales_order_items_packaging_type_id: item.packaging_type_id,
-      sales_order_items_quantity: item.quantity_ordered,
-      sales_order_items_unit_price: item.unit_cost,
-      sales_order_items_subtotal: (
-        parseFloat(item.quantity_ordered || 0) * parseFloat(item.unit_cost || 0)
-      ).toFixed(2),
-      // Discount entered in the UI is per-unit; submit total line discount
-      sales_order_items_discount_amount: (
-        (parseFloat(item.discount_amount || 0) || 0) *
-        (parseFloat(item.quantity_ordered || 0) || 0)
-      ).toFixed(2),
-      // Submit calculated tax amount (respect manual tax rate even if has_tax is false)
-      sales_order_items_tax_amount: Number(
-        calculateItemTotals(item).tax_amount || 0,
-      ).toFixed(2),
-      sales_order_items_tax_rate: item.tax_rate || 0,
-      sales_order_items_has_tax: item.has_tax || false,
-      sales_order_items_total_price: calculateItemTotals(item).total,
-      sales_order_items_notes: item.item_notes || null,
-    }));
-
-    // Transform data to match API expectations
-    const transformedData = {
-      sales_orders_client_id: formData.sales_orders_client_id,
-      sales_orders_order_date: resolveOrderDateForSubmission(
-        formData.sales_order_date,
-      ),
-      sales_orders_status: "Invoiced",
-      sales_orders_delivery_status: formData.sales_orders_delivery_status,
-      sales_orders_notes: formData.sales_orders_notes,
-      sales_orders_warehouse_id: formData.sales_orders_warehouse_id,
-      sales_orders_representative_id: representativeId,
-      sales_orders_expected_delivery_date:
-        formData.sales_orders_expected_delivery_date || null,
-      sales_orders_subtotal: orderTotals.subtotal,
-      sales_orders_discount_amount: formData.sales_orders_discount_amount,
-      sales_orders_tax_amount: formData.sales_orders_tax_amount,
-      sales_orders_total_amount: orderTotals.total,
-      items: itemsToSubmit,
-    };
+    const transformedData = buildSubmitPayload("Invoiced");
+    if (!transformedData) {
+      setIsConfirmOrderModalOpen(false);
+      return;
+    }
 
     onSubmit(transformedData);
     setIsConfirmOrderModalOpen(false);
@@ -1448,78 +1445,126 @@ export default function AddSalesOrderForm({
     displayWarehouses.length === 0
   ) {
     return (
-      <div
-        className="bg-white p-8 rounded-lg shadow-md max-w-xl mx-auto text-center"
-        dir="rtl"
+      <AppModalShell
+        portal
+        open
+        onClose={onCancel}
+        title="لا توجد مخازن متاحة"
+        subtitle="أضف مخزناً أولاً"
+        icon={ExclamationTriangleIcon}
+        size="md"
+        footer={
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={onCancel} className={modalSecondaryBtnClass}>
+              رجوع
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard/inventory-management/warehouses")}
+              className={modalPrimaryBtnClass}
+            >
+              الذهاب لصفحة المخازن
+            </button>
+          </div>
+        }
       >
-        <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-yellow-500" />
-        <h3 className="mt-4 text-2xl font-bold text-gray-800">
-          لا توجد مخازن متاحة
-        </h3>
-        <p className="mt-2 text-gray-600">
+        <p className="text-sm text-gray-600 text-center py-4">
           يجب عليك أولاً إضافة مخزن قبل إضافة أمر بيع جديد.
         </p>
-        <div className="mt-6 flex justify-center gap-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-          >
-            رجوع
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              navigate("/dashboard/inventory-management/warehouses")
-            }
-            className="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#8B5FD6] hover:bg-[#7A52C2]"
-          >
-            الذهاب لصفحة المخازن
-          </button>
-        </div>
-      </div>
+      </AppModalShell>
     );
   }
 
-  // Show loading state if clients are not loaded yet
-  if (
-    !Array.isArray(clients) ||
-    clients.length === 0 ||
-    displayClients.length === 0
-  ) {
+  // Show loading / error state while clients are fetched from API
+  if (clientsLoading) {
     return (
-      <div
-        className="bg-white p-8 rounded-lg shadow-md max-w-xl mx-auto text-center"
-        dir="rtl"
+      <AppModalShell
+        portal
+        open
+        onClose={onCancel}
+        title="جاري تحميل البيانات"
+        icon={ShoppingCartIcon}
+        size="md"
       >
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8B5FD6] mx-auto"></div>
-        <h3 className="mt-4 text-2xl font-bold text-gray-800">
-          جاري تحميل البيانات...
-        </h3>
-        <p className="mt-2 text-gray-600">
-          يرجى الانتظار بينما نقوم بتحميل قائمة العملاء.
-        </p>
-      </div>
+        <div className="flex flex-col items-center py-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8B5FD6]" />
+          <p className="mt-4 text-sm text-gray-600">
+            يرجى الانتظار بينما نقوم بتحميل قائمة العملاء من الخادم.
+          </p>
+        </div>
+      </AppModalShell>
     );
   }
+
+  if (clientsLoadError || displayClients.length === 0) {
+    return (
+      <AppModalShell
+        portal
+        open
+        onClose={onCancel}
+        title="تعذر تحميل العملاء"
+        icon={ShoppingCartIcon}
+        size="md"
+        footer={
+          <div className="flex gap-3 justify-end w-full">
+            <button type="button" onClick={onCancel} className={modalSecondaryBtnClass}>
+              إلغاء
+            </button>
+            <button type="button" onClick={loadFormClients} className={modalPrimaryBtnClass}>
+              إعادة المحاولة
+            </button>
+          </div>
+        }
+      >
+        <p className="text-sm text-gray-600 text-center py-4">
+          {clientsLoadError ||
+            "لا يوجد عملاء مسجلون. يرجى إضافة عميل من إدارة العملاء أولاً."}
+        </p>
+      </AppModalShell>
+    );
+  }
+
+  const isFormActionDisabled =
+    loading ||
+    formData.sales_order_items.length === 0 ||
+    !formData.sales_orders_client_id ||
+    !formData.sales_orders_warehouse_id;
 
   return (
-    <div
-      className="relative bg-white p-6 rounded-lg shadow-md max-w-6xl mx-auto"
-      dir="rtl"
-    >
-      <button
-        type="button"
-        onClick={onCancel}
-        aria-label="Close form"
-        className="absolute top-4 left-4 z-20 bg-white rounded-full p-1 shadow-sm hover:bg-gray-100 text-gray-600 focus:outline-none"
+    <>
+      <AppModalShell
+        portal
+        open
+        onClose={onCancel}
+        title="إضافة أمر بيع جديد"
+        subtitle="اختر العميل والمستودع ثم أضف المنتجات"
+        icon={ShoppingCartIcon}
+        size="3xl"
+        bodyClassName="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 bg-[#FAFAFE] max-h-[75vh]"
+        footer={
+          <div className="flex flex-wrap justify-end gap-2 sm:gap-3">
+            <button type="button" onClick={onCancel} className={modalSecondaryBtnClass}>
+              إلغاء
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveAsDraft}
+              disabled={isFormActionDisabled}
+              className={`${modalSecondaryBtnClass} disabled:opacity-50`}
+            >
+              {loading ? "جاري الحفظ..." : "حفظ كمسودة"}
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmOrder}
+              disabled={isFormActionDisabled}
+              className={`${modalPrimaryBtnClass} disabled:opacity-50`}
+            >
+              {loading ? "جاري التأكيد..." : "تأكيد الأمر"}
+            </button>
+          </div>
+        }
       >
-        <XMarkIcon className="h-5 w-5" />
-      </button>
-      <h3 className="text-2xl font-bold text-gray-800 mt-4 md:mt-0 mb-2 md:mb-6 text-center">
-        إضافة أمر بيع جديد
-      </h3>
-
       {!dataLoaded && (
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
           <div className="flex items-center">
@@ -1532,8 +1577,10 @@ export default function AddSalesOrderForm({
         </div>
       )}
 
-      <form className="space-y-6">
-        {/* Order Details */}
+      <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+        <div className={modalSectionClass}>
+          <div className={modalSectionHeaderClass}>معلومات الطلب</div>
+          <div className="p-4 sm:p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Warehouse */}
           <div>
@@ -1598,13 +1645,14 @@ export default function AddSalesOrderForm({
             />
           </div>
         </div>
+          </div>
+        </div>
 
         {/* Items Section */}
         {(formData.sales_orders_warehouse_id || appProductsData?.data) && (
-          <div className="border-t border-gray-200 pt-6">
-            <h4 className="text-lg font-medium text-gray-900 mb-4">
-              عناصر الأمر
-            </h4>
+          <div className={modalSectionClass}>
+            <div className={modalSectionHeaderClass}>عناصر الأمر</div>
+            <div className="p-4 sm:p-6">
 
             {inventoryLoading && formData.sales_orders_warehouse_id && (
               <div className="mb-4 p-3 bg-[#f5f3ff] border border-[#C4A8F0] rounded-md">
@@ -1965,6 +2013,7 @@ export default function AddSalesOrderForm({
               </div>
             )}
           </div>
+          </div>
         )}
 
         {/* Order Total Display */}
@@ -2068,7 +2117,7 @@ export default function AddSalesOrderForm({
         {/* Validation warning */}
         {(!formData.sales_orders_client_id ||
           !formData.sales_orders_warehouse_id) && (
-          <div className="w-full mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+          <div className="w-full p-3 bg-red-50 border border-red-200 rounded-xl">
             <p className="text-sm text-red-600">
               يرجى تحديد العميل والمستودع قبل حفظ أو تأكيد الأمر.
               {filteredRepresentativeOptions.length > 0 &&
@@ -2082,125 +2131,23 @@ export default function AddSalesOrderForm({
           </div>
         )}
 
-        {/* Form Actions */}
-        <div className="grid grid-cols-2 gap-y-2  md:flex md:justify-end space-x-reverse space-x-3 pt-6 border-t border-gray-200">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-2 h-10 md:h-none md:px-4 py-1 md:py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8B5FD6]"
-          >
-            إلغاء
-          </button>
-          <button
-            type="button"
-            onClick={handleSaveAsDraft}
-            disabled={
-              loading ||
-              formData.sales_order_items.length === 0 ||
-              !formData.sales_orders_client_id ||
-              !formData.sales_orders_warehouse_id
-            }
-            className="px-1 md:px-4 h-10 md:h-none py-1 md:py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-yellow-50 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50"
-          >
-            {loading ? "جاري الحفظ..." : "حفظ كمسودة"}
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirmOrder}
-            disabled={
-              loading ||
-              formData.sales_order_items.length === 0 ||
-              !formData.sales_orders_client_id ||
-              !formData.sales_orders_warehouse_id
-            }
-            className="px-10 md:px-4 col-span-2 py-1 md:py-2 border border-transparent justify-self-center  rounded-md shadow-sm text-sm font-medium text-white bg-[#8B5FD6] hover:bg-[#7A52C2] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8B5FD6] disabled:opacity-50"
-          >
-            {loading ? "جاري التأكيد..." : "تأكيد الأمر"}
-          </button>
-        </div>
       </form>
+      </AppModalShell>
 
-      {/* Confirmation Modal */}
       {isConfirmOrderModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div
-              className="fixed inset-0 transition-opacity backdrop-blur-sm"
-              aria-hidden="true"
-            >
-              <div className="absolute inset-0 bg-black/40"></div>
-            </div>
-            <span
-              className="hidden sm:inline-block sm:align-middle sm:h-screen"
-              aria-hidden="true"
-            >
-              &#8203;
-            </span>
-            <div
-              className="relative inline-block align-bottom bg-white rounded-lg text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
-              dir="rtl"
-            >
-              <button
-                type="button"
-                onClick={() => setIsConfirmOrderModalOpen(false)}
-                aria-label="Close"
-                className="absolute top-3 right-3 z-20 bg-red-200 rounded-full p-1 shadow-sm hover:bg-gray-100 text-gray-600 focus:outline-none"
-              >
-                <XMarkIcon className="h-5 w-5" />
-              </button>
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
-                    <ExclamationTriangleIcon
-                      className="h-6 w-6 text-green-600"
-                      aria-hidden="true"
-                    />
-                  </div>
-                  <div className="mt-3 text-center sm:mt-0 sm:mr-4 sm:text-right">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                      تأكيد الأمر
-                    </h3>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500">
-                        هل أنت متأكد من تأكيد هذا الأمر؟ بعد التأكيد لن يمكن
-                        تعديل الأمر.
-                      </p>
-                      <div className="mt-3 bg-gray-50 p-3 rounded-md">
-                        <p className="text-sm font-medium text-gray-700">
-                          إجمالي الأمر:{" "}
-                          <span className="text-green-600">
-                            {formatCurrency(orderTotal, { withSymbol: false })}{" "}
-                            {symbol}
-                          </span>
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          عدد العناصر: {formData.sales_order_items.length}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
-                  type="button"
-                  onClick={handleFinalConfirmOrder}
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:mr-3 sm:w-auto sm:text-sm"
-                >
-                  تأكيد الأمر
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsConfirmOrderModalOpen(false)}
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#8B5FD6] sm:mt-0 sm:mr-3 sm:w-auto sm:text-sm"
-                >
-                  إلغاء
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ConfirmOrderModal
+          isOpen={isConfirmOrderModalOpen}
+          onClose={() => setIsConfirmOrderModalOpen(false)}
+          onConfirm={handleFinalConfirmOrder}
+          title="تأكيد أمر البيع"
+          message={[
+            "هل أنت متأكد من تأكيد أمر البيع؟ بعد التأكيد لن يمكن تعديل الأمر.",
+            "",
+            `إجمالي الأمر: ${formatCurrency(orderTotal, { withSymbol: true })}`,
+            `\u0639\u062F\u062F \u0627\u0644\u0639\u0646\u0627\u0635\u0631: ${formData.sales_order_items.length}`,
+          ].join("\n")}
+        />
       )}
-    </div>
+    </>
   );
 }

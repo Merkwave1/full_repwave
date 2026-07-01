@@ -1,7 +1,7 @@
 ﻿// src/components/dashboard/tabs/sales-management/client-refunds/ClientRefundDetailsModal.jsx
-import React, { useMemo } from "react";
-import { createPortal } from "react-dom";
-import { XMarkIcon, EyeIcon } from "@heroicons/react/24/outline";
+import React, { useMemo } from 'react';
+import { ArrowUturnLeftIcon } from '@heroicons/react/24/outline';
+import AppModalShell, { modalSecondaryBtnClass } from '../../../../common/AppModalShell.jsx';
 
 const ClientRefundDetailsModal = ({
   onClose,
@@ -39,113 +39,92 @@ const ClientRefundDetailsModal = ({
   const formatDate = (dateString) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString("en-GB", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
+      return date.toLocaleDateString('en-GB', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
       });
     } catch {
-      return dateString || "-";
+      return dateString || '-';
     }
   };
 
   const formatCurrency = (amount) => {
-    if (!amount) return "0.00";
-    return parseFloat(amount).toLocaleString("en-US", {
+    if (!amount) return '0.00';
+    return parseFloat(amount).toLocaleString('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
   };
 
+  const clientName =
+    clientMap.get(String(refund.client_refunds_client_id || refund.client_id)) ||
+    refund.client_name ||
+    '-';
+
   const fields = [
+    { label: 'العميل', value: clientName },
     {
-      label: "العميل",
-      value:
-        clientMap.get(
-          String(refund.client_refunds_client_id || refund.client_id),
-        ) ||
-        refund.client_name ||
-        "-",
-    },
-    {
-      label: "الخزنة",
+      label: 'الخزنة',
       value:
         safeMap.get(String(refund.client_refunds_safe_id || refund.safe_id)) ||
         refund.safe_name ||
-        "-",
+        '-',
     },
     {
-      label: "طريقة الدفع",
+      label: 'طريقة الدفع',
       value:
         methodMap.get(
           String(refund.client_refunds_method_id || refund.payment_method_id),
         ) ||
         refund.payment_method_name ||
-        "-",
+        '-',
     },
     {
-      label: "التاريخ",
+      label: 'التاريخ',
       value: formatDate(refund.client_refunds_date || refund.refund_date),
     },
     {
-      label: "المبلغ",
+      label: 'المبلغ',
       value: formatCurrency(refund.client_refunds_amount || refund.amount),
     },
     {
-      label: "ملاحظات",
-      value: refund.client_refunds_notes || refund.notes || "لا توجد",
+      label: 'ملاحظات',
+      value: refund.client_refunds_notes || refund.notes || 'لا توجد',
     },
   ];
 
-  const modal = (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-[9999] p-3 sm:p-6 overflow-y-auto"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-xl shadow-xl max-w-xl w-full mx-2 sm:mx-4 max-h-[95vh] overflow-hidden flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="bg-gradient-to-r from-indigo-100 to-blue-100 px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-300 shrink-0">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base sm:text-xl font-bold text-gray-800 flex items-center gap-2 truncate">
-              <EyeIcon className="h-6 w-6 text-[#8B5FD6]" />
-              تفاصيل مرتجع عميل
-            </h3>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-all"
-            >
-              <XMarkIcon className="h-5 w-5 text-gray-600" />
-            </button>
-          </div>
-        </div>
+  if (!refund) return null;
 
-        <div className="p-3 sm:p-6 overflow-y-auto flex-1" dir="rtl">
-          <div className="space-y-4">
-            {fields.map((f, idx) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between border-b pb-2"
-              >
-                <span className="text-gray-600 font-medium">{f.label}</span>
-                <span className="text-gray-900">{f.value}</span>
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-end pt-6">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-[#8B5FD6] text-white rounded-md hover:bg-[#7A52C2]"
-            >
-              إغلاق
-            </button>
-          </div>
+  return (
+    <AppModalShell
+      open
+      onClose={onClose}
+      title="تفاصيل استرداد عميل"
+      subtitle={clientName !== '-' ? String(clientName) : undefined}
+      icon={ArrowUturnLeftIcon}
+      size="md"
+      gradient="amber"
+      zIndex="z-[9999]"
+      portal
+      footer={
+        <div className="flex justify-end">
+          <button type="button" onClick={onClose} className={modalSecondaryBtnClass}>
+            إغلاق
+          </button>
         </div>
+      }
+    >
+      <div className="space-y-4">
+        {fields.map((f, idx) => (
+          <div key={idx} className="flex items-center justify-between border-b border-gray-100 pb-2">
+            <span className="text-gray-600 font-medium">{f.label}</span>
+            <span className="text-gray-900">{f.value}</span>
+          </div>
+        ))}
       </div>
-    </div>
+    </AppModalShell>
   );
-  return createPortal(modal, document.body);
 };
 
 export default ClientRefundDetailsModal;

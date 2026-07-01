@@ -14,7 +14,14 @@ import {
   updateProduct,
   deleteProduct,
 } from "../../../../apis/products";
-import { getAppCategories } from "../../../../apis/auth";
+import {
+  getAppCategories,
+  getAppBaseUnits,
+  getAppPackagingTypes,
+  getAppSuppliers,
+  getAppProductAttributes,
+} from "../../../../apis/auth";
+import { unwrapList } from "../../../../utils/unwrapList";
 
 // View components
 import ProductsListView from "./ProductsListView";
@@ -43,83 +50,6 @@ function ProductsTab() {
   const [error, setError] = useState(null);
   const [addFormError, setAddFormError] = useState(null);
 
-  // Helper function to load data from localStorage
-  const loadDataFromStorage = useCallback(() => {
-    try {
-      const storedCategories = localStorage.getItem("appCategories");
-      const storedProductAttributes = localStorage.getItem(
-        "appProductAttributes",
-      );
-      const storedBaseUnits = localStorage.getItem("appBaseUnits");
-      const storedPackagingTypes = localStorage.getItem("appPackagingTypes");
-      const storedSuppliers = localStorage.getItem("appSuppliers");
-
-      if (storedCategories) {
-        const categoriesData = JSON.parse(storedCategories);
-        if (Array.isArray(categoriesData)) {
-          setCategories(categoriesData);
-        } else {
-          setCategories(
-            categoriesData?.categories || categoriesData?.data || [],
-          );
-        }
-      }
-
-      if (storedProductAttributes) {
-        const attributesData = JSON.parse(storedProductAttributes);
-        if (Array.isArray(attributesData)) {
-          setProductAttributes(attributesData);
-        } else {
-          setProductAttributes(
-            attributesData?.product_attributes || attributesData?.data || [],
-          );
-        }
-      }
-
-      if (storedBaseUnits) {
-        const baseUnitsData = JSON.parse(storedBaseUnits);
-        if (Array.isArray(baseUnitsData)) {
-          setBaseUnits(baseUnitsData);
-        } else {
-          setBaseUnits(baseUnitsData?.base_units || baseUnitsData?.data || []);
-        }
-      }
-
-      if (storedPackagingTypes) {
-        const packagingData = JSON.parse(storedPackagingTypes);
-        if (Array.isArray(packagingData)) {
-          setPackagingTypes(packagingData);
-        } else {
-          setPackagingTypes(
-            packagingData?.packaging_types || packagingData?.data || [],
-          );
-        }
-      }
-
-      if (storedSuppliers) {
-        const suppliersData = JSON.parse(storedSuppliers);
-        if (Array.isArray(suppliersData)) {
-          setSuppliers(suppliersData);
-        } else {
-          setSuppliers(suppliersData?.suppliers || suppliersData?.data || []);
-        }
-      }
-
-      const storedWarehouses = localStorage.getItem("appWarehouses");
-      const storedInventory = localStorage.getItem("appInventory");
-      if (storedWarehouses) {
-        const whData = JSON.parse(storedWarehouses);
-        setWarehouses(Array.isArray(whData) ? whData : whData?.warehouses || whData?.data || []);
-      }
-      if (storedInventory) {
-        const invData = JSON.parse(storedInventory);
-        setAllInventory(Array.isArray(invData) ? invData : invData?.inventory || invData?.data || []);
-      }
-    } catch (error) {
-      console.error("Error loading data from localStorage:", error);
-    }
-  }, []);
-
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("");
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("");
@@ -133,34 +63,45 @@ function ProductsTab() {
     setLoading(true);
     setError(null);
     try {
-      // Load supporting data from localStorage first (non-blocking fallback)
-      loadDataFromStorage();
+      const [
+        categoriesRes,
+        productsRes,
+        baseUnitsRes,
+        packagingRes,
+        suppliersRes,
+        attributesRes,
+      ] = await Promise.all([
+        getAppCategories(),
+        getAllProducts({ pageSize: 500 }),
+        getAppBaseUnits(),
+        getAppPackagingTypes(),
+        getAppSuppliers(),
+        getAppProductAttributes(),
+      ]);
 
-      // Fetch categories fresh from API so newly added categories appear
-      try {
-        const freshCategories = await getAppCategories();
-        const catList = Array.isArray(freshCategories)
-          ? freshCategories
-          : freshCategories?.categories || freshCategories?.data || [];
-        if (catList.length > 0) {
-          setCategories(catList);
-          try { localStorage.setItem("appCategories", JSON.stringify(catList)); } catch (_e) { void _e; }
-        }
-      } catch (_e) {
-        // Fall back to localStorage values already loaded above
-      }
+      const catList = unwrapList(categoriesRes);
+      const productsList = unwrapList(productsRes);
+      const baseUnitsList = unwrapList(baseUnitsRes);
+      const packagingList = unwrapList(packagingRes);
+      const suppliersList = unwrapList(suppliersRes);
+      const attributesList = unwrapList(attributesRes);
 
-      // Only fetch products from API
-      const productsResponse = await getAllProducts();
-      const productsList = Array.isArray(productsResponse)
-        ? productsResponse
-        : productsResponse?.products || productsResponse?.data || [];
+      setCategories(catList);
       setProducts(productsList);
-      // Save to localStorage so other tabs (SalesOrdersTab, SalesReturnsTab, etc.) can read products
+      setBaseUnits(baseUnitsList);
+      setPackagingTypes(packagingList);
+      setSuppliers(suppliersList);
+      setProductAttributes(attributesList);
+
       try {
+        localStorage.setItem("appCategories", JSON.stringify(catList));
         localStorage.setItem("appProducts", JSON.stringify(productsList));
-      } catch (_e) {
-        void _e;
+        localStorage.setItem("appBaseUnits", JSON.stringify(baseUnitsList));
+        localStorage.setItem("appPackagingTypes", JSON.stringify(packagingList));
+        localStorage.setItem("appSuppliers", JSON.stringify(suppliersList));
+        localStorage.setItem("appProductAttributes", JSON.stringify(attributesList));
+      } catch {
+        /* ignore */
       }
     } catch (e) {
       setError("فشل في تحميل البيانات المساندة للمنتجات");
@@ -168,7 +109,7 @@ function ProductsTab() {
     } finally {
       setLoading(false);
     }
-  }, [setGlobalMessage, loadDataFromStorage]);
+  }, [setGlobalMessage]);
 
   useEffect(() => {
     loadSupportData();
@@ -538,8 +479,6 @@ function ProductsTab() {
       {renderContent()}
       {/* Add product modal overlay */}
       {currentView === "add-product" && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm overflow-y-auto">
-          <div className="min-h-full flex items-start justify-center py-6 px-4">
             <AddProductForm
               onAdd={handleAddProduct}
               onCancel={() => setCurrentView("list-products")}
@@ -551,8 +490,6 @@ function ProductsTab() {
               addFormError={addFormError}
               setAddFormError={setAddFormError}
             />
-          </div>
-        </div>
       )}
       {/* Edit product modal overlay */}
       {currentView === "edit-product" && selectedProduct && (

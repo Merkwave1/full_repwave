@@ -18,6 +18,7 @@ import HoverDonut from "../graphs/HoverDonut.jsx";
 import MetricBarChart from "../graphs/MetricBarChart.jsx";
 import ProductRadarCard from "../graphs/ProductRadarCard";
 import MonthlyComparisonBar from "../graphs/MonthlyComparisonBar.jsx";
+import { BRAND, MODAL_GRADIENTS, DASHBOARD } from "../../constants/brandColors.js";
 
 const toNumber = (value) => {
   if (value === null || value === undefined) return 0;
@@ -169,12 +170,12 @@ const ComprehensiveDashboard = () => {
       try {
         setLoading(true);
         setError(null);
-        console.log("Loading comprehensive dashboard data...");
         const rawData = await getComprehensiveDashboardData();
-        console.log("Dashboard data received:", rawData);
+        if (!rawData) {
+          throw new Error('لم يتم استلام بيانات من الخادم');
+        }
         setDashboardData(normalizeDashboardData(rawData));
       } catch (err) {
-        console.error("Failed to load dashboard data:", err);
         setError(
           `فشل في تحميل بيانات لوحة المعلومات: ${err.message || "خطأ غير معروف"}`,
         );
@@ -225,7 +226,7 @@ const ComprehensiveDashboard = () => {
   const data = dashboardData;
   const salesChartData = [
     {
-      label: "آخر 30 يوم",
+      label: "آخر 90 يوم",
       count: data.sales.invoiced30d.count,
       value: data.sales.invoiced30d.value,
     },
@@ -247,38 +248,115 @@ const ComprehensiveDashboard = () => {
     value ? new Date(value).toLocaleString("ar-EG") : "غير متاح";
 
   const colorPalette = {
-    blue: "#3b82f6",
-    green: "#22c55e",
-    orange: "#f97316",
-    red: "#ef4444",
-    purple: "#a855f7",
-    indigo: "#6366f1",
-    teal: "#14b8a6",
-    cyan: "#06b6d4",
-    yellow: "#eab308",
-    pink: "#ec4899",
-    emerald: "#10b981",
-    rose: "#f43f5e",
+    purple: BRAND.primary,
+    violet: BRAND.violet,
+    indigo: BRAND.indigo,
+    lavender: BRAND.lavender,
+    deep: BRAND.primaryDark,
+    hover: BRAND.primaryHover,
+    plum: DASHBOARD.plum,
+    grape: DASHBOARD.grape,
+    orchid: DASHBOARD.orchid,
+    fuchsia: DASHBOARD.fuchsia,
+    periwinkle: DASHBOARD.periwinkle,
+    mauve: DASHBOARD.mauve,
   };
 
-  const StatCard = ({ title, value, subtitle, icon: Icon, color = "blue" }) => {
-    const paletteColor = colorPalette[color] ?? colorPalette.blue;
+  const statCardThemes = {
+    purple: {
+      accent: BRAND.primary,
+      border: "border-[#8B5FD6]/25",
+      bg: "bg-gradient-to-br from-[#8B5FD6]/10 via-white to-white",
+      iconBg: "bg-[#8B5FD6]/15",
+    },
+    violet: {
+      accent: DASHBOARD.plum,
+      border: "border-[#9333EA]/25",
+      bg: "bg-gradient-to-br from-[#9333EA]/10 via-white to-white",
+      iconBg: "bg-[#9333EA]/15",
+    },
+    indigo: {
+      accent: BRAND.indigo,
+      border: "border-[#6366F1]/25",
+      bg: "bg-gradient-to-br from-[#6366F1]/10 via-white to-white",
+      iconBg: "bg-[#6366F1]/15",
+    },
+    lavender: {
+      accent: DASHBOARD.grape,
+      border: "border-[#6D28D9]/25",
+      bg: "bg-gradient-to-br from-[#6D28D9]/10 via-white to-white",
+      iconBg: "bg-[#6D28D9]/15",
+    },
+    deep: {
+      accent: BRAND.primaryDark,
+      border: "border-[#2D1B69]/20",
+      bg: "bg-gradient-to-br from-[#2D1B69]/8 via-white to-white",
+      iconBg: "bg-[#2D1B69]/10",
+    },
+    hover: {
+      accent: DASHBOARD.orchid,
+      border: "border-[#D946EF]/25",
+      bg: "bg-gradient-to-br from-[#D946EF]/10 via-white to-white",
+      iconBg: "bg-[#D946EF]/15",
+    },
+    fuchsia: {
+      accent: DASHBOARD.fuchsia,
+      border: "border-[#C026D3]/25",
+      bg: "bg-gradient-to-br from-[#C026D3]/10 via-white to-white",
+      iconBg: "bg-[#C026D3]/15",
+    },
+    periwinkle: {
+      accent: DASHBOARD.periwinkle,
+      border: "border-[#818CF8]/30",
+      bg: "bg-gradient-to-br from-[#818CF8]/12 via-white to-white",
+      iconBg: "bg-[#818CF8]/18",
+    },
+  };
+
+  const SectionHeading = ({ children }) => (
+    <div className="flex items-center gap-3">
+      <span className="h-8 w-1.5 rounded-full bg-gradient-to-b from-[#8B5FD6] via-[#9333EA] to-[#6366F1]" />
+      <h3 className="text-base md:text-lg font-bold text-[#2D1B69]">{children}</h3>
+    </div>
+  );
+
+  const StatCard = ({ title, value, subtitle, icon: Icon, color = "purple" }) => {
+    const theme = statCardThemes[color] ?? statCardThemes.purple;
+    const paletteColor = colorPalette[color] ?? colorPalette.purple;
 
     return (
       <div
-        className="bg-white rounded-lg shadow-md p-6 border-r-4"
-        style={{ borderRightColor: paletteColor }}
+        className={`rounded-2xl shadow-sm border p-5 hover:shadow-[0_8px_24px_-8px_rgba(139,95,214,0.3)] transition-all duration-200 ${theme.border} ${theme.bg}`}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">{title}</h3>
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <p
+              className="text-xs font-semibold uppercase tracking-wide mb-1.5"
+              style={{ color: theme.accent }}
+            >
+              {title}
+            </p>
+            <p className="text-2xl font-extrabold text-[#2D1B69] truncate">
+              {value}
+            </p>
             {subtitle && (
-              <p className="text-sm text-gray-600 mt-1">{subtitle}</p>
+              <p className="text-sm text-gray-500 mt-1 truncate">{subtitle}</p>
             )}
           </div>
-          {Icon && <Icon className="h-8 w-8" style={{ color: paletteColor }} />}
+          {Icon && (
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${theme.iconBg}`}
+            >
+              <Icon className="h-5 w-5" style={{ color: paletteColor }} />
+            </div>
+          )}
         </div>
+        <div
+          className="mt-4 h-1 rounded-full w-14"
+          style={{
+            background: `linear-gradient(90deg, ${paletteColor}, ${BRAND.lavender})`,
+          }}
+        />
       </div>
     );
   };
@@ -287,43 +365,61 @@ const ComprehensiveDashboard = () => {
     title,
     value,
     subtitle,
-    color = "blue",
+    color = "purple",
     primaryValue,
     secondaryValue,
   }) => {
-    const paletteColor = colorPalette[color] ?? colorPalette.blue;
+    const theme = statCardThemes[color] ?? statCardThemes.purple;
+    const paletteColor = colorPalette[color] ?? colorPalette.purple;
 
     const colorSets = {
-      emerald: ["#16a34a", "#4ade80"],
-      rose: ["#dc2626", "#f87171"],
-      yellow: ["#facc15", "#fde047"],
-      blue: ["#3b82f6", "#93c5fd"],
+      purple: [BRAND.primary, BRAND.lavender],
+      violet: [DASHBOARD.plum, BRAND.violet],
+      deep: [BRAND.primaryDark, DASHBOARD.grape],
+      indigo: [BRAND.indigo, DASHBOARD.periwinkle],
+      fuchsia: [DASHBOARD.fuchsia, DASHBOARD.mauve],
+      periwinkle: [DASHBOARD.periwinkle, BRAND.lavender],
     };
 
-    const donutColors = colorSets[color] || colorSets.blue;
+    const donutColors = colorSets[color] || colorSets.purple;
 
     return (
       <div
-        className="bg-white rounded-lg shadow-md p-6 border-r-4"
-        style={{ borderRightColor: paletteColor }}
+        className={`rounded-2xl shadow-sm border p-5 hover:shadow-[0_8px_24px_-8px_rgba(139,95,214,0.3)] transition-all duration-200 ${theme.border} ${theme.bg}`}
       >
         <div className="flex justify-between items-center gap-4">
-          <div className="flex-1">
-            <h3 className="text-sm font-medium text-gray-500">{title}</h3>
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
+          <div className="flex-1 min-w-0">
+            <p
+              className="text-xs font-semibold uppercase tracking-wide mb-1.5"
+              style={{ color: theme.accent }}
+            >
+              {title}
+            </p>
+            <p className="text-2xl font-extrabold text-[#2D1B69] truncate">
+              {value}
+            </p>
             {subtitle && (
-              <p className="text-sm text-gray-600 mt-1">{subtitle}</p>
+              <p className="text-sm text-gray-500 mt-1 truncate">{subtitle}</p>
             )}
           </div>
 
           <HoverDonut
             data={[
               { name: "آخر 7 أيام", value: secondaryValue },
-              { name: "ال24 يوم السابقين ", value: Math.max(0, primaryValue - secondaryValue) },
+              {
+                name: "ال24 يوم السابقين",
+                value: Math.max(0, primaryValue - secondaryValue),
+              },
             ]}
             colors={donutColors}
           />
         </div>
+        <div
+          className="mt-4 h-1 rounded-full w-14"
+          style={{
+            background: `linear-gradient(90deg, ${paletteColor}, ${BRAND.lavender})`,
+          }}
+        />
       </div>
     );
   };
@@ -335,25 +431,33 @@ const ComprehensiveDashboard = () => {
     iconElement,
     className,
     contentClassName,
+    accent = BRAND.primary,
+    headerBg = "bg-[#FAFAFE]",
   }) => (
     <div
       className={classNames(
-        "bg-white rounded-lg shadow-md p-6 flex flex-col",
+        "relative bg-white rounded-2xl shadow-sm border border-[#EDE7FF] p-5 flex flex-col overflow-hidden",
         className,
       )}
     >
-      <div className="flex items-center mb-4">
-        {/* JSX icon (priority) */}
-        {iconElement && <div className="ml-2">{iconElement}</div>}
-
-        {/* Component icon (fallback) */}
+      <div
+        className={`relative flex items-center gap-2 mb-4 -mx-5 -mt-5 px-5 py-3 border-b border-[#EDE7FF] ${headerBg}`}
+      >
+        <span
+          className="absolute top-0 left-0 right-0 h-[3px]"
+          style={{ background: `linear-gradient(90deg, ${accent}, ${BRAND.lavender})` }}
+        />
+        {iconElement && <div className="relative">{iconElement}</div>}
         {!iconElement && Icon && (
-          <Icon className="h-6 w-6 text-[#8B5FD6] ml-2" />
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: `${accent}18` }}
+          >
+            <Icon className="h-4 w-4" style={{ color: accent }} />
+          </div>
         )}
-
-        <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
+        <h2 className="text-base font-bold text-[#2D1B69]">{title}</h2>
       </div>
-
       <div className={classNames("flex-1 flex flex-col", contentClassName)}>
         {children}
       </div>
@@ -413,7 +517,7 @@ const ComprehensiveDashboard = () => {
 
   const purchaseChartData = [
     {
-      label: "آخر 30 يوم",
+      label: "آخر 90 يوم",
       count: data.purchases.active30dCount,
       value: data.purchases.active30dValue,
     },
@@ -431,7 +535,7 @@ const ComprehensiveDashboard = () => {
 
   const returnsChartData = [
     {
-      label: "آخر 30 يوم",
+      label: "آخر 90 يوم",
       count: data.returns.returns30d.count,
       value: data.returns.returns30d.value,
     },
@@ -455,18 +559,29 @@ const ComprehensiveDashboard = () => {
     data?.lowStockProducts?.length ?? 0,
   ];
   const shouldScrollProductSections = Math.max(...productSectionLengths) > 4;
-
-  console.log("Top Returned Products:", topReturnedProducts);
-
   return (
-    <div dir="rtl" className="space-y-6 p-2 md:p-4">
-      <div className="mb-8">
-        <h1 className="text-xl md:text-3xl font-bold text-gray-900 mb-2">
-          لوحة المعلومات الشاملة
-        </h1>
-        <p className="text-gray-600 text-sm md:text-base">
-          آخر تحديث: {formatDateTime(data?.meta?.generatedAt)}
-        </p>
+    <div dir="rtl" className="space-y-6 bg-gradient-to-b from-[#FAFAFE] via-white to-[#EDE7FF]/25 -m-4 sm:-m-6 p-4 sm:p-6 min-h-full">
+      {/* Page header */}
+      <div
+        className="rounded-2xl px-6 py-5 flex items-center justify-between shadow-[0_8px_32px_-8px_rgba(139,95,214,0.4)] relative overflow-hidden"
+        style={{ background: MODAL_GRADIENTS.purple }}
+      >
+        <div
+          className="absolute inset-0 opacity-30 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(circle at 85% 20%, #D946EF 0%, transparent 45%), radial-gradient(circle at 10% 80%, #6366F1 0%, transparent 40%)",
+          }}
+        />
+        <div className="relative z-10">
+          <h1 className="text-xl md:text-2xl font-extrabold text-white">
+            لوحة المعلومات
+          </h1>
+          <p className="text-white/70 text-xs mt-0.5">
+            آخر تحديث: {formatDateTime(data?.meta?.generatedAt)}
+          </p>
+        </div>
+        <ChartBarIcon className="h-10 w-10 text-white/40 relative z-10" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-6 w-full">
@@ -477,8 +592,10 @@ const ComprehensiveDashboard = () => {
           formatCount={formatCount}
           formatAmount={formatAmount}
           theme={{
-            countColor: "#005A7D",
-            valueColor: "#7dd3fc",
+            countColor: BRAND.primary,
+            valueColor: BRAND.lavender,
+            cardBg: "bg-gradient-to-br from-[#8B5FD6]/8 via-white to-white border border-[#8B5FD6]/20",
+            titleColor: "text-[#2D1B69]",
           }}
         />
 
@@ -489,8 +606,10 @@ const ComprehensiveDashboard = () => {
           formatCount={formatCount}
           formatAmount={formatAmount}
           theme={{
-            countColor: "#ca8a04", // amber-600
-            valueColor: "#facc15", // yellow-400
+            countColor: DASHBOARD.plum,
+            valueColor: DASHBOARD.mauve,
+            cardBg: "bg-gradient-to-br from-[#9333EA]/8 via-white to-white border border-[#9333EA]/20",
+            titleColor: "text-[#2D1B69]",
           }}
         />
 
@@ -501,61 +620,63 @@ const ComprehensiveDashboard = () => {
           formatCount={formatCount}
           formatAmount={formatAmount}
           theme={{
-            countColor: "#991b1b",
-            valueColor: "#ef4444",
+            countColor: BRAND.indigo,
+            valueColor: DASHBOARD.periwinkle,
+            cardBg: "bg-gradient-to-br from-[#6366F1]/8 via-white to-white border border-[#6366F1]/20",
+            titleColor: "text-[#2D1B69]",
           }}
         />
       </div>
 
-      <h3 className="text-xl font-semibold">المؤشرات الرئيسية</h3>
+      <SectionHeading>المؤشرات الرئيسية</SectionHeading>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          title="إجمالي الطلبات (30 يوم)"
+          title="إجمالي الطلبات (90 يوم)"
           value={formatCount(data?.sales?.total30d?.count)}
           subtitle={formatAmount(data?.sales?.total30d?.value)}
           icon={ChartBarIcon}
-          color="yellow"
+          color="purple"
         />
         <StatCard
-          title="العملاء الجدد (30 يوم)"
+          title="العملاء الجدد (90 يوم)"
           value={formatCount(data?.clients?.new30d)}
           subtitle={`آخر 7 أيام: ${formatCount(data?.clients?.new7d)}`}
           icon={UserGroupIcon}
-          color="orange"
+          color="violet"
         />
         <StatCard
           title="إجمالي أرصدة العملاء"
           value={formatAmount(data?.clients?.totalBalance)}
           subtitle={`إجمالي العملاء النشطين: ${formatCount(data?.clients?.totalActive)}`}
           icon={BanknotesIcon}
-          color={data?.clients?.totalBalance >= 0 ? "green" : "red"}
+          color="indigo"
         />
         <StatCard
           title="إجمالي أرصدة الموردين"
           value={formatAmount(data?.suppliers?.totalBalance)}
           icon={BanknotesIcon}
-          color={data?.suppliers?.totalBalance >= 0 ? "green" : "red"}
+          color="fuchsia"
         />
       </div>
 
-      <h3 className="text-xl font-semibold">الملخص المالي</h3>
+      <SectionHeading>الملخص المالي</SectionHeading>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCardwithGraph
-          title="إيرادات مالية (30 يوم)"
+          title="إيرادات مالية (90 يوم)"
           value={formatAmount(data.financial.income30d)}
           subtitle={`آخر 7 أيام: ${formatAmount(data.financial.income7d)}`}
-          color="emerald"
+          color="purple"
           primaryValue={data.financial.income30d}
           secondaryValue={data.financial.income7d}
         />
 
         <StatCardwithGraph
-          title="مصروفات مالية (30 يوم)"
+          title="مصروفات مالية (90 يوم)"
           value={formatAmount(data.financial.expenses30d)}
           subtitle={`آخر 7 أيام: ${formatAmount(data.financial.expenses7d)}`}
-          color="rose"
+          color="indigo"
           primaryValue={data.financial.expenses30d}
           secondaryValue={data.financial.expenses7d}
         />
@@ -565,17 +686,19 @@ const ComprehensiveDashboard = () => {
           value={data?.recentVisits?.[0]?.clientCompanyName ?? "غير متاح"}
           subtitle={formatDateTime(data?.recentVisits?.[0]?.visitsStartTime)}
           icon={CalendarDaysIcon}
-          color="yellow"
+          color="periwinkle"
         />
       </div>
 
-      <h3 className="text-xl font-semibold">المنتجات</h3>
+      <SectionHeading>المنتجات</SectionHeading>
 
       {/* Product Insights */}
       <div className="flex flex-col md:grid md:grid-cols-2  gap-6 items-stretch">
         <SectionCard
           title="أكثر المنتجات مبيعاً"
-          iconElement={<ChartBarIcon className="h-6 w-6 text-green-600" />}
+          accent={BRAND.primary}
+          headerBg="bg-gradient-to-l from-[#8B5FD6]/8 to-[#FAFAFE]"
+          iconElement={<ChartBarIcon className="h-6 w-6" style={{ color: BRAND.primary }} />}
           className="h-full "
           contentClassName={classNames(
             "space-y-3",
@@ -583,11 +706,12 @@ const ComprehensiveDashboard = () => {
           )}
         >
           {topSellingProducts.length > 0 ? (
-            topSellingProducts.map((product) => (
+            topSellingProducts.map((product, index) => (
               <ProductRadarCard
+                key={product.id}
                 title={product.variantName}
                 subtitle={product.productName}
-                color="#22c55e"
+                color={DASHBOARD.accents[index % DASHBOARD.accents.length]}
                 metrics={[
                   { label: "الكمية", value: product.totalQuantity },
                   { label: "عدد الطلبات", value: product.orderCount },
@@ -604,7 +728,9 @@ const ComprehensiveDashboard = () => {
 
         <SectionCard
           title="أكثر المنتجات إرجاعاً"
-          iconElement={<ArrowPathIcon className="h-6 w-6 text-red-600" />}
+          accent={DASHBOARD.plum}
+          headerBg="bg-gradient-to-l from-[#9333EA]/8 to-[#FAFAFE]"
+          iconElement={<ArrowPathIcon className="h-6 w-6" style={{ color: DASHBOARD.plum }} />}
           className="h-full"
           contentClassName={classNames(
             "space-y-3",
@@ -612,11 +738,12 @@ const ComprehensiveDashboard = () => {
           )}
         >
           {topReturnedProducts.length > 0 ? (
-            topReturnedProducts.map((product) => (
+            topReturnedProducts.map((product, index) => (
               <ProductRadarCard
+                key={product.id}
                 title={product.variantName}
                 subtitle={product.productName}
-                color="#ef4444"
+                color={DASHBOARD.accents[(index + 3) % DASHBOARD.accents.length]}
                 metrics={[
                   { label: "عدد المرتجعات", value: product.returnCount },
                   { label: "الكمية", value: product.totalReturnedQuantity },
@@ -633,25 +760,30 @@ const ComprehensiveDashboard = () => {
 
         <SectionCard
           title="تحذيرات المخزون المنخفض"
+          accent={DASHBOARD.orchid}
+          headerBg="bg-gradient-to-l from-[#D946EF]/8 to-[#EDE7FF]/40"
           iconElement={
-            <ExclamationTriangleIcon className="h-6 w-6 text-yellow-500" />
+            <ExclamationTriangleIcon className="h-6 w-6" style={{ color: DASHBOARD.orchid }} />
           }
-          className="h-full col-span-2 bg-gradient-to-br from-yellow-50 to-white"
+          className="h-full col-span-2 bg-gradient-to-br from-[#EDE7FF]/60 via-white to-[#FAFAFE]"
           contentClassName={classNames(
             "space-y-4",
             shouldScrollProductSections && "max-h-96 overflow-y-auto pr-2",
           )}
         >
           {data?.lowStockProducts?.length > 0 ? (
-            data.lowStockProducts.map((item) => (
+            data.lowStockProducts.map((item, index) => {
+              const accent = DASHBOARD.accents[(index + 5) % DASHBOARD.accents.length];
+              return (
               <div
                 key={item.id}
-                className="p-3 sm:p-4 bg-white rounded-xl border border-yellow-200 shadow-sm
-                   hover:shadow-md transition flex flex-col gap-1"
+                className="p-3 sm:p-4 bg-white rounded-xl border shadow-sm
+                   hover:shadow-[0_4px_16px_-4px_rgba(139,95,214,0.2)] transition flex flex-col gap-1"
+                style={{ borderColor: `${accent}35` }}
               >
                 <div className="flex flex-wrap justify-between items-start gap-2">
                   <div className="min-w-0">
-                    <div className="font-semibold text-gray-900 text-sm truncate">
+                    <div className="font-semibold text-[#2D1B69] text-sm truncate">
                       {item.variantName}
                     </div>
                     <div className="text-xs text-gray-500 truncate">
@@ -659,8 +791,10 @@ const ComprehensiveDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Stock badge */}
-                  <span className="shrink-0 px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 whitespace-nowrap">
+                  <span
+                    className="shrink-0 px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap"
+                    style={{ backgroundColor: `${accent}18`, color: accent }}
+                  >
                     {formatCount(item.totalStock)} متبقي
                   </span>
                 </div>
@@ -669,7 +803,7 @@ const ComprehensiveDashboard = () => {
                   📦 المخزن: {item.warehouse}
                 </div>
               </div>
-            ))
+            );})
           ) : (
             <p className="text-gray-400 text-center py-6">
               لا توجد تحذيرات مخزون
@@ -679,46 +813,54 @@ const ComprehensiveDashboard = () => {
       </div>
 
       {/* Performance & Visits */}
-      <h3 className="text-xl font-semibold">المناديب</h3>
+      <SectionHeading>المناديب</SectionHeading>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <SectionCard
           title="أداء المناديب"
-          iconElement={<UserGroupIcon className="h-6 w-6 text-orange-600" />}
+          accent={BRAND.indigo}
+          headerBg="bg-gradient-to-l from-[#6366F1]/8 to-[#FAFAFE]"
+          iconElement={<UserGroupIcon className="h-6 w-6" style={{ color: BRAND.indigo }} />}
         >
           <div className="space-y-3">
             {data?.userPerformance?.length > 0 ? (
-              data.userPerformance.map((user) => (
+              data.userPerformance.map((user, index) => {
+                const accent = DASHBOARD.accents[index % DASHBOARD.accents.length];
+                const pillSets = [
+                  { bg: "bg-[#EDE7FF]", text: "text-[#7A52C2]" },
+                  { bg: "bg-[#9333EA]/12", text: "text-[#9333EA]" },
+                  { bg: "bg-[#6366F1]/12", text: "text-[#6366F1]" },
+                ];
+                return (
                 <div
                   key={user.usersId}
-                  className="bg-[#f2f2f2] rounded-xl px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+                  className="bg-[#FAFAFE] rounded-xl px-4 py-3 border border-[#EDE7FF] flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+                  style={{ borderRightWidth: 4, borderRightColor: accent }}
                 >
-                  {/* Metrics pills */}
                   <div className="flex flex-wrap gap-2 text-xs font-medium">
-                    <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-100 text-yellow-800">
+                    <span className={`flex items-center gap-1 px-3 py-1 rounded-full ${pillSets[0].bg} ${pillSets[0].text}`}>
                       🚗 زيارات: {formatCount(user.visitsConducted)}
                     </span>
 
-                    <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-green-100 text-green-800">
+                    <span className={`flex items-center gap-1 px-3 py-1 rounded-full ${pillSets[1].bg} ${pillSets[1].text}`}>
                       💰 قيمة: {formatCurrency(user.totalSalesValue)}
                     </span>
 
-                    <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-[#EDE7FF] text-[#2D1B69]">
+                    <span className={`flex items-center gap-1 px-3 py-1 rounded-full ${pillSets[2].bg} ${pillSets[2].text}`}>
                       📦 طلبات: {formatCount(user.ordersHandled)}
                     </span>
                   </div>
 
-                  {/* Name & role */}
                   <div className="text-right">
-                    <div className="font-semibold text-gray-900 text-sm">
+                    <div className="font-semibold text-[#2D1B69] text-sm">
                       {user.usersName}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs" style={{ color: accent }}>
                       الدور: {user.usersRole}
                     </div>
                   </div>
                 </div>
-              ))
+              );})
             ) : (
               <p className="text-gray-400 text-center py-6">
                 لا توجد بيانات للأداء
@@ -729,29 +871,34 @@ const ComprehensiveDashboard = () => {
 
         <SectionCard
           title="الزيارات الأخيرة"
-          iconElement={<CalendarDaysIcon className="h-6 w-6 text-purple-600" />}
+          accent={DASHBOARD.fuchsia}
+          headerBg="bg-gradient-to-l from-[#C026D3]/8 to-[#FAFAFE]"
+          iconElement={<CalendarDaysIcon className="h-6 w-6" style={{ color: DASHBOARD.fuchsia }} />}
         >
           <div className="space-y-3">
             {data?.recentVisits?.length > 0 ? (
-              data.recentVisits.map((visit) => (
+              data.recentVisits.map((visit, index) => {
+                const accent = DASHBOARD.accents[(index + 2) % DASHBOARD.accents.length];
+                return (
                 <div
                   key={visit.visitsId}
-                  className="bg-[#f2f2f2] rounded-xl px-3 sm:px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2"
+                  className="bg-[#FAFAFE] rounded-xl px-3 sm:px-4 py-3 border border-[#EDE7FF] flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2"
+                  style={{ borderRightWidth: 3, borderRightColor: accent }}
                 >
-                  {/* Left content */}
                   <div className="flex flex-col gap-1 min-w-0">
-                    <div className="font-semibold text-gray-900 text-sm truncate">
+                    <div className="font-semibold text-[#2D1B69] text-sm truncate">
                       {visit.clientCompanyName}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                      {/* Status pill */}
-                      <span className="px-2 py-0.5 rounded-full bg-[#EDE7FF] text-[#7A52C2] font-medium whitespace-nowrap">
+                      <span
+                        className="px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
+                        style={{ backgroundColor: `${accent}18`, color: accent }}
+                      >
                         {visit.visitsStatus}
                       </span>
 
-                      {/* Purpose pill */}
-                      <span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 font-medium whitespace-nowrap">
+                      <span className="px-2 py-0.5 rounded-full bg-[#C4A8F0]/40 text-[#2D1B69] font-medium whitespace-nowrap">
                         الغرض: {visit.visitsPurpose || "غير محدد"}
                       </span>
                     </div>
@@ -766,7 +913,7 @@ const ComprehensiveDashboard = () => {
                     {formatDateTime(visit.visitsStartTime)}
                   </div>
                 </div>
-              ))
+              );})
             ) : (
               <p className="text-gray-400 text-center py-6">
                 لا توجد زيارات حديثة
@@ -776,10 +923,13 @@ const ComprehensiveDashboard = () => {
         </SectionCard>
       </div>
 
-      {/* Monthly Comparison */}
-      <h3 className="text-xl font-semibold">مقارنة الاداء</h3>
+      <SectionHeading>مقارنة الاداء</SectionHeading>
 
-      <SectionCard>
+      <SectionCard
+        title="مقارنة شهرية"
+        accent={DASHBOARD.grape}
+        headerBg="bg-gradient-to-l from-[#6D28D9]/8 to-[#FAFAFE]"
+      >
         <MonthlyComparisonBar data={data.monthlyComparison} />
       </SectionCard>
     </div>

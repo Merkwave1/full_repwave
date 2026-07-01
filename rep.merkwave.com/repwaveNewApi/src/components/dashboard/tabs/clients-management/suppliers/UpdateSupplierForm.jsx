@@ -1,7 +1,18 @@
 ﻿// src/components/dashboard/tabs/clients-management/suppliers/UpdateSupplierForm.jsx
 import React, { useState, useEffect } from "react";
+import {
+  BuildingStorefrontIcon,
+  UserIcon,
+  MapPinIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import {
+  MODAL_GRADIENTS,
+  modalPrimaryBtnClass,
+  modalSecondaryBtnClass,
+  modalInputClass,
+} from "../../../../../constants/brandColors.js";
 
-// Egyptian phone: 01[0-2,5]{1}[0-9]{8}  (11 digits starting with 010/011/012/015)
 const EG_PHONE_RE = /^01[0125][0-9]{8}$/;
 
 function UpdateSupplierForm({ supplier, onUpdate, onCancel }) {
@@ -32,18 +43,19 @@ function UpdateSupplierForm({ supplier, onUpdate, onCancel }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: value,
-    }));
+    setFormData((prevData) => ({ ...prevData, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const validate = () => {
     const newErrors = {};
     if (!formData.supplier_name.trim()) newErrors.supplier_name = "اسم المورد مطلوب.";
-    if (formData.supplier_phone && !EG_PHONE_RE.test(formData.supplier_phone.replace(/\s|-/g, ""))) {
-      newErrors.supplier_phone = "رقم الهاتف غير صحيح. يجب أن يكون 11 رقماً ويبدأ بـ 010/011/012/015";
+    if (
+      formData.supplier_phone &&
+      !EG_PHONE_RE.test(formData.supplier_phone.replace(/\s|-/g, ""))
+    ) {
+      newErrors.supplier_phone =
+        "رقم الهاتف غير صحيح. يجب أن يكون 11 رقماً ويبدأ بـ 010/011/012/015";
     }
     if (
       formData.supplier_email &&
@@ -64,250 +76,169 @@ function UpdateSupplierForm({ supplier, onUpdate, onCancel }) {
     onUpdate(formData);
   };
 
+  const inputClass = (fieldId) =>
+    `${modalInputClass} ${errors[fieldId] ? "border-red-400 bg-red-50" : ""}`;
+
   return (
     <div
-      className="
-      bg-white/90 backdrop-blur-md
-      p-6 sm:p-8
-      rounded-2xl
-      shadow-[0_15px_40px_rgba(0,0,0,0.08)]
-      max-w-xl mx-auto
-      border border-[#C4A8F0]/15
-    "
+      className="bg-[#FAFAFE] rounded-2xl shadow-[0_25px_60px_-10px_rgba(139,95,214,0.35)] max-w-3xl w-full overflow-hidden border border-[#EDE7FF]"
       dir="rtl"
     >
-      {/* Header */}
-      <div className="text-center mb-8 relative">
-        <div className="absolute inset-x-0 -top-2 h-1 rounded-full bg-[#C4A8F0]" />
-
-        {/* Strong Modal Header */}
-        <div className="relative mb-8">
-          {/* top accent bar */}
-
-          <div className="flex items-center justify-between px-2 pt-5">
-            {/* Title + Icon */}
-            <div className="flex items-center gap-3">
-              <div
-                className="
-        w-12 h-12
-        rounded-xl
-        bg-[#C4A8F0]/20
-        flex items-center justify-center
-        text-[#C4A8F0]
-        shadow-sm
-      "
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 11c1.657 0 3-1.343 3-3S13.657 5 12 5 9 6.343 9 8s1.343 3 3 3z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M19 21v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2"
-                  />
-                </svg>
-              </div>
-
-              <h3
-                className="
-        text-2xl sm:text-3xl
-        font-black
-        text-[#1A0F35]
-        tracking-tight
-      "
-              >
-                تعديل المورد
-              </h3>
-            </div>
-
-            {/* Close button */}
-            <button
-              onClick={onCancel}
-              className="
-        w-10 h-10
-        rounded-full
-        flex items-center justify-center
-        text-[#1A0F35]/70
-        hover:text-white
-        hover:bg-[#C4A8F0]
-        transition-all
-      "
-              title="إغلاق"
-            >
-              ✕
-            </button>
+      <div
+        className="px-5 py-4 flex items-center justify-between relative overflow-hidden"
+        style={{ background: MODAL_GRADIENTS.brand }}
+      >
+        <div
+          className="absolute inset-0 opacity-20 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(circle at 20% 0%, rgba(255,255,255,0.45) 0%, transparent 55%)",
+          }}
+        />
+        <div className="flex items-center gap-3 relative z-10">
+          <div className="bg-white/20 backdrop-blur-sm rounded-xl p-2 ring-1 ring-white/20">
+            <BuildingStorefrontIcon className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h3 className="text-base sm:text-lg font-bold text-white">تعديل المورد</h3>
+            <p className="text-xs text-white/70 hidden sm:block">
+              {supplier?.supplier_name || "تحديث بيانات المورد"}
+            </p>
           </div>
         </div>
-
-        <div className="mt-3 flex justify-center">
-          <span className="w-20 h-1 rounded-full bg-[#C4A8F0]/70" />
-        </div>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="relative z-10 bg-white/20 hover:bg-white/30 rounded-full p-1.5 text-white transition-colors"
+        >
+          <XMarkIcon className="h-5 w-5" />
+        </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Input base style */}
-        {[
-          {
-            id: "supplier_name",
-            label: "اسم الشركة / المورد",
-            type: "text",
-            value: formData.supplier_name,
-            required: true,
-            maxLength: 255,
-          },
-          {
-            id: "supplier_contact_person",
-            label: "الشخص المسؤول",
-            type: "text",
-            value: formData.supplier_contact_person,
-            maxLength: 255,
-          },
-          {
-            id: "supplier_phone",
-            label: "الهاتف",
-            type: "tel",
-            value: formData.supplier_phone,
-            maxLength: 20,
-          },
-          {
-            id: "supplier_email",
-            label: "البريد الإلكتروني",
-            type: "email",
-            value: formData.supplier_email,
-            maxLength: 255,
-          },
-        ].map((field) => (
-          <div key={field.id} className="space-y-1.5">
-            <label
-              htmlFor={field.id}
-              className="text-sm font-semibold text-[#1A0F35]/80"
-            >
-              {field.label}
-            </label>
-
-            <input
-              type={field.type}
-              id={field.id}
-              name={field.id}
-              value={field.value}
-              onChange={handleChange}
-              required={field.required}
-              maxLength={field.maxLength}
-              placeholder={field.id === "supplier_phone" ? "مثال: 01012345678" : undefined}
-              className={`
-              w-full px-4 py-3
-              rounded-xl
-              bg-gray-50
-              border
-              text-[#1A0F35]
-              focus:bg-white
-              focus:border-[#C4A8F0]
-              focus:ring-4 focus:ring-[#C4A8F0]/25
-              outline-none
-              transition-all
-              ${errors[field.id] ? "border-red-400 bg-red-50" : "border-transparent"}
-            `}
-            />
-            {errors[field.id] && (
-              <p className="text-xs text-red-500 mt-1">{errors[field.id]}</p>
-            )}
+      <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
+        <div className="bg-white rounded-xl border border-[#EDE7FF]/80 shadow-sm overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#EDE7FF] bg-[#FAFAFE]">
+            <UserIcon className="h-4 w-4 text-[#8B5FD6]" />
+            <span className="text-sm font-semibold text-[#2D1B69]">البيانات الأساسية</span>
           </div>
-        ))}
-
-        {/* Address */}
-        <div className="space-y-1.5">
-          <label className="text-sm font-semibold text-[#1A0F35]/80">
-            العنوان
-          </label>
-          <textarea
-            name="supplier_address"
-            value={formData.supplier_address}
-            onChange={handleChange}
-            rows="2"
-            maxLength={500}
-            className="
-            w-full px-4 py-3
-            rounded-xl
-            bg-gray-50
-            border border-transparent
-            focus:bg-white
-            focus:border-[#C4A8F0]
-            focus:ring-4 focus:ring-[#C4A8F0]/25
-            outline-none
-            transition-all
-          "
-          />
+          <div className="p-4 space-y-4">
+            <div>
+              <label htmlFor="supplier_name" className="block text-sm font-medium text-gray-700">
+                اسم الشركة / المورد <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                id="supplier_name"
+                name="supplier_name"
+                value={formData.supplier_name}
+                onChange={handleChange}
+                required
+                maxLength={255}
+                className={inputClass("supplier_name")}
+              />
+              {errors.supplier_name && (
+                <p className="text-xs text-red-500 mt-1">{errors.supplier_name}</p>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="supplier_contact_person"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  الشخص المسؤول
+                </label>
+                <input
+                  type="text"
+                  id="supplier_contact_person"
+                  name="supplier_contact_person"
+                  value={formData.supplier_contact_person}
+                  onChange={handleChange}
+                  maxLength={255}
+                  className={inputClass("supplier_contact_person")}
+                />
+              </div>
+              <div>
+                <label htmlFor="supplier_phone" className="block text-sm font-medium text-gray-700">
+                  الهاتف
+                </label>
+                <input
+                  type="tel"
+                  id="supplier_phone"
+                  name="supplier_phone"
+                  value={formData.supplier_phone}
+                  onChange={handleChange}
+                  maxLength={20}
+                  placeholder="مثال: 01012345678"
+                  className={inputClass("supplier_phone")}
+                />
+                {errors.supplier_phone && (
+                  <p className="text-xs text-red-500 mt-1">{errors.supplier_phone}</p>
+                )}
+              </div>
+            </div>
+            <div>
+              <label htmlFor="supplier_email" className="block text-sm font-medium text-gray-700">
+                البريد الإلكتروني
+              </label>
+              <input
+                type="email"
+                id="supplier_email"
+                name="supplier_email"
+                value={formData.supplier_email}
+                onChange={handleChange}
+                maxLength={255}
+                className={inputClass("supplier_email")}
+              />
+              {errors.supplier_email && (
+                <p className="text-xs text-red-500 mt-1">{errors.supplier_email}</p>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Notes */}
-        <div className="space-y-1.5">
-          <label className="text-sm font-semibold text-[#1A0F35]/80">
-            ملاحظات
-          </label>
-          <textarea
-            name="supplier_notes"
-            value={formData.supplier_notes}
-            onChange={handleChange}
-            rows="3"
-            maxLength={500}
-            className="
-            w-full px-4 py-3
-            rounded-xl
-            bg-gray-50
-            border border-transparent
-            focus:bg-white
-            focus:border-[#C4A8F0]
-            focus:ring-4 focus:ring-[#C4A8F0]/25
-            outline-none
-            transition-all
-          "
-          />
+        <div className="bg-white rounded-xl border border-[#EDE7FF]/80 shadow-sm overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#EDE7FF] bg-[#FAFAFE]">
+            <MapPinIcon className="h-4 w-4 text-[#8B5FD6]" />
+            <span className="text-sm font-semibold text-[#2D1B69]">العنوان والملاحظات</span>
+          </div>
+          <div className="p-4 space-y-4">
+            <div>
+              <label htmlFor="supplier_address" className="block text-sm font-medium text-gray-700">
+                العنوان
+              </label>
+              <textarea
+                id="supplier_address"
+                name="supplier_address"
+                value={formData.supplier_address}
+                onChange={handleChange}
+                rows={2}
+                maxLength={500}
+                className={modalInputClass}
+              />
+            </div>
+            <div>
+              <label htmlFor="supplier_notes" className="block text-sm font-medium text-gray-700">
+                ملاحظات
+              </label>
+              <textarea
+                id="supplier_notes"
+                name="supplier_notes"
+                value={formData.supplier_notes}
+                onChange={handleChange}
+                rows={3}
+                maxLength={500}
+                className={modalInputClass}
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 sm:pt-6 border-t border-gray-100">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="
-            px-6 py-2.5
-            rounded-xl
-            border border-gray-200
-            text-sm font-semibold
-            text-[#1A0F35]
-            bg-white
-            hover:bg-gray-50
-            focus:ring-2 focus:ring-[#C4A8F0]/30
-            transition
-          "
-          >
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
+          <button type="button" onClick={onCancel} className={modalSecondaryBtnClass}>
             إلغاء
           </button>
-
-          <button
-            type="submit"
-            className="
-            px-6 py-2.5
-            rounded-xl
-            text-sm font-semibold
-            text-[#1A0F35]
-            bg-[#C4A8F0]
-            hover:bg-[#7ccfee]
-            focus:ring-2 focus:ring-[#C4A8F0]/40
-            shadow-lg
-            transition
-            transform hover:scale-[1.02]
-          "
-          >
+          <button type="submit" className={modalPrimaryBtnClass}>
             تحديث مورد
           </button>
         </div>

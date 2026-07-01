@@ -143,7 +143,7 @@ const CachedDataExample = () => {
 
       {/* Cache Info */}
       <div className="bg-[#f5f3ff] rounded-lg p-4">
-        <h4 className="font-medium text-blue-900 mb-2">How This Works</h4>
+        <h4 className="font-medium text-[#1A0F35] mb-2">How This Works</h4>
         <ul className="text-sm text-[#2D1B69] space-y-1">
           <li>• Data is automatically cached when you navigate to pages</li>
           <li>• Only updated entities are re-fetched (based on version comparison)</li>

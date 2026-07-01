@@ -49,6 +49,7 @@ public interface IApplicationDbContext : IDisposable
     DbSet<GoodsReceipt> GoodsReceipts { get; }
     DbSet<GoodsReceiptItem> GoodsReceiptItems { get; }
     DbSet<TransferRequest> TransferRequests { get; }
+    DbSet<TransferRequestItem> TransferRequestItems { get; }
     DbSet<Transfer> Transfers { get; }
     DbSet<VisitPlan> VisitPlans { get; }
     DbSet<VisitPlanClient> VisitPlanClients { get; }
