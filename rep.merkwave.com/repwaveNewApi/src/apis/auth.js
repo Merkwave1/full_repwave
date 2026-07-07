@@ -46,6 +46,7 @@ export function getUserUUID()    { return getUserId()?.toString() ?? null; }
 // ── Auth predicates ────────────────────────────────────────────────────────────
 export function isAuthenticated() { return !!getStoredUser()?.token; }
 export function isAdmin()         { return getStoredUser()?.role === 'admin'; }
+export function isAdminSupportSession() { return getStoredUser()?.admin_support === true; }
 
 // ── getUserData compat ─────────────────────────────────────────────────────────
 export function getUserData() { return getStoredUser(); }

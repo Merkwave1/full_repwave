@@ -4,6 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RepWave.Application.Common.Interfaces;
+using RepWave.Application.Features.Admin;
 using RepWave.Infrastructure.Persistence;
 using RepWave.Infrastructure.Services;
 using RepWave.Infrastructure.Storage;
@@ -32,6 +33,8 @@ public static class DependencyInjection
         // ── Tenant services ──────────────────────────────────────────────────
         services.AddScoped<ITenantService, TenantService>();
         services.AddScoped<ITenantDbContextFactory, TenantDbContextFactory>();
+        services.AddScoped<IAdminTenantHealthReader, AdminTenantHealthReader>();
+        services.AddScoped<IAdminActorProvider, AdminActorProvider>();
         services.AddScoped<ITenantProvisioningHelper, PostgresTenantProvisioningHelper>();
 
         // ── Tenant DbContext (per-request, determined by JWT "tenant" claim) ─

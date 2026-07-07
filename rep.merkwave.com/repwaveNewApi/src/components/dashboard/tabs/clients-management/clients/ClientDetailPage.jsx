@@ -41,7 +41,6 @@ import {
 } from "../../../../../apis/auth";
 import { getAllCountriesWithGovernorates } from "../../../../../apis/countries";
 import {
-  getClientStatusBadgeClass,
   getClientStatusLabel,
 } from "../../../../../constants/clientStatus";
 import { formatCurrency } from "../../../../../utils/currency";
@@ -59,6 +58,7 @@ import ClientPaymentsModal from "./details/ClientPaymentsModal";
 import ClientReturnsModal from "./details/ClientReturnsModal";
 import ClientDeliveriesModal from "./details/ClientDeliveriesModal";
 import ClientRefundsModal from "./details/ClientRefundsModal";
+import { BRAND } from "../../../../../constants/brandColors.js";
 
 const safeDate = (v) => {
   try {
@@ -92,9 +92,9 @@ function CreditBar({ balance, limit }) {
           {pct.toFixed(1)}%
         </span>
       </div>
-      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+      <div className="h-2.5 bg-[#EDE7FF] rounded-full overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all duration-700 ${danger ? "bg-red-500" : warn ? "bg-amber-400" : "bg-emerald-500"}`}
+          className={`h-full rounded-full transition-all duration-700 ${danger ? "bg-red-500" : warn ? "bg-amber-400" : "bg-gradient-to-r from-[#8B5FD6] to-[#6B45B0]"}`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -102,55 +102,76 @@ function CreditBar({ balance, limit }) {
   );
 }
 
-// ── KPI card ────────────────────────────────────────────────────────────────
-function KpiCard({ icon, label, value, color, onClick }) {
-  const palette = {
-    cyan: "from-[#8B5FD6]   to-[#7A52C2]   shadow-[#8B5FD6]/25",
-    green: "from-emerald-400 to-emerald-600 shadow-emerald-200/60",
-    blue: "from-[#8B5FD6] to-[#7A52C2] shadow-[#8B5FD6]/20",
-    indigo: "from-[#8B5FD6] to-[#7A52C2] shadow-[#8B5FD6]/20",
-    amber: "from-amber-400  to-amber-600  shadow-amber-200/60",
-    red: "from-red-400    to-red-600    shadow-red-200/60",
-    purple: "from-purple-400 to-purple-700 shadow-purple-200/60",
+// ── Status badge (high-contrast, for profile header) ────────────────────────
+function StatusBadge({ status }) {
+  const key = String(status ?? "").toLowerCase().trim();
+  const label = getClientStatusLabel(status);
+  const styles = {
+    active: "bg-emerald-50 text-emerald-800 border-emerald-200",
+    inactive: "bg-red-50 text-red-800 border-red-200",
+    prospect: "bg-amber-50 text-amber-800 border-amber-200",
+    archived: "bg-slate-100 text-slate-600 border-slate-200",
   };
-  const cls = palette[color] ?? palette.blue;
+  const dots = {
+    active: "bg-emerald-500",
+    inactive: "bg-red-500",
+    prospect: "bg-amber-500",
+    archived: "bg-slate-400",
+  };
+  const cls = styles[key] ?? "bg-[#EDE7FF] text-[#2D1B69] border-[#C4A8F0]";
+  const dot = dots[key] ?? "bg-[#8B5FD6]";
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${cls}`}
+    >
+      <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
+      {label}
+    </span>
+  );
+}
+
+// ── Compact stat (scannable, not heavy gradient) ────────────────────────────
+function StatCard({ icon, label, value, onClick, alert }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={!onClick}
-      className={`relative rounded-2xl p-5 flex flex-col gap-2 text-right bg-gradient-to-br ${cls} text-white shadow-lg overflow-hidden w-full
-        ${onClick ? "hover:shadow-xl hover:-translate-y-1 cursor-pointer active:scale-95" : "cursor-default"} transition-all duration-200`}
+      className={`flex-1 min-w-[130px] text-right px-4 py-3.5 rounded-2xl border transition-all duration-200
+        ${alert
+          ? "bg-red-50 border-red-200 hover:border-red-300"
+          : "bg-[#FAFAFE] border-[#EDE7FF] hover:border-[#C4A8F0] hover:bg-white hover:shadow-sm hover:shadow-[#8B5FD6]/10"
+        }
+        ${onClick ? "cursor-pointer active:scale-[0.98]" : "cursor-default"}`}
     >
-      <div className="absolute -top-4 -right-4 w-20 h-20 rounded-full bg-white/10" />
-      <div className="flex items-start justify-between relative z-10">
-        <div className="bg-white/20 p-2 rounded-xl">{icon}</div>
-        <span className="text-2xl font-extrabold leading-tight">{value}</span>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${alert ? "bg-red-100 text-red-600" : "bg-[#EDE7FF] text-[#8B5FD6]"}`}>
+          {icon}
+        </span>
+        <span className={`text-xl sm:text-2xl font-extrabold leading-none ${alert ? "text-red-700" : "text-[#2D1B69]"}`}>
+          {value}
+        </span>
       </div>
-      <span className="text-xs font-semibold opacity-80 relative z-10">
+      <span className="text-[10px] font-bold text-[#8B5FD6] uppercase tracking-wide">
         {label}
       </span>
     </button>
   );
 }
 
-// ── Action button ───────────────────────────────────────────────────────────
-function ActionBtn({ icon, label, color, onClick }) {
-  const cols = {
-    blue: "from-[#8B5FD6] to-[#7A52C2] shadow-[#8B5FD6]/25",
-    emerald: "from-[#8B5FD6] to-[#7A52C2] shadow-[#8B5FD6]/25",
-    amber: "from-amber-400  to-amber-600  shadow-amber-200/70",
-    indigo: "from-[#8B5FD6] to-[#7A52C2] shadow-[#8B5FD6]/25",
-    teal: "from-[#8B5FD6] to-[#7A52C2] shadow-[#8B5FD6]/20",
-    rose: "from-rose-500   to-rose-700   shadow-rose-200/70",
-    purple: "from-purple-500 to-purple-700 shadow-purple-200/70",
-    cyan: "from-[#8B5FD6] to-[#6B45B0] shadow-[#8B5FD6]/25",
-  };
+// ── Quick link pill ───────────────────────────────────────────────────────────
+function QuickLink({ icon, label, onClick, primary = false }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`bg-gradient-to-br ${cols[color] ?? cols.blue} text-white rounded-2xl px-2 py-4 flex flex-col items-center justify-center gap-2 text-xs font-bold shadow-md transition-all duration-200 active:scale-95 hover:-translate-y-1 hover:shadow-lg`}
+      className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 transition-all active:scale-95
+        ${primary
+          ? "bg-[#8B5FD6] text-white shadow-md shadow-[#8B5FD6]/25 hover:bg-[#7A52C2]"
+          : "bg-white text-[#2D1B69] border border-[#EDE7FF] hover:border-[#C4A8F0] hover:bg-[#FAFAFE]"
+        }`}
     >
-      <span className="w-6 h-6">{icon}</span>
+      <span className={primary ? "text-white" : "text-[#8B5FD6]"}>{icon}</span>
       {label}
     </button>
   );
@@ -161,12 +182,16 @@ function InfoRow({ label, value, children, icon }) {
   const content = children ?? (value != null ? String(value) : null);
   if (!content) return null;
   return (
-    <div className="flex flex-col gap-0.5 py-1.5">
-      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
-        {icon && <span className="w-3 h-3 opacity-60">{icon}</span>}
+    <div className="rounded-xl border border-[#EDE7FF] bg-gradient-to-br from-white to-[#FAFAFE] px-4 py-3.5 hover:border-[#C4A8F0]/70 hover:shadow-sm hover:shadow-[#8B5FD6]/5 transition-all">
+      <span className="text-[10px] font-extrabold text-[#8B5FD6] uppercase tracking-widest flex items-center gap-1.5 mb-1">
+        {icon && (
+          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[#EDE7FF] text-[#7A52C2]">
+            {React.cloneElement(icon, { className: "h-3 w-3" })}
+          </span>
+        )}
         {label}
       </span>
-      <span className="text-sm text-gray-800 font-medium break-words">
+      <span className="text-sm text-[#1A0F35] font-semibold break-words leading-relaxed">
         {content}
       </span>
     </div>
@@ -217,7 +242,16 @@ export default function ClientDetailPage() {
           getAppClientIndustries(),
           getAllCountriesWithGovernorates(),
         ]);
-      setClient(clientData);
+      setClient({
+        ...clientData,
+        clients_total_orders:
+          clientData.clients_total_orders ?? clientData.ClientsTotalOrders ?? 0,
+        clients_total_revenue:
+          clientData.clients_total_revenue ?? clientData.ClientsTotalRevenue ?? 0,
+        clients_last_order_date:
+          clientData.clients_last_order_date ?? clientData.ClientsLastOrderDate ?? null,
+        clients_type: clientData.clients_type ?? clientData.ClientsType ?? null,
+      });
       setAllUsers(Array.isArray(usersData) ? usersData : []);
       setClientAreaTags(Array.isArray(tagsData) ? tagsData : []);
       setClientIndustries(Array.isArray(industriesData) ? industriesData : []);
@@ -238,7 +272,9 @@ export default function ClientDetailPage() {
   }, [loadClient]);
 
   const getRepName = (id) =>
-    allUsers.find((u) => u.users_id === id)?.users_name ?? "\u2014";
+    allUsers.find((u) => (u.users_id ?? u.UsersId) === id)?.users_name
+    ?? allUsers.find((u) => (u.users_id ?? u.UsersId) === id)?.UsersName
+    ?? "\u2014";
   const getAreaName = (id) =>
     clientAreaTags.find((t) => t.client_area_tag_id === id)
       ?.client_area_tag_name ?? "\u2014";
@@ -363,22 +399,34 @@ export default function ClientDetailPage() {
 
   if (loading)
     return (
-      <div className="min-h-screen flex items-center justify-center" dir="rtl">
+      <div
+        className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-[#f5f3ff] via-white to-[#EDE7FF]/50"
+        dir="rtl"
+      >
+        <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-[#8B5FD6] to-[#6D28D9] flex items-center justify-center shadow-lg shadow-[#8B5FD6]/30 animate-pulse">
+          <BuildingOffice2Icon className="h-7 w-7 text-white" />
+        </div>
         <Loader />
+        <p className="text-sm font-semibold text-[#7A52C2]">
+          {"جاري تحميل بيانات العميل..."}
+        </p>
       </div>
     );
   if (error)
     return (
-      <div className="p-6" dir="rtl">
-        <Alert message={error} type="error" />
-        <button
-          onClick={() => navigate("/dashboard/clients")}
-          className="mt-4 px-4 py-2 bg-[#8B5FD6] text-white rounded-lg"
-        >
-          {
-            "\u0627\u0644\u0639\u0648\u062f\u0629 \u0644\u0644\u0639\u0645\u0644\u0627\u0621"
-          }
-        </button>
+      <div
+        className="min-h-screen p-6 bg-gradient-to-br from-[#f5f3ff] via-white to-[#EDE7FF]/40"
+        dir="rtl"
+      >
+        <div className="max-w-lg mx-auto mt-16 bg-white rounded-3xl border border-[#EDE7FF] shadow-lg shadow-[#8B5FD6]/10 p-6">
+          <Alert message={error} type="error" />
+          <button
+            onClick={() => navigate("/dashboard/clients")}
+            className="mt-4 w-full px-4 py-2.5 bg-gradient-to-r from-[#8B5FD6] to-[#7A52C2] hover:from-[#7A52C2] hover:to-[#6D28D9] text-white rounded-xl font-semibold shadow-md shadow-[#8B5FD6]/25 transition-all"
+          >
+            {"العودة للعملاء"}
+          </button>
+        </div>
       </div>
     );
   if (!client) return null;
@@ -386,7 +434,6 @@ export default function ClientDetailPage() {
   const fmt = (v) => formatCurrency(v ?? 0);
   const bal = parseFloat(client.clients_credit_balance ?? 0);
   const lim = parseFloat(client.clients_credit_limit ?? 0);
-  const statusLabel = getClientStatusLabel(client.clients_status);
   const initials = (client.clients_company_name || "?")
     .split(" ")
     .slice(0, 2)
@@ -426,15 +473,25 @@ export default function ClientDetailPage() {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-[#f5f3ff]/30"
+      className="min-h-screen bg-gradient-to-br from-[#f5f3ff] via-white to-[#EDE7FF]/40 relative overflow-hidden"
       dir="rtl"
     >
+      {/* Ambient purple blobs */}
+      <div
+        className="pointer-events-none absolute -top-32 -right-32 h-96 w-96 rounded-full opacity-40 blur-3xl"
+        style={{ background: `radial-gradient(circle, ${BRAND.lavender} 0%, transparent 70%)` }}
+      />
+      <div
+        className="pointer-events-none absolute top-1/3 -left-24 h-72 w-72 rounded-full opacity-30 blur-3xl"
+        style={{ background: `radial-gradient(circle, ${BRAND.primary} 0%, transparent 70%)` }}
+      />
+
       {/* Sticky top bar */}
-      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm">
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-[#EDE7FF] shadow-[0_4px_24px_-4px_rgba(139,95,214,0.12)]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           <button
             onClick={() => navigate("/dashboard/clients")}
-            className="flex items-center gap-2 text-gray-500 hover:text-[#8B5FD6] transition-colors text-sm font-semibold bg-gray-100 hover:bg-[#f5f3ff] px-3 py-1.5 rounded-xl"
+            className="flex items-center gap-2 text-[#7A52C2] hover:text-[#8B5FD6] transition-colors text-sm font-semibold bg-[#EDE7FF]/60 hover:bg-[#EDE7FF] px-3 py-1.5 rounded-xl border border-[#C4A8F0]/30"
           >
             <ArrowRightIcon className="h-4 w-4" />
             <span className="hidden sm:inline">
@@ -471,129 +528,97 @@ export default function ClientDetailPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-5">
-        {/* Hero card */}
-        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* Cover */}
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-5 space-y-5">
+        {/* Profile card — clean CRM layout, no tall cover */}
+        <div className="bg-white rounded-3xl border border-[#EDE7FF] shadow-[0_8px_40px_-12px_rgba(139,95,214,0.18)] overflow-hidden">
+          {/* Slim brand band */}
           <div
-            className="h-56 relative overflow-hidden"
+            className="h-24 sm:h-28 relative"
             style={{
-              background:
-                "linear-gradient(135deg, #02415A 0%, #0369a1 50%, #8DD8F5 100%)",
+              background: `linear-gradient(135deg, ${BRAND.primaryDark} 0%, ${BRAND.primary} 55%, ${BRAND.lavender} 100%)`,
             }}
           >
-            {hasImage && (
-              <img
-                src={client.clients_image}
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover opacity-25 blur-sm scale-110"
-              />
-            )}
-            <div
-              className="absolute inset-0"
-              style={{
-                backgroundImage:
-                  "radial-gradient(circle at 15% 60%, rgba(255,255,255,0.18) 0%, transparent 45%), radial-gradient(circle at 85% 15%, rgba(255,255,255,0.12) 0%, transparent 40%), radial-gradient(circle at 50% 90%, rgba(0,0,0,0.2) 0%, transparent 60%)",
-              }}
-            />
-            {/* Decorative circles */}
-            <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white/5" />
-            <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-white/5" />
-            <div className="absolute bottom-4 left-5 flex items-center gap-2">
-              <span
-                className={`text-xs font-bold px-3 py-1.5 rounded-full border-2 border-white/50 text-white backdrop-blur-sm ${getClientStatusBadgeClass?.(client.clients_status) ?? "bg-white/20"}`}
-              >
-                {statusLabel}
-              </span>
-              <span className="text-white/80 text-xs font-mono bg-white/15 backdrop-blur-sm px-2.5 py-1.5 rounded-full border border-white/20">
-                #{client.clients_id}
-              </span>
-            </div>
+            <div className="absolute inset-0 opacity-30" style={{
+              backgroundImage: "radial-gradient(circle at 80% 20%, rgba(255,255,255,0.25) 0%, transparent 50%)",
+            }} />
           </div>
 
-          <div className="px-6 pb-6">
-            <div className="relative z-10 flex flex-col sm:flex-row gap-5 -mt-16">
-              {/* Avatar / Image */}
-              <div className="flex-shrink-0">
+          <div className="px-5 sm:px-6 pb-5">
+            {/* Identity row */}
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 -mt-14 sm:-mt-16">
+              <div className="flex-shrink-0 mx-auto sm:mx-0">
                 {hasImage ? (
                   <img
                     src={client.clients_image}
                     alt={client.clients_company_name}
                     onError={() => setImgError(true)}
-                    className="w-36 h-36 rounded-3xl object-cover border-4 border-white shadow-2xl ring-4 ring-[#C4A8F0]/30"
+                    className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl object-cover border-4 border-white shadow-xl ring-2 ring-[#EDE7FF]"
                   />
                 ) : (
-                  <div className="w-36 h-36 rounded-3xl bg-gradient-to-br from-[#8B5FD6] via-[#8B5FD6] to-[#2D1B69] border-4 border-white shadow-2xl ring-4 ring-[#C4A8F0]/30 flex items-center justify-center text-white text-4xl font-extrabold select-none">
+                  <div
+                    className="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl border-4 border-white shadow-xl ring-2 ring-[#EDE7FF] flex items-center justify-center text-white text-3xl font-extrabold"
+                    style={{
+                      background: `linear-gradient(135deg, ${BRAND.primary} 0%, ${BRAND.primaryDark} 100%)`,
+                    }}
+                  >
                     {initials}
                   </div>
                 )}
               </div>
 
-              {/* Name + contact pills */}
-              <div className="flex-1 pt-2 sm:pt-16 min-w-0">
-                <h1 className="text-3xl font-extrabold text-gray-900 leading-tight truncate">
-                  {client.clients_company_name ||
-                    "\u0639\u0645\u064a\u0644 \u063a\u064a\u0631 \u0645\u062d\u062f\u062f"}
-                </h1>
-                <div className="flex flex-wrap items-center gap-3 mt-1.5">
+              <div className="flex-1 min-w-0 text-center sm:text-right pt-1 sm:pt-14">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1">
+                  <h1 className="text-2xl sm:text-3xl font-extrabold text-[#2D1B69] leading-tight">
+                    {client.clients_company_name || "عميل غير محدد"}
+                  </h1>
+                  <StatusBadge status={client.clients_status} />
+                  <span className="text-xs font-mono font-bold text-[#7A52C2] bg-[#EDE7FF] px-2 py-0.5 rounded-md border border-[#C4A8F0]/40">
+                    #{client.clients_id}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1 text-sm text-[#5B4B8A]">
                   {client.clients_contact_name && (
-                    <span className="text-sm text-gray-500 flex items-center gap-1">
-                      <UserIcon className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="inline-flex items-center gap-1">
+                      <UserIcon className="h-3.5 w-3.5 text-[#8B5FD6]" />
                       {client.clients_contact_name}
                       {client.clients_contact_job_title && (
-                        <span className="text-gray-400 text-xs">
-                          {"\u00b7 "}
-                          {client.clients_contact_job_title}
-                        </span>
+                        <span className="text-[#9B8BB8] text-xs">· {client.clients_contact_job_title}</span>
                       )}
                     </span>
                   )}
                   {client.clients_city && (
-                    <span className="text-sm text-gray-500 flex items-center gap-1">
-                      <MapPinIcon className="h-3.5 w-3.5 text-gray-400" />
-                      {[
-                        client.clients_city,
-                        getCountryName(client.clients_country_id),
-                      ]
-                        .filter(Boolean)
-                        .join("، ")}
+                    <span className="inline-flex items-center gap-1">
+                      <MapPinIcon className="h-3.5 w-3.5 text-[#8B5FD6]" />
+                      {[client.clients_city, getCountryName(client.clients_country_id)].filter(Boolean).join("، ")}
                     </span>
                   )}
                   {client.clients_industry_id && (
-                    <span className="text-sm text-gray-500 flex items-center gap-1">
-                      <BriefcaseIcon className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="inline-flex items-center gap-1">
+                      <BriefcaseIcon className="h-3.5 w-3.5 text-[#8B5FD6]" />
                       {getIndustryName(client.clients_industry_id)}
                     </span>
                   )}
                 </div>
 
-                {/* Contact pills */}
-                <div className="mt-3 flex flex-wrap gap-2">
+                {/* Primary contact — always visible, easy tap */}
+                <div className="mt-3 flex flex-wrap justify-center sm:justify-start gap-2">
                   {client.clients_contact_phone1 && (
                     <a
                       href={`tel:${client.clients_contact_phone1}`}
-                      className="flex items-center gap-1.5 bg-[#f5f3ff] border border-[#C4A8F0]/50 text-[#2D1B69] px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-[#EDE7FF] transition-colors"
+                      className="inline-flex items-center gap-2 bg-[#8B5FD6] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#7A52C2] shadow-sm shadow-[#8B5FD6]/30 transition-colors"
                     >
-                      <PhoneIcon className="h-3.5 w-3.5" />
+                      <PhoneIcon className="h-4 w-4" />
                       {client.clients_contact_phone1}
-                    </a>
-                  )}
-                  {client.clients_contact_phone2 && (
-                    <a
-                      href={`tel:${client.clients_contact_phone2}`}
-                      className="flex items-center gap-1.5 bg-[#f5f3ff] border border-[#C4A8F0]/50 text-[#2D1B69] px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-[#EDE7FF] transition-colors"
-                    >
-                      <PhoneIcon className="h-3.5 w-3.5" />
-                      {client.clients_contact_phone2}
                     </a>
                   )}
                   {client.clients_email && (
                     <a
                       href={`mailto:${client.clients_email}`}
-                      className="flex items-center gap-1.5 bg-[#f5f3ff] border border-[#C4A8F0] text-[#2D1B69] px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-[#EDE7FF] transition-colors"
+                      className="inline-flex items-center gap-2 bg-white text-[#2D1B69] border border-[#EDE7FF] px-4 py-2 rounded-xl text-sm font-semibold hover:border-[#C4A8F0] hover:bg-[#FAFAFE] transition-colors"
                     >
-                      <EnvelopeIcon className="h-3.5 w-3.5" />
-                      {client.clients_email}
+                      <EnvelopeIcon className="h-4 w-4 text-[#8B5FD6]" />
+                      <span className="max-w-[200px] truncate">{client.clients_email}</span>
                     </a>
                   )}
                   {client.clients_website && (
@@ -601,34 +626,52 @@ export default function ClientDetailPage() {
                       href={client.clients_website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 bg-purple-50 border border-purple-200 text-purple-800 px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-purple-100 transition-colors"
+                      className="inline-flex items-center gap-2 bg-white text-[#2D1B69] border border-[#EDE7FF] px-4 py-2 rounded-xl text-sm font-semibold hover:border-[#C4A8F0] transition-colors"
                     >
-                      <GlobeAltIcon className="h-3.5 w-3.5" />
-                      {"\u0627\u0644\u0645\u0648\u0642\u0639"}
+                      <GlobeAltIcon className="h-4 w-4 text-[#8B5FD6]" />
+                      الموقع
                     </a>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Credit bar */}
+            {/* Stats strip — scannable at a glance */}
+            <div className="mt-5 flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
+              <StatCard
+                icon={<CurrencyDollarIcon className="h-4 w-4" />}
+                label="الرصيد الحالي"
+                value={fmt(bal)}
+                alert={bal < 0 || (bal >= lim && lim > 0)}
+              />
+              <StatCard
+                icon={<CreditCardIcon className="h-4 w-4" />}
+                label="حد الائتمان"
+                value={fmt(lim)}
+              />
+              <StatCard
+                icon={<ShoppingCartIcon className="h-4 w-4" />}
+                label="إجمالي الطلبات"
+                value={client.clients_total_orders ?? 0}
+                onClick={() => setOrdersOpen(true)}
+              />
+              <StatCard
+                icon={<ArrowTrendingUpIcon className="h-4 w-4" />}
+                label="إجمالي الإيرادات"
+                value={fmt(client.clients_total_revenue)}
+              />
+            </div>
+
+            {/* Credit usage */}
             {lim > 0 && (
-              <div className="mt-5 bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                    {
-                      "\u0627\u0644\u0631\u0635\u064a\u062f \u0645\u0642\u0627\u0628\u0644 \u0627\u0644\u062d\u062f \u0627\u0644\u0627\u0626\u062a\u0645\u0627\u0646\u064a"
-                    }
+              <div className="mt-4 rounded-2xl bg-[#FAFAFE] border border-[#EDE7FF] px-4 py-3">
+                <div className="flex items-center justify-between text-xs font-bold text-[#7A52C2] mb-0.5">
+                  <span>الرصيد مقابل حد الائتمان</span>
+                  <span>
+                    <span className={bal >= lim ? "text-red-600" : "text-[#8B5FD6]"}>{fmt(bal)}</span>
+                    <span className="text-[#C4A8F0] mx-1">/</span>
+                    <span className="text-[#2D1B69]">{fmt(lim)}</span>
                   </span>
-                  <div className="flex items-center gap-3 text-sm font-bold">
-                    <span
-                      className={bal >= lim ? "text-red-600" : "text-[#8B5FD6]"}
-                    >
-                      {fmt(bal)}
-                    </span>
-                    <span className="text-gray-300">/</span>
-                    <span className="text-gray-600">{fmt(lim)}</span>
-                  </div>
                 </div>
                 <CreditBar balance={bal} limit={lim} />
               </div>
@@ -636,110 +679,36 @@ export default function ClientDetailPage() {
           </div>
         </div>
 
-        {/* KPI grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <KpiCard
-            icon={<CurrencyDollarIcon className="h-6 w-6" />}
-            label={
-              "\u0627\u0644\u0631\u0635\u064a\u062f \u0627\u0644\u062d\u0627\u0644\u064a"
-            }
-            value={fmt(bal)}
-            color={bal < 0 ? "red" : bal >= lim && lim > 0 ? "amber" : "green"}
-          />
-          <KpiCard
-            icon={<CreditCardIcon className="h-6 w-6" />}
-            label={
-              "\u062d\u062f \u0627\u0644\u0627\u0626\u062a\u0645\u0627\u0646"
-            }
-            value={fmt(lim)}
-            color="blue"
-          />
-          <KpiCard
-            icon={<ShoppingCartIcon className="h-6 w-6" />}
-            label={
-              "\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0637\u0644\u0628\u0627\u062a"
-            }
-            value={client.clients_total_orders ?? 0}
-            color="indigo"
-            onClick={() => setOrdersOpen(true)}
-          />
-          <KpiCard
-            icon={<ArrowTrendingUpIcon className="h-6 w-6" />}
-            label={
-              "\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0625\u064a\u0631\u0627\u062f\u0627\u062a"
-            }
-            value={fmt(client.clients_total_revenue)}
-            color="amber"
-          />
-        </div>
-
-        {/* Action grid */}
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2.5">
-          <ActionBtn
-            icon={<ShoppingCartIcon className="w-5 h-5" />}
-            label={"\u0627\u0644\u0637\u0644\u0628\u0627\u062a"}
-            color="blue"
-            onClick={() => setOrdersOpen(true)}
-          />
-          <ActionBtn
-            icon={<CurrencyDollarIcon className="w-5 h-5" />}
-            label={"\u0627\u0644\u0645\u062f\u0641\u0648\u0639\u0627\u062a"}
-            color="emerald"
-            onClick={() => setPaymentsOpen(true)}
-          />
-          <ActionBtn
-            icon={<TruckIcon className="w-5 h-5" />}
-            label={"\u0627\u0644\u062a\u0633\u0644\u064a\u0645\u0627\u062a"}
-            color="teal"
-            onClick={() => setDeliveriesOpen(true)}
-          />
-          <ActionBtn
-            icon={<ArrowUturnLeftIcon className="w-5 h-5" />}
-            label={"\u0627\u0644\u0645\u0631\u062a\u062c\u0639\u0627\u062a"}
-            color="amber"
-            onClick={() => setReturnsOpen(true)}
-          />
-          <ActionBtn
-            icon={<ReceiptRefundIcon className="w-5 h-5" />}
-            label={
-              "\u0627\u0644\u0627\u0633\u062a\u0631\u062f\u0627\u062f\u0627\u062a"
-            }
-            color="rose"
-            onClick={() => setRefundsOpen(true)}
-          />
-          <ActionBtn
-            icon={<ChartBarIcon className="w-5 h-5" />}
-            label={"\u0643\u0634\u0641 \u062d\u0633\u0627\u0628"}
-            color="indigo"
-            onClick={() => setStatementOpen(true)}
-          />
-          <ActionBtn
-            icon={<FolderOpenIcon className="w-5 h-5" />}
-            label={"\u0627\u0644\u0645\u0633\u062a\u0646\u062f\u0627\u062a"}
-            color="purple"
-            onClick={() => setDocumentsOpen(true)}
-          />
-          <ActionBtn
-            icon={<PencilSquareIcon className="w-5 h-5" />}
-            label={"\u062a\u0639\u062f\u064a\u0644"}
-            color="cyan"
-            onClick={() => setEditOpen(true)}
-          />
+        {/* Quick actions — horizontal scroll, easy to reach */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-[#EDE7FF] p-3">
+          <p className="text-[10px] font-extrabold text-[#8B5FD6] uppercase tracking-widest mb-2.5 px-1">
+            إجراءات سريعة
+          </p>
+          <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-thin">
+            <QuickLink icon={<ShoppingCartIcon className="h-4 w-4" />} label="الطلبات" onClick={() => setOrdersOpen(true)} primary />
+            <QuickLink icon={<ChartBarIcon className="h-4 w-4" />} label="كشف حساب" onClick={() => setStatementOpen(true)} />
+            <QuickLink icon={<CurrencyDollarIcon className="h-4 w-4" />} label="المدفوعات" onClick={() => setPaymentsOpen(true)} />
+            <QuickLink icon={<TruckIcon className="h-4 w-4" />} label="التسليمات" onClick={() => setDeliveriesOpen(true)} />
+            <QuickLink icon={<ArrowUturnLeftIcon className="h-4 w-4" />} label="المرتجعات" onClick={() => setReturnsOpen(true)} />
+            <QuickLink icon={<ReceiptRefundIcon className="h-4 w-4" />} label="الاستردادات" onClick={() => setRefundsOpen(true)} />
+            <QuickLink icon={<FolderOpenIcon className="h-4 w-4" />} label="المستندات" onClick={() => setDocumentsOpen(true)} />
+            <QuickLink icon={<PencilSquareIcon className="h-4 w-4" />} label="تعديل" onClick={() => setEditOpen(true)} />
+          </div>
         </div>
 
         {/* Tabbed detail sections */}
-        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-3xl border border-[#EDE7FF] shadow-sm overflow-hidden">
           {/* Tab bar */}
-          <div className="flex gap-1 p-2 bg-gray-50/80 border-b border-gray-100 overflow-x-auto">
+          <div className="flex gap-0 border-b border-[#EDE7FF] overflow-x-auto bg-[#FAFAFE]">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold whitespace-nowrap rounded-xl transition-all
+                className={`flex items-center gap-1.5 px-5 py-3.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors -mb-px
                   ${
                     activeTab === tab.key
-                      ? "bg-white text-[#8B5FD6] shadow-sm border border-gray-200"
-                      : "text-gray-500 hover:text-gray-700 hover:bg-white/60"
+                      ? "border-[#8B5FD6] text-[#8B5FD6] bg-white"
+                      : "border-transparent text-[#7A52C2]/70 hover:text-[#8B5FD6] hover:bg-white/60"
                   }`}
               >
                 {tab.icon}
@@ -751,7 +720,7 @@ export default function ClientDetailPage() {
           <div className="p-5 sm:p-7">
             {/* Overview tab */}
             {activeTab === "overview" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 divide-y divide-gray-50">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <InfoRow
                   label={
                     "\u0627\u0633\u0645 \u0627\u0644\u0634\u0631\u0643\u0629"
@@ -928,12 +897,12 @@ export default function ClientDetailPage() {
                 </div>
 
                 {client.clients_website && (
-                  <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 flex items-center gap-3">
-                    <div className="w-9 h-9 bg-purple-500 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
+                  <div className="bg-[#f5f3ff] border border-[#C4A8F0] rounded-2xl p-4 flex items-center gap-3">
+                    <div className="w-9 h-9 bg-[#8B5FD6] rounded-xl flex items-center justify-center shadow-sm flex-shrink-0">
                       <GlobeAltIcon className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-purple-600 uppercase tracking-wide">
+                      <p className="text-xs font-bold text-[#8B5FD6] uppercase tracking-wide">
                         {
                           "\u0627\u0644\u0645\u0648\u0642\u0639 \u0627\u0644\u0625\u0644\u0643\u062a\u0631\u0648\u0646\u064a"
                         }
@@ -942,7 +911,7 @@ export default function ClientDetailPage() {
                         href={client.clients_website}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm font-semibold text-gray-800 hover:text-purple-700 transition-colors"
+                        className="text-sm font-semibold text-gray-800 hover:text-[#7A52C2] transition-colors"
                       >
                         {client.clients_website}
                       </a>
@@ -950,7 +919,7 @@ export default function ClientDetailPage() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 divide-y divide-gray-50 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                   <InfoRow
                     label={
                       "\u0627\u0633\u0645 \u062c\u0647\u0629 \u0627\u0644\u0627\u062a\u0635\u0627\u0644"
@@ -982,27 +951,27 @@ export default function ClientDetailPage() {
                     rel="noopener noreferrer"
                     className="flex items-center gap-4 bg-gradient-to-l from-[#f5f3ff] to-[#EDE7FF] border border-[#C4A8F0] rounded-2xl p-5 hover:shadow-md transition-shadow group"
                   >
-                    <div className="w-12 h-12 bg-green-500 rounded-2xl flex items-center justify-center shadow-md flex-shrink-0 group-hover:bg-green-600 transition-colors">
+                    <div className="w-12 h-12 bg-[#8B5FD6] rounded-2xl flex items-center justify-center shadow-md flex-shrink-0 group-hover:bg-[#7A52C2] transition-colors">
                       <MapPinIcon className="h-6 w-6 text-white" />
                     </div>
                     <div>
-                      <p className="text-sm font-extrabold text-green-700">
+                      <p className="text-sm font-extrabold text-[#2D1B69]">
                         عرض على خرائط Google
                       </p>
-                      <p className="text-xs text-green-600 mt-0.5 truncate max-w-[280px]" dir="ltr">
+                      <p className="text-xs text-[#7A52C2] mt-0.5 truncate max-w-[280px]" dir="ltr">
                         {buildGoogleMapsLink(
                           client.clients_latitude,
                           client.clients_longitude,
                         )}
                       </p>
                     </div>
-                    <div className="mr-auto text-green-400 text-xs font-bold">
+                    <div className="mr-auto text-[#8B5FD6] text-xs font-bold">
                       افتح ←
                     </div>
                   </a>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 divide-y divide-gray-50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <InfoRow
                     label={"\u0627\u0644\u0639\u0646\u0648\u0627\u0646"}
                     value={client.clients_address}
@@ -1063,49 +1032,37 @@ export default function ClientDetailPage() {
             {/* Financial tab */}
             {activeTab === "financial" && (
               <div className="space-y-5">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center">
-                    <p className="text-xs font-bold text-[#8B5FD6] uppercase tracking-widest mb-1">
-                      {
-                        "\u0627\u0644\u0631\u0635\u064a\u062f \u0627\u0644\u062d\u0627\u0644\u064a"
-                      }
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-2xl border border-[#EDE7FF] bg-[#FAFAFE] p-5 text-center">
+                    <p className="text-[10px] font-bold text-[#8B5FD6] uppercase tracking-widest mb-1">
+                      {"الرصيد الحالي"}
                     </p>
-                    <p
-                      className={`text-2xl font-extrabold ${bal < 0 ? "text-red-600" : "text-emerald-700"}`}
-                    >
+                    <p className={`text-2xl font-extrabold ${bal < 0 ? "text-red-600" : "text-[#2D1B69]"}`}>
                       {fmt(bal)}
                     </p>
-                    <p className="text-[11px] text-emerald-500 mt-1">
-                      {symbol}
-                    </p>
+                    <p className="text-[11px] text-[#9B8BB8] mt-1">{symbol}</p>
                   </div>
-                  <div className="bg-[#f5f3ff] border border-[#C4A8F0] rounded-2xl p-5 text-center">
-                    <p className="text-xs font-bold text-[#8B5FD6] uppercase tracking-widest mb-1">
-                      {
-                        "\u062d\u062f \u0627\u0644\u0627\u0626\u062a\u0645\u0627\u0646"
-                      }
+                  <div className="rounded-2xl border border-[#EDE7FF] bg-[#FAFAFE] p-5 text-center">
+                    <p className="text-[10px] font-bold text-[#8B5FD6] uppercase tracking-widest mb-1">
+                      {"حد الائتمان"}
                     </p>
-                    <p className="text-2xl font-extrabold text-[#7A52C2]">
-                      {fmt(lim)}
-                    </p>
-                    <p className="text-[11px] text-[#8B5FD6] mt-1">{symbol}</p>
+                    <p className="text-2xl font-extrabold text-[#2D1B69]">{fmt(lim)}</p>
+                    <p className="text-[11px] text-[#9B8BB8] mt-1">{symbol}</p>
                   </div>
-                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center">
-                    <p className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-1">
-                      {
-                        "\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0625\u064a\u0631\u0627\u062f\u0627\u062a"
-                      }
+                  <div className="rounded-2xl border border-[#EDE7FF] bg-[#FAFAFE] p-5 text-center">
+                    <p className="text-[10px] font-bold text-[#8B5FD6] uppercase tracking-widest mb-1">
+                      {"إجمالي الإيرادات"}
                     </p>
-                    <p className="text-2xl font-extrabold text-amber-700">
+                    <p className="text-2xl font-extrabold text-[#2D1B69]">
                       {fmt(client.clients_total_revenue)}
                     </p>
-                    <p className="text-[11px] text-amber-500 mt-1">{symbol}</p>
+                    <p className="text-[11px] text-[#9B8BB8] mt-1">{symbol}</p>
                   </div>
                 </div>
 
                 {lim > 0 && (
-                  <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5">
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
+                  <div className="bg-gradient-to-br from-[#f5f3ff] to-white border border-[#EDE7FF] rounded-2xl p-5 shadow-inner">
+                    <p className="text-xs font-bold text-[#8B5FD6] uppercase tracking-widest mb-3">
                       {
                         "\u0627\u0633\u062a\u062e\u062f\u0627\u0645 \u062d\u062f \u0627\u0644\u0627\u0626\u062a\u0645\u0627\u0646"
                       }
@@ -1126,7 +1083,7 @@ export default function ClientDetailPage() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 divide-y divide-gray-50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <InfoRow
                     label={
                       "\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0637\u0644\u0628\u0627\u062a"
@@ -1169,23 +1126,23 @@ export default function ClientDetailPage() {
             {activeTab === "notes" && (
               <div className="space-y-4">
                 {client.clients_description && (
-                  <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5">
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
+                  <div className="bg-gradient-to-br from-white to-[#FAFAFE] border border-[#EDE7FF] rounded-2xl p-5 hover:border-[#C4A8F0]/60 transition-colors">
+                    <p className="text-xs font-bold text-[#8B5FD6] uppercase tracking-widest mb-2">
                       {"\u0627\u0644\u0648\u0635\u0641"}
                     </p>
-                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                    <p className="text-sm text-[#1A0F35] leading-relaxed whitespace-pre-wrap">
                       {client.clients_description}
                     </p>
                   </div>
                 )}
                 {client.clients_reference_note && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
-                    <p className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-2">
+                  <div className="bg-gradient-to-br from-[#EDE7FF]/40 to-[#f5f3ff] border border-[#C4A8F0]/50 rounded-2xl p-5">
+                    <p className="text-xs font-bold text-[#7A52C2] uppercase tracking-widest mb-2">
                       {
                         "\u0645\u0644\u0627\u062d\u0638\u0629 \u0645\u0631\u062c\u0639\u064a\u0629"
                       }
                     </p>
-                    <p className="text-sm text-amber-800 leading-relaxed">
+                    <p className="text-sm text-[#2D1B69] leading-relaxed">
                       {client.clients_reference_note}
                     </p>
                   </div>
@@ -1206,15 +1163,15 @@ export default function ClientDetailPage() {
                   </div>
                 )}
                 {client.clients_vat_number && (
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center gap-3">
-                    <HashtagIcon className="h-5 w-5 text-slate-400 flex-shrink-0" />
+                  <div className="bg-gradient-to-br from-[#f5f3ff] to-white border border-[#EDE7FF] rounded-2xl p-4 flex items-center gap-3">
+                    <HashtagIcon className="h-5 w-5 text-[#8B5FD6] flex-shrink-0" />
                     <div>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                      <p className="text-xs font-bold text-[#8B5FD6] uppercase tracking-wide">
                         {
                           "\u0631\u0642\u0645 \u0636\u0631\u064a\u0628\u0629 \u0627\u0644\u0642\u064a\u0645\u0629 \u0627\u0644\u0645\u0636\u0627\u0641\u0629"
                         }
                       </p>
-                      <p className="text-sm font-semibold text-slate-800 font-mono">
+                      <p className="text-sm font-semibold text-[#2D1B69] font-mono">
                         {client.clients_vat_number}
                       </p>
                     </div>

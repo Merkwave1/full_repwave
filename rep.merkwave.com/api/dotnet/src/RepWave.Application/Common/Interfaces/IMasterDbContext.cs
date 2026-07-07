@@ -10,5 +10,7 @@ namespace RepWave.Application.Common.Interfaces;
 public interface IMasterDbContext
 {
     DbSet<Tenant> Tenants { get; }
+    DbSet<AdminUser> AdminUsers { get; }
+    DbSet<AdminAuditLog> AdminAuditLogs { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

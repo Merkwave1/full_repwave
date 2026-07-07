@@ -35,6 +35,7 @@ export default function AuthHandoffPage() {
         tenant_id: decoded.tenant_id,
         image: decoded.image ?? null,
         days_remaining: decoded.days_remaining ?? null,
+        admin_support: decoded.admin_support === true,
       });
 
       navigate("/dashboard", { replace: true });

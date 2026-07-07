@@ -16,4 +16,9 @@ public class Tenant
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+    /// <summary>When paid/trial subscription started (defaults to CreatedAt).</summary>
+    public DateTime? SubscriptionStartedAt { get; set; }
+    /// <summary>Number of trial extensions or plan renewals.</summary>
+    public int RenewalCount { get; set; } = 0;
+    public DateTime? LastRenewedAt { get; set; }
 }

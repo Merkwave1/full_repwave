@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using RepWave.Application.Common.Interfaces;
 using RepWave.Infrastructure.Persistence;
+using RepWave.Infrastructure.Services;
 
 namespace RepWave.Infrastructure.Services;
 
@@ -34,8 +35,9 @@ public sealed class TenantService(
     public string GetConnectionString(string tenantId)
     {
         var cacheKey = ConnCacheKey(tenantId);
+        var adminSupport = IsAdminSupportSession();
 
-        if (cache.TryGetValue(cacheKey, out string? cached) && cached is not null)
+        if (!adminSupport && cache.TryGetValue(cacheKey, out string? cached) && cached is not null)
             return cached;
 
         var tenant = masterDb.Tenants
@@ -44,16 +46,29 @@ public sealed class TenantService(
             ?? throw new InvalidOperationException(
                 $"Tenant '{tenantId}' is not registered in the master database.");
 
-        if (!tenant.IsActive)
-            throw new InvalidOperationException($"Tenant '{tenantId}' is inactive.");
+        if (!adminSupport)
+        {
+            if (!tenant.IsActive)
+                throw new InvalidOperationException($"Tenant '{tenantId}' is inactive.");
 
-        if (tenant.ExpirationDate.HasValue && tenant.ExpirationDate.Value < DateTime.UtcNow)
-            throw new InvalidOperationException($"Tenant '{tenantId}' subscription has expired.");
+            if (tenant.ExpirationDate.HasValue && tenant.ExpirationDate.Value < DateTime.UtcNow)
+                throw new InvalidOperationException($"Tenant '{tenantId}' subscription has expired.");
+        }
 
-        cache.Set(cacheKey, tenant.ConnectionString,
-            new MemoryCacheEntryOptions { SlidingExpiration = TimeSpan.FromMinutes(CacheTtlMinutes) });
+        if (!adminSupport)
+        {
+            cache.Set(cacheKey, tenant.ConnectionString,
+                new MemoryCacheEntryOptions { SlidingExpiration = TimeSpan.FromMinutes(CacheTtlMinutes) });
+        }
 
         return tenant.ConnectionString;
+    }
+
+    private bool IsAdminSupportSession()
+    {
+        var claim = httpContextAccessor.HttpContext?.User?.Claims
+            .FirstOrDefault(c => c.Type == TokenService.AdminSupportClaimType)?.Value;
+        return string.Equals(claim, "true", StringComparison.OrdinalIgnoreCase);
     }
 
     public string GetCurrentConnectionString() => GetConnectionString(GetTenantId());

@@ -14,8 +14,13 @@ public class TenantDbContextFactory(ITenantService tenantService) : ITenantDbCon
     public IApplicationDbContext Create(string tenantId)
     {
         var connStr = tenantService.GetConnectionString(tenantId);
+        return CreateFromConnectionString(connStr);
+    }
+
+    public IApplicationDbContext CreateFromConnectionString(string connectionString)
+    {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseNpgsql(connStr, b => b.MigrationsAssembly("RepWave.Infrastructure"))
+            .UseNpgsql(connectionString, b => b.MigrationsAssembly("RepWave.Infrastructure"))
             .Options;
         return new ApplicationDbContext(options);
     }

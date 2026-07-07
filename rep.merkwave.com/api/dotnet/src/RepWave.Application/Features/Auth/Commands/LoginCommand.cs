@@ -32,9 +32,18 @@ public class LoginCommandHandler(ITenantDbContextFactory dbFactory, ITenantServi
             return ApiResponse<LoginResponse>.Failure("Unknown tenant. Check your TenantId.");
 
         // Open the tenant-specific database
-        using var db = dbFactory.Create(req.TenantId);
+        IApplicationDbContext db;
+        try
+        {
+            db = dbFactory.Create(req.TenantId);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ApiResponse<LoginResponse>.Failure(ex.Message);
+        }
 
-        // Check subscription expiration from tenant DB
+        using (db)
+        {
         var expiration = await db.Settings
             .Where(s => s.SettingsKey == "expiration_date")
             .Select(s => s.SettingsValue)
@@ -87,5 +96,6 @@ public class LoginCommandHandler(ITenantDbContextFactory dbFactory, ITenantServi
             user.UsersImage,
             null
         ));
+        }
     }
 }

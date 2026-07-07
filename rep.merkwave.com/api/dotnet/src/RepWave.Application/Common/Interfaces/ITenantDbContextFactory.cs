@@ -8,6 +8,9 @@ public interface ITenantDbContextFactory
 {
     IApplicationDbContext Create(string tenantId);
 
+    /// <summary>Opens a tenant DB using the connection string stored in the master Tenants table.</summary>
+    IApplicationDbContext CreateFromConnectionString(string connectionString);
+
     /// <summary>
     /// Creates the context AND calls EnsureCreated to provision the tenant schema on first use.
     /// Use this when registering a new tenant.

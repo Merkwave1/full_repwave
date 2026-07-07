@@ -285,7 +285,9 @@ public class RegisterTrialCommandHandler(
             ContactCountry = country,
             Notes = $"Self-service trial. Contact: {contactName}",
             IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            SubscriptionStartedAt = DateTime.UtcNow,
+            RenewalCount = 0,
         };
         masterDb.Tenants.Add(tenant);
         await masterDb.SaveChangesAsync(ct);

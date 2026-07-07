@@ -3,6 +3,7 @@ using RepWave.Application.Common.Interfaces;
 using RepWave.Application.Common.Models;
 using RepWave.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 
 namespace RepWave.Application.Features.Clients;
 
@@ -18,7 +19,32 @@ public record ClientDto(
     string? ClientsSource, string? ClientsPaymentTerms, string? ClientsReferenceNote,
     decimal? ClientsLatitude, decimal? ClientsLongitude,
     DateTime? ClientsLastVisit, DateTime? ClientsCreatedAt, DateTime? ClientsUpdatedAt,
-    string? ClientsImage = null);
+    string? ClientsImage = null,
+    string? ClientsType = null,
+    [property: JsonPropertyName("clients_total_orders")] int ClientsTotalOrders = 0,
+    [property: JsonPropertyName("clients_total_revenue")] decimal ClientsTotalRevenue = 0,
+    [property: JsonPropertyName("clients_last_order_date")] DateTime? ClientsLastOrderDate = null);
+
+internal static class ClientDtoMapper
+{
+    public static ClientDto ToDto(
+        Client c,
+        int totalOrders = 0,
+        decimal totalRevenue = 0,
+        DateTime? lastOrderDate = null) =>
+        new(
+            c.ClientsId, c.ClientsCompanyName, c.ClientsEmail, c.ClientsContactName,
+            c.ClientsContactPhone1, c.ClientsContactPhone2, c.ClientsContactJobTitle,
+            c.ClientsAddress, c.ClientsStreet2, c.ClientsBuildingNumber,
+            c.ClientsCity, c.ClientsZip, c.ClientsCountryId,
+            c.ClientsGovernorateId, c.ClientsAreaTagId, c.ClientsClientTypeId, c.ClientsIndustryId,
+            c.ClientsRepUserId, c.ClientsCreditLimit, c.ClientsCreditBalance,
+            c.ClientsStatus, c.ClientsVatNumber, c.ClientsWebsite, c.ClientsDescription,
+            c.ClientsSource, c.ClientsPaymentTerms, c.ClientsReferenceNote,
+            c.ClientsLatitude, c.ClientsLongitude,
+            c.ClientsLastVisit, c.ClientsCreatedAt, c.ClientsUpdatedAt, c.ClientsImage,
+            c.ClientsType, totalOrders, totalRevenue, lastOrderDate);
+}
 
 public record CreateClientRequest(string ClientsCompanyName, string? ClientsEmail, string? ClientsContactName,
     string? ClientsContactPhone1, string? ClientsContactPhone2, string? ClientsAddress, string? ClientsCity,
@@ -53,7 +79,8 @@ public class GetAllClientsQueryHandler(IApplicationDbContext db)
         var total = await query.CountAsync(ct);
         var items = await query.OrderByDescending(c => c.ClientsCreatedAt)
             .Skip((q.Page - 1) * q.PageSize).Take(q.PageSize)
-            .Select(c => new ClientDto(c.ClientsId, c.ClientsCompanyName, c.ClientsEmail, c.ClientsContactName,
+            .Select(c => new ClientDto(
+                c.ClientsId, c.ClientsCompanyName, c.ClientsEmail, c.ClientsContactName,
                 c.ClientsContactPhone1, c.ClientsContactPhone2, c.ClientsContactJobTitle,
                 c.ClientsAddress, c.ClientsStreet2, c.ClientsBuildingNumber,
                 c.ClientsCity, c.ClientsZip, c.ClientsCountryId,
@@ -62,7 +89,8 @@ public class GetAllClientsQueryHandler(IApplicationDbContext db)
                 c.ClientsStatus, c.ClientsVatNumber, c.ClientsWebsite, c.ClientsDescription,
                 c.ClientsSource, c.ClientsPaymentTerms, c.ClientsReferenceNote,
                 c.ClientsLatitude, c.ClientsLongitude,
-                c.ClientsLastVisit, c.ClientsCreatedAt, c.ClientsUpdatedAt, c.ClientsImage))
+                c.ClientsLastVisit, c.ClientsCreatedAt, c.ClientsUpdatedAt,
+                c.ClientsImage, c.ClientsType, 0, 0m, null))
             .ToListAsync(ct);
         return ApiResponse<PagedResult<ClientDto>>.Success(new() { Data = items, TotalCount = total, Page = q.Page, PageSize = q.PageSize });
     }
@@ -76,16 +104,18 @@ public class GetClientByIdQueryHandler(IApplicationDbContext db)
     {
         var c = await db.Clients.AsNoTracking().FirstOrDefaultAsync(x => x.ClientsId == q.Id, ct);
         if (c is null) return ApiResponse<ClientDto>.Failure("Client not found.");
-        return ApiResponse<ClientDto>.Success(new ClientDto(c.ClientsId, c.ClientsCompanyName, c.ClientsEmail,
-            c.ClientsContactName, c.ClientsContactPhone1, c.ClientsContactPhone2, c.ClientsContactJobTitle,
-            c.ClientsAddress, c.ClientsStreet2, c.ClientsBuildingNumber,
-            c.ClientsCity, c.ClientsZip, c.ClientsCountryId,
-            c.ClientsGovernorateId, c.ClientsAreaTagId, c.ClientsClientTypeId,
-            c.ClientsIndustryId, c.ClientsRepUserId, c.ClientsCreditLimit, c.ClientsCreditBalance,
-            c.ClientsStatus, c.ClientsVatNumber, c.ClientsWebsite, c.ClientsDescription,
-            c.ClientsSource, c.ClientsPaymentTerms, c.ClientsReferenceNote,
-            c.ClientsLatitude, c.ClientsLongitude,
-            c.ClientsLastVisit, c.ClientsCreatedAt, c.ClientsUpdatedAt, c.ClientsImage));
+
+        var orders = db.SalesOrders.AsNoTracking().Where(o => o.SalesOrdersClientId == q.Id);
+        var totalOrders = await orders.CountAsync(ct);
+        var totalRevenue = totalOrders > 0
+            ? await orders.SumAsync(o => o.SalesOrdersTotalAmount, ct)
+            : 0m;
+        var lastOrderDate = totalOrders > 0
+            ? await orders.MaxAsync(o => o.SalesOrdersOrderDate, ct)
+            : null;
+
+        return ApiResponse<ClientDto>.Success(
+            ClientDtoMapper.ToDto(c, totalOrders, totalRevenue, lastOrderDate));
     }
 }
 
@@ -121,16 +151,7 @@ public class CreateClientCommandHandler(IApplicationDbContext db)
         };
         db.Clients.Add(client);
         await db.SaveChangesAsync(ct);
-        return ApiResponse<ClientDto>.Success(new ClientDto(client.ClientsId, client.ClientsCompanyName,
-            client.ClientsEmail, client.ClientsContactName, client.ClientsContactPhone1, client.ClientsContactPhone2,
-            client.ClientsContactJobTitle, client.ClientsAddress, client.ClientsStreet2, client.ClientsBuildingNumber,
-            client.ClientsCity, client.ClientsZip, client.ClientsCountryId, client.ClientsGovernorateId,
-            client.ClientsAreaTagId, client.ClientsClientTypeId, client.ClientsIndustryId,
-            client.ClientsRepUserId, client.ClientsCreditLimit, client.ClientsCreditBalance,
-            client.ClientsStatus, client.ClientsVatNumber, client.ClientsWebsite, client.ClientsDescription,
-            client.ClientsSource, client.ClientsPaymentTerms, client.ClientsReferenceNote,
-            client.ClientsLatitude, client.ClientsLongitude,
-            client.ClientsLastVisit, client.ClientsCreatedAt, client.ClientsUpdatedAt, client.ClientsImage));
+        return ApiResponse<ClientDto>.Success(ClientDtoMapper.ToDto(client));
     }
 }
 
@@ -158,16 +179,18 @@ public class UpdateClientCommandHandler(IApplicationDbContext db)
         client.ClientsReferenceNote = r.ClientsReferenceNote; client.ClientsLatitude = r.ClientsLatitude;
         client.ClientsLongitude = r.ClientsLongitude; client.ClientsImage = r.ClientsImage; client.ClientsUpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
-        return ApiResponse<ClientDto>.Success(new ClientDto(client.ClientsId, client.ClientsCompanyName,
-            client.ClientsEmail, client.ClientsContactName, client.ClientsContactPhone1, client.ClientsContactPhone2,
-            client.ClientsContactJobTitle, client.ClientsAddress, client.ClientsStreet2, client.ClientsBuildingNumber,
-            client.ClientsCity, client.ClientsZip, client.ClientsCountryId, client.ClientsGovernorateId,
-            client.ClientsAreaTagId, client.ClientsClientTypeId, client.ClientsIndustryId,
-            client.ClientsRepUserId, client.ClientsCreditLimit, client.ClientsCreditBalance,
-            client.ClientsStatus, client.ClientsVatNumber, client.ClientsWebsite, client.ClientsDescription,
-            client.ClientsSource, client.ClientsPaymentTerms, client.ClientsReferenceNote,
-            client.ClientsLatitude, client.ClientsLongitude,
-            client.ClientsLastVisit, client.ClientsCreatedAt, client.ClientsUpdatedAt, client.ClientsImage));
+
+        var orders = db.SalesOrders.AsNoTracking().Where(o => o.SalesOrdersClientId == cmd.Id);
+        var totalOrders = await orders.CountAsync(ct);
+        var totalRevenue = totalOrders > 0
+            ? await orders.SumAsync(o => o.SalesOrdersTotalAmount, ct)
+            : 0m;
+        var lastOrderDate = totalOrders > 0
+            ? await orders.MaxAsync(o => o.SalesOrdersOrderDate, ct)
+            : null;
+
+        return ApiResponse<ClientDto>.Success(
+            ClientDtoMapper.ToDto(client, totalOrders, totalRevenue, lastOrderDate));
     }
 }
 

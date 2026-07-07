@@ -42,6 +42,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = builder.Configuration["JwtSettings:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
+        opts.MapInboundClaims = false;
         // Allow token from query string or Authorization header for SignalR
         opts.Events = new JwtBearerEvents
         {
@@ -108,6 +109,81 @@ using (var startupScope = app.Services.CreateScope())
     catch
     {
         /* non-Postgres or already applied */
+    }
+
+    try
+    {
+        await masterDb.Database.ExecuteSqlRawAsync(
+            """
+            CREATE TABLE IF NOT EXISTS "AdminUsers" (
+                "AdminUserId" serial PRIMARY KEY,
+                "Email" character varying(255) NOT NULL UNIQUE,
+                "PasswordHash" text NOT NULL,
+                "Name" character varying(200) NOT NULL,
+                "IsActive" boolean NOT NULL DEFAULT true,
+                "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW()
+            );
+            """);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"⚠️  AdminUsers table migration skipped: {ex.Message}");
+    }
+
+    try
+    {
+        await masterDb.Database.ExecuteSqlRawAsync(
+            """
+            ALTER TABLE "Tenants" ADD COLUMN IF NOT EXISTS "SubscriptionStartedAt" timestamp with time zone;
+            ALTER TABLE "Tenants" ADD COLUMN IF NOT EXISTS "RenewalCount" integer NOT NULL DEFAULT 0;
+            ALTER TABLE "Tenants" ADD COLUMN IF NOT EXISTS "LastRenewedAt" timestamp with time zone;
+            UPDATE "Tenants" SET "SubscriptionStartedAt" = "CreatedAt" WHERE "SubscriptionStartedAt" IS NULL;
+            """);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"⚠️  Tenant subscription columns migration skipped: {ex.Message}");
+    }
+
+    try
+    {
+        await masterDb.Database.ExecuteSqlRawAsync(
+            """
+            CREATE TABLE IF NOT EXISTS "AdminAuditLogs" (
+                "Id" serial PRIMARY KEY,
+                "AdminEmail" character varying(255) NOT NULL,
+                "AdminName" character varying(200) NOT NULL,
+                "Action" character varying(100) NOT NULL,
+                "TenantId" character varying(100),
+                "TargetUserId" integer,
+                "TargetUserEmail" character varying(255),
+                "Details" character varying(2000),
+                "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS "IX_AdminAuditLogs_CreatedAt" ON "AdminAuditLogs" ("CreatedAt" DESC);
+            CREATE INDEX IF NOT EXISTS "IX_AdminAuditLogs_TenantId" ON "AdminAuditLogs" ("TenantId");
+            """);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"⚠️  AdminAuditLogs table migration skipped: {ex.Message}");
+    }
+
+    // ── Auto-seed super-admin user ────────────────────────────────────────────
+    const string adminEmail = "admin@repwave.io";
+    const string adminPassword = "RepWaveAdmin123!";
+    if (!await masterDb.AdminUsers.AnyAsync(u => u.Email == adminEmail))
+    {
+        masterDb.AdminUsers.Add(new AdminUser
+        {
+            Email = adminEmail,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword),
+            Name = "RepWave Super Admin",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+        });
+        await masterDb.SaveChangesAsync();
+        Console.WriteLine($"✅ Super-admin seeded: {adminEmail} / {adminPassword}");
     }
 
     // ── Auto-seed demo tenant ─────────────────────────────────────────────────

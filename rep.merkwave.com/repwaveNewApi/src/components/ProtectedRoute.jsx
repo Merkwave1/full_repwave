@@ -2,20 +2,21 @@
 // A component that protects routes, redirecting unauthenticated users to the login page.
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { isAuthenticated, isAdmin } from '../apis/auth.js'; // Import the authentication check
+import { isAuthenticated, isAdmin, isAdminSupportSession } from '../apis/auth.js'; // Import the authentication check
 
 function ProtectedRoute() {
   // Check if the user is authenticated
   const auth = isAuthenticated();
   const adminRole = isAdmin();
+  const supportSession = isAdminSupportSession();
 
   // If not authenticated, redirect to login
   if (!auth) {
     return <Navigate to="/login" replace />;
   }
 
-  // If authenticated but not admin, show access denied
-  if (!adminRole) {
+  // If authenticated but not admin (unless super-admin opened ERP for support)
+  if (!adminRole && !supportSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100" dir="rtl">
         <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-8 text-center">
